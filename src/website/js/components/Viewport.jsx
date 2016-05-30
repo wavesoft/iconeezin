@@ -27,14 +27,51 @@ var React = require('react');
  * Export Viewport
  */
 module.exports = React.createClass({
-  render: function() {
-    return (
-      <div className="commentBox">
-        Hello, world! I am a viewport.
-        <div className="test">
-        And this is a child test
-        </div>
-      </div>
-    );
-  }
+
+	/**
+	 * Initialize iconeezin video runtime when
+	 * the viewport component is mounted.
+	 */
+	componentDidMount: function() {
+		var dom = this.refs.viewport;
+		IconeezinRuntime.Video.initialize( dom );
+	},
+
+	/**
+	 * Clean-up iconeezin video runtime when the vieowport
+	 * is destroyed.
+	 */
+	componentWillUnmount: function(dom) {
+		IconeezinRuntime.Video.cleanup();
+	},
+
+	/**
+	 * Forward updates to iconeezin runtime
+	 */
+	shouldComponentUpdate: function(nextProps, nextState) {
+
+		// Apply 'hmd'
+		if (this.props.hmd != nextProps.hmd) {
+			IconeezinRuntime.Video.setHMD( nextProps.hmd );
+		}
+
+		// Apply 'paused'
+		if (this.props.paused != nextProps.paused) {
+			IconeezinRuntime.Video.setPaused( nextProps.paused );
+		}
+
+		// DOM Never invalidates
+		return false;
+
+	},
+
+	/**
+	 * Render the viewport
+	 */
+	render: function() {
+		return (
+			<div ref="viewport" className="icnz-viewport" />
+		);
+	}
+
 });

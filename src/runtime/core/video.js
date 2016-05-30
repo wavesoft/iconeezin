@@ -20,6 +20,7 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+var $ = require('jquery');
 var Viewport = require("../ui/viewport");
 
 /**
@@ -36,6 +37,28 @@ VideoCore.initialize = function( rootDOM ) {
 	// Create a new viewport instance
 	this.viewport = new Viewport( rootDOM, {} );
 
+	// Listen for window resize events
+	$(window).resize((function() {
+
+		// Resize viewport
+		if (this.viewport) this.viewport.resize(); 
+
+	}).bind(this));
+
+}
+
+/**
+ * Start/Stop video animation
+ */
+VideoCore.setPaused = function( enabled ) {
+	this.viewport.setPaused( enabled );
+}
+
+/**
+ * Start/Stop video animation
+ */
+VideoCore.setHMD = function( enabled ) {
+	this.viewport.setHMD( enabled );
 }
 
 // Export

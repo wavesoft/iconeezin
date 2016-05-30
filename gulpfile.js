@@ -146,6 +146,7 @@ gulp.task('live', ['default'], function() {
 	gulp.watch('src/api/**', ['js/api'], function(event) { })
 	gulp.watch('src/runtime/**', ['js/runtime'], function(event) { })
 	gulp.watch('src/website/js/**', ['js/website'], function(event) { })
+	gulp.watch('src/website/html/**', ['html/website'], function(event) { })
 	gulp.watch('src/website/css/*.less', ['css/website'], function(event) { })
 });
 
