@@ -20,21 +20,44 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioCore = require("./core/audio");
-var VideoCore = require("./core/video");
+var IconeezinRuntime = require("iconeezin/runtime");
+var React = require('react');
+var ReactDOM = require('react-dom');
+
+var Viewport = require('./components/Viewport');
 
 /**
- * Expose useful parts of the runtime API
+ * Root component
  */
-module.exports = {
+var Iconeez = React.createClass({
 
-	'Audio': AudioCore,
-	'Video': VideoCore,
+	getInitialState: function() {
+		return {
+			'running': false,
+			'hmd': false,
+		};
+	},
 
-	// Library dependencies
-	'lib': {
-		'three': require('three'),
-		'three': require('three'),		
+	handleStart: function(hmd) {
+		this.setState({ 'running': true, 'hmd': hmd });
+	},
+
+	handlePause: function() {
+		this.setState({ 'running': false });
+	},
+
+	render: function() {
+		return (
+			  <Viewport onStart={this.handleStart} onPause={this.handlePause} />
+		);
 	}
 
-};
+});
+
+/**
+ * Render root component
+ */
+ReactDOM.render(
+	<Iconeez />,
+	document.body
+);

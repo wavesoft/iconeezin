@@ -20,6 +20,8 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+var Viewport = require("../ui/viewport");
+
 /**
  * The VideoCore singleton contains the
  * global video management API.
@@ -30,6 +32,9 @@ var VideoCore = {};
  * Initialize the video core
  */
 VideoCore.initialize = function( rootDOM ) {
+
+	// Create a new viewport instance
+	this.viewport = new Viewport( rootDOM, {} );
 
 }
 

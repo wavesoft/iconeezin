@@ -20,9 +20,21 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var $ = require('jquery');
 var IconeezinRuntime = require("iconeezin/runtime");
+var React = require('react');
 
 /**
- * 
+ * Export Viewport
  */
+module.exports = React.createClass({
+  render: function() {
+    return (
+      <div className="commentBox">
+        Hello, world! I am a viewport.
+        <div className="test">
+        And this is a child test
+        </div>
+      </div>
+    );
+  }
+});
