@@ -53,10 +53,10 @@ var IconeezinRoot = React.createClass({
 	componentDidMount: function() {
 
 		// Register full screen handler
-		document.addEventListener("fullscreenchange", this.handleFullScreen);
-		document.addEventListener("webkitfullscreenchange", this.handleFullScreen);
-		document.addEventListener("mozfullscreenchange", this.handleFullScreen);
-		document.addEventListener("MSFullscreenChange", this.handleFullScreen);
+		document.addEventListener("fullscreenchange", this.handleFullScreenChange);
+		document.addEventListener("webkitfullscreenchange", this.handleFullScreenChange);
+		document.addEventListener("mozfullscreenchange", this.handleFullScreenChange);
+		document.addEventListener("MSFullscreenChange", this.handleFullScreenChange);
 
 	},
 
@@ -65,18 +65,20 @@ var IconeezinRoot = React.createClass({
 	 */
 	componentWillUnmount: function() {
 
-		// Register full screen handler
-		document.removeEventListener("fullscreenchange", this.handleFullScreen);
-		document.removeEventListener("webkitfullscreenchange", this.handleFullScreen);
-		document.removeEventListener("mozfullscreenchange", this.handleFullScreen);
-		document.removeEventListener("MSFullscreenChange", this.handleFullScreen);
+		// Unregister full screen handler
+		document.removeEventListener("fullscreenchange", this.handleFullScreenChange);
+		document.removeEventListener("webkitfullscreenchange", this.handleFullScreenChange);
+		document.removeEventListener("mozfullscreenchange", this.handleFullScreenChange);
+		document.removeEventListener("MSFullscreenChange", this.handleFullScreenChange);
 
 	},
 
 	/**
-	 * Handle updates to the state
+	 * Handle state updates
 	 */
 	componentDidUpdate: function(prevProps, prevState) {
+
+		// Handle paused state switching
 		if (prevState.paused != this.state.paused) {
 			if (!this.state.paused) {
 
@@ -94,6 +96,7 @@ var IconeezinRoot = React.createClass({
 
 			}
 		}
+
 	},
 
 	/**
@@ -106,7 +109,7 @@ var IconeezinRoot = React.createClass({
 	handlePause: function() {
 		this.setState({ 'paused': true });
 	},
-	handleFullScreen: function(e) {
+	handleFullScreenChange: function(e) {
 		if (
 			document.fullscreenElement ||
 			document.webkitFullscreenElement ||

@@ -22,6 +22,7 @@
 
 var AudioCore = require("./core/audio");
 var VideoCore = require("./core/video");
+var KernelCore = require("./core/kernel");
 
 /**
  * Expose useful parts of the runtime API
@@ -30,6 +31,7 @@ module.exports = {
 
 	'Audio': AudioCore,
 	'Video': VideoCore,
+	'Kernel': KernelCore,
 
 	// Library dependencies
 	'lib': {

@@ -33,13 +33,87 @@ var AudioCore = {};
  */
 AudioCore.initialize = function() {
 
+	/**
+	 * The web audio context
+	 * @property
+	 */
+	this.context = new AudioContext();
+
+	/**
+	 * The line in from the user's microphone
+	 * @property
+	 */
+	this.lineIn = null;
+
+	/**
+	 * The line out to the user's speakers
+	 * @property
+	 */
+	this.lineOut = new WebAudiox.LineOut( this.context );
+
+	this.enableLineIn(true);
+
 }
 
 /**
- * Set input mode
- * @param {int} mode - 0: No input, 1: Mic, 2: Speech recognition
+ * Enable or disable microphone
+ * @param {bool} enabled - Set to true to enable microphone
  */
-AudioCore.setInputMode = function( mode ) {
+AudioCore.enableLineIn = function( enabled ) {
+
+	if (this.lineIn && !enabled) {
+
+		//
+		// Disable microphone
+		//
+		this.lineIn.stop();
+		this.lineIn = null;
+
+	} else if (!this.lineIn && enabled) {
+
+		//
+		// Open microphone input
+		//
+
+		// Handle user's positive response
+		var handleStream = (function(stream) {
+			// Create an AudioNode from the stream.
+			this.lineIn = this.context.createMediaStreamSource( stream );
+
+			var synthDelay = this.context.createDelay();
+			this.lineIn.connect(synthDelay);
+			synthDelay.connect(this.lineOut.destination);
+			synthDelay.delayTime.value = 1.0;
+
+		}).bind(this);
+
+		// Handle user's negative response
+		var handleError = (function() {
+			// Display error
+			alert("Unable to open audio input stream!");
+		}).bind(this);
+
+		// Get user media
+		navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia|| navigator.oGetUserMedia;
+		navigator.getUserMedia( {audio:true}, handleStream, handleError );
+
+	}
+
+}
+
+/**
+ * Play a sound buffer
+ */
+AudioCore.play = function ( buffer, loop ) {
+
+	// init AudioBufferSourceNode
+	var source = this.context.createBufferSource();
+	source.buffer = buffer
+	source.loop = (loop !== undefined) ? loop : false;
+	source.connect( this.lineOut.destination );
+
+	// start the sound now
+	source.start(0);
 
 }
 

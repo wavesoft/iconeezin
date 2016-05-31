@@ -20,23 +20,42 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var IconeezinRuntime = require("iconeezin/runtime");
+/**
+ * Loaders namespace contains all the different loading
+ * functions.
+ */
+var Loaders = { };
 
 /**
- * The Audio API namespace contains the
- * classes for implementing external audio objects.
+ * Load experiment
  */
-var AudioAPI = {};
+Loaders.loadExperimentClass = function( experiment, callback ) {
 
-/**
- * An audio file is the source fo audio
- */
-AudioAPI.AuidoFile = function( url ) {
+	// Create a script element
+	var script = document.createElement('script');
+	script.addEventListener( 'load', function ( event ) {
 
-	// Url to the audio file
-	this.url = url || "";
+		// Lookup class
+		var classDefinition = window[experiment.className];
+		if (!classDefinition) {
+			callback( "The experiment does not expose class: "+experiment.className, null );
+			return;
+		}
+
+		// Create class instance
+		var classInst = new classDefinition();
+		callback( null, classInst );
+
+	});
+	script.addEventListener( 'error', function ( event ) {
+		callback( "Loading error: " + event.message, null );
+	});
+	script.src = experiment.url;
+
+	// Add script to DOM
+	document.body.appendChild(script);
 
 }
 
-// Export
-module.exports = AudioAPI;
+// Export regitry
+module.exports = Loaders;

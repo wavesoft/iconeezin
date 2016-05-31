@@ -27,7 +27,40 @@
 var ExperimentAPI = {};
 
 /**
- * Experiment namespace
+ * Experiment source file
+ */
+ExperimentAPI.ExperimentFile = function( url, className ) {
+
+	// URL to the experiment file
+	this.url = url || "";
+
+	// Class name exported in the global scope
+	// after the experiment code file is loaded
+	this.className = className;
+
+	// By default the class name is <FileName> + 'Experiment'
+	if (className === undefined) {
+		var parts = url.split("/");
+
+		// Strip query and hashtag
+		var fname = parts[parts.length-1].split("?")[0];
+		fname = fname.split("#")[0];
+
+		// Strip .js extension
+		if (fname.substr(fname.length-3).toLowerCase() == ".js") {
+			fname = fname.substr(0, fname.length-3);
+		}
+
+		// Replace filename as class Name
+		this.className = fname.replace( /([\._-]|^)([a-zA-Z])/g ,
+			function(g,m1,m2){ return m2.toUpperCase() }) + 'Experiment';
+
+	}
+
+}
+
+/**
+ * Experiment base class
  */
 ExperimentAPI.Experiment = function() {
 	

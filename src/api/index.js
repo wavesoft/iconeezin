@@ -35,6 +35,8 @@ var IconeezinAPI = {};
 module.exports = {
 
 	'AudioFile': AudioAPI.AuidoFile,
+
 	'Experiment': ExperimentAPI.Experiment,
+	'ExperimentFile': ExperimentAPI.ExperimentFile,
 
 };

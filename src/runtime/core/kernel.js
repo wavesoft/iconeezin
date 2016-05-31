@@ -20,23 +20,31 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var IconeezinRuntime = require("iconeezin/runtime");
+var Loaders = require("../io/loaders");
 
 /**
- * The Audio API namespace contains the
- * classes for implementing external audio objects.
+ * Kernel core is the main logic that steers the runtime 
  */
-var AudioAPI = {};
+var KernelCore = { };
 
 /**
- * An audio file is the source fo audio
+ * Load an experiment and activate
  */
-AudioAPI.AuidoFile = function( url ) {
+KernelCore.loadExperiment = function( experiment ) {
 
-	// Url to the audio file
-	this.url = url || "";
+	// Load experiment
+	Loaders.loadExperimentClass( experiment, function( error, inst ) {
+
+		// Handle errors
+		if (error) {
+			console.error(error);
+		} else {
+			console.log("Loaded",inst);
+		}
+
+	});
 
 }
 
-// Export
-module.exports = AudioAPI;
+// Export regitry
+module.exports = KernelCore;
