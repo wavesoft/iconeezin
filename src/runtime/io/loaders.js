@@ -20,11 +20,33 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+var JBBLoader = require('jbb/decoder');
+var JBBProfileThreeLoader = require('jbb-profile-three/profile-decode');
+var JBBProfileIconeezinLoader = require('jbb-profile-iconeezin/profile-decode');
+
 /**
  * Loaders namespace contains all the different loading
  * functions.
  */
 var Loaders = { };
+
+Loaders.loadExperiment = function( bundle ) {
+
+	// Instantiate a new bundles loader
+	var sourceLoader = new JBBLoader( 'experiments' );
+	sourceLoader.addProfile( JBBProfileThreeLoader );
+	sourceLoader.addProfile( JBBProfileIconeezinLoader );
+
+	// Start loading the source bundle
+	console.time("source["+bundle+"]");
+	sourceLoader.add( bundle );
+	sourceLoader.load(function( err, db ) {
+		console.timeEnd("source["+bundle+"]");
+		console.log( err, db );
+	});
+
+
+}
 
 /**
  * Load experiment

@@ -10,6 +10,11 @@ var webpack = require('webpack-stream');
 gulp.task('js/api', function() {
 	return gulp.src('src/api/index.js')
 		.pipe(webpack({
+			module: {
+				loaders: [
+					{ test: /\.json$/, loader: 'json' },
+				],
+		    },
 			node: {
 				fs: 'empty'
 			},
@@ -19,7 +24,6 @@ gulp.task('js/api', function() {
 				library: 'IconeezinAPI'
 			},
 			externals: {
-				'iconeezin/runtime': 'IconeezinRuntime',
 				'three': 'IconeezinRuntime.lib.three',
 				'jquery': 'IconeezinRuntime.lib.jquery',
 			},
@@ -47,6 +51,11 @@ gulp.task('js/api', function() {
 gulp.task('js/runtime', function() {
 	return gulp.src('src/runtime/index.js')
 		.pipe(webpack({
+			module: {
+				loaders: [
+					{ test: /\.json$/, loader: 'json' },
+				],
+		    },
 			node: {
 				fs: 'empty'
 			},

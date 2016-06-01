@@ -27,6 +27,10 @@ var Loaders = require("../io/loaders");
  */
 var KernelCore = { };
 
+KernelCore.doit = function() {
+	Loaders.loadExperiment( "simple.jbb" );
+}
+
 /**
  * Load an experiment and activate
  */
