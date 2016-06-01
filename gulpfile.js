@@ -1,6 +1,7 @@
-var path = require('path');
-var gulp = require('gulp');
-var less = require('gulp-less');
+var path 	= require('path');
+var gulp 	= require('gulp');
+var less 	= require('gulp-less');
+var jbb 	= require('gulp-jbb');
 var webpack = require('webpack-stream');
 
 /**
@@ -137,6 +138,16 @@ gulp.task('css/website', function() {
 gulp.task('html/website', function() {
 	return gulp.src(['src/website/html/index.html'])
 		.pipe(gulp.dest('build'));
+});
+
+/**
+ * Compile experiments
+ */
+gulp.task('experiments/simple', function() {
+	return gulp
+		.src([ 'experiments/simple.jbbsrc' ])
+		.pipe(jbb({ }))
+		.pipe(gulp.dest('build/experiments'));
 });
 
 /**

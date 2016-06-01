@@ -1,0 +1,15 @@
+{
+	"name": "simple",
+	"profile": [ "iconeezin", "three" ],
+	"exports": {
+
+		"IconeezinAPI.ExperimentFile": {
+			"main": "experiment.js"
+		},
+
+		"IconeezinAPI.AudioFile": {
+			"sounds/noise": "sounds/whitenoise.ogg"
+		}
+
+	}
+}

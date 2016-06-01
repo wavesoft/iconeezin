@@ -20,7 +20,7 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var IconeezinRuntime = require("iconeezin/runtime");
+// var IconeezinRuntime = require("iconeezin/runtime");
 
 /**
  * The Audio API namespace contains the

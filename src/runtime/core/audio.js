@@ -51,8 +51,6 @@ AudioCore.initialize = function() {
 	 */
 	this.lineOut = new WebAudiox.LineOut( this.context );
 
-	this.enableLineIn(true);
-
 }
 
 /**
