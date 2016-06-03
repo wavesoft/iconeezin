@@ -37,6 +37,9 @@ VideoCore.initialize = function( rootDOM ) {
 	// Create a new viewport instance
 	this.viewport = new Viewport( rootDOM, {} );
 
+	// Function to call for displaying a message
+	this.__messagenfn = null;
+
 	// Listen for window resize events
 	$(window).resize((function() {
 
@@ -60,6 +63,46 @@ VideoCore.setPaused = function( enabled ) {
 VideoCore.setHMD = function( enabled ) {
 	this.viewport.setHMD( enabled );
 }
+
+/**
+ * Set message handler
+ */
+VideoCore.setMessageHandler = function( fn ) {
+	this.__messagenfn = fn;
+}
+
+/**
+ * Show a message
+ */
+VideoCore.showMessage = function( title, body, timeout ) {
+	if (!this.__messagenfn) return;
+	this.__messagenfn({
+		'title': title,
+		'body': body,
+		'type': 'message'
+	})
+}
+
+/**
+ * Show an error message message
+ */
+VideoCore.showError = function( title, body ) {
+	if (!this.__messagenfn) return;
+	this.__messagenfn({
+		'title': title,
+		'body': body,
+		'type': 'error'
+	})
+}
+
+/**
+ * Hide a visible message
+ */
+VideoCore.hideMessage = function() {
+	if (!this.__messagenfn) return;
+	this.__messagenfn(null);
+}
+
 
 // Export
 module.exports = VideoCore;

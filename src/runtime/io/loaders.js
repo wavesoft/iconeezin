@@ -20,6 +20,8 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+var Config = require("../config");
+
 var JBBLoader = require('jbb/decoder');
 var JBBProfileThreeLoader = require('jbb-profile-three/profile-decode');
 var JBBProfileIconeezinLoader = require('jbb-profile-iconeezin/profile-decode');
@@ -30,19 +32,63 @@ var JBBProfileIconeezinLoader = require('jbb-profile-iconeezin/profile-decode');
  */
 var Loaders = { };
 
-Loaders.loadExperiment = function( bundle ) {
+/**
+ * Initialize loaders
+ */
+Loaders.initialize = function() {
 
-	// Instantiate a new bundles loader
-	var sourceLoader = new JBBLoader( 'experiments' );
-	sourceLoader.addProfile( JBBProfileThreeLoader );
-	sourceLoader.addProfile( JBBProfileIconeezinLoader );
+	// Database singleton
+	this.database = {};
+
+	// Create jbb singleton to the shared database in order
+	// to shared graphics and other shared resources
+	this.jbbLoader = new JBBLoader( Config.experiments_dir, this.database );
+
+	// Add jbb profiles 
+	this.jbbLoader.addProfile( JBBProfileThreeLoader );
+	this.jbbLoader.addProfile( JBBProfileIconeezinLoader );
+
+}
+
+/**
+ * Load experiment bundle and then get a reference to the
+ * experiment class.
+ */
+Loaders.loadExperiment = function( bundle, callback ) {
 
 	// Start loading the source bundle
 	console.time("source["+bundle+"]");
-	sourceLoader.add( bundle );
-	sourceLoader.load(function( err, db ) {
+	this.jbbLoader.add( bundle + ".jbb" );
+	this.jbbLoader.load(function( err, db ) {
 		console.timeEnd("source["+bundle+"]");
-		console.log( err, db );
+
+		// Handle errors
+		if (err) {
+			callback( err );
+			return;
+		}
+
+		// We have the bundle loaded, now load experiment's main class
+		var experiment = Loaders.loadExperimentClass( 
+			db[ bundle +'/main' ], 
+			function( err, experimentClass ) {
+
+				// Callback error first
+				if (err) {
+					callback( err, null );
+					return;
+				}
+
+				// Instantiate experiment and pass it
+				// the bundle database
+				var experiment = new experimentClass( db );
+
+				// Callback with bundle and experiment
+				callback( null, experiment );
+
+			}
+		);
+
 	});
 
 
@@ -65,8 +111,7 @@ Loaders.loadExperimentClass = function( experiment, callback ) {
 		}
 
 		// Create class instance
-		var classInst = new classDefinition();
-		callback( null, classInst );
+		callback( null, classDefinition );
 
 	});
 	script.addEventListener( 'error', function ( event ) {

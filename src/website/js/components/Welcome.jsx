@@ -20,23 +20,36 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioCore = require("./core/audio");
-var VideoCore = require("./core/video");
-var ExperimentsCore = require("./core/experiments");
+var React = require('react');
 
 /**
- * Expose useful parts of the runtime API
+ * Export welcome panel
  */
-module.exports = {
+module.exports = React.createClass({
 
-	'Audio': AudioCore,
-	'Video': VideoCore,
-	'Experiments': ExperimentsCore,
+	/**
+	 * Render the welcome panel
+	 */
+	render: function() {
+		return (
+			<div className={"icnz-welcome-host" + (this.props.visible ? " visible" : "")}>
+				<div className="icnz-welcome-panel">
+					<div className="icnz-welcome-body">
+						<h1>Virtual Audio Exhibition</h1>
+						<p>Please select one of the following modes to start your experience. It will open in full screen.</p>
+					</div>
+					<div className="icnz-welcome-buttons">
+						<button type="button" onClick={this.props.onStartDesktop}>
+							<span className="entypo-monitor"></span> Desktop Mode
+						</button>
+						<button type="button" onClick={this.props.onStartHMD}>
+							<span className="entypo-eye"></span> Occulus VR Mode
+						</button>
+					</div>
+				</div>
+			</div>
+		);
 
-	// Library dependencies
-	'lib': {
-		'three': require('three'),
-		'three': require('three'),		
 	}
 
-};
+});

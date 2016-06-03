@@ -25,12 +25,14 @@ var ReactDOM = require('react-dom');
 var IconeezinRuntime = require("iconeezin/runtime");
 
 var Viewport = require('./components/Viewport');
+var Welcome = require('./components/Welcome');
 
 /**
  * initialize runtime components that do not require
  * a DOM component.
  */
 IconeezinRuntime.Audio.initialize();
+IconeezinRuntime.Experiments.initialize();
 
 /**
  * Root component
@@ -44,6 +46,7 @@ var IconeezinRoot = React.createClass({
 		return {
 			'paused': true,
 			'hmd': false,
+			'experiment': null
 		};
 	},
 
@@ -102,12 +105,18 @@ var IconeezinRoot = React.createClass({
 	/**
 	 * Start/Stop
 	 */
+	handleStartDesktop: function() {
+		this.setState({ 'paused': false, 'hmd': false });
+	},
+	handleStartHMD: function() {
+		this.setState({ 'paused': false, 'hmd': true });
+	},
 	handleStart: function(hmd) {
 		alert('handling!');
-		this.setState({ 'paused': false, 'hmd': hmd });
+		this.setState({ 'paused': false, 'hmd': true });
 	},
 	handlePause: function() {
-		this.setState({ 'paused': true });
+		this.setState({ 'paused': true, 'hmd': false });
 	},
 	handleFullScreenChange: function(e) {
 		if (
@@ -129,8 +138,8 @@ var IconeezinRoot = React.createClass({
 	render: function() {
 		return (
 			<div ref="content" className="icnz-content">
-			  <Viewport paused={this.state.paused} hmd={this.state.hmd} />
-			  <button onClick={this.handleStart}>Start</button>
+			  <Viewport experiment={this.state.experiment} paused={this.state.paused} hmd={this.state.hmd} />
+			  <Welcome visible={this.state.paused} onStartDesktop={this.handleStartDesktop} onStartHMD={this.handleStartHMD} />
 			</div>
 		);
 	}

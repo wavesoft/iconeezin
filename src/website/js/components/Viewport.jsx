@@ -21,6 +21,7 @@
  */
 
 var IconeezinRuntime = require("iconeezin/runtime");
+var HADE = require('./HADE');
 var React = require('react');
 
 /**
@@ -29,12 +30,45 @@ var React = require('react');
 module.exports = React.createClass({
 
 	/**
+	 * Default viewport state
+	 */
+	getInitialState: function() {
+		return {
+			'hade': {
+				'visible': true,
+				'title': 'Unknown experiment',
+				'desc': 'Unknown body'
+			}
+		};
+	},
+
+	/**
 	 * Initialize iconeezin video runtime when
 	 * the viewport component is mounted.
 	 */
 	componentDidMount: function() {
-		var dom = this.refs.viewport;
+		var dom = this.refs.canvas;
 		IconeezinRuntime.Video.initialize( dom );
+
+		// Handle messages
+		IconeezinRuntime.Video.setMessageHandler((function(message) {
+			if (message === null) {
+				this.setState({
+					'hade': {
+						'visible': false
+					}
+				})
+			} else {
+				this.setState({
+					'hade': {
+						'visible': true,
+						'title': message.title,
+						'desc': message.body
+					}
+				})
+			}
+		}).bind(this));
+
 	},
 
 	/**
@@ -43,12 +77,13 @@ module.exports = React.createClass({
 	 */
 	componentWillUnmount: function(dom) {
 		IconeezinRuntime.Video.cleanup();
+		IconeezinRuntime.Video.setMessageHandler(null);
 	},
 
 	/**
-	 * Forward updates to iconeezin runtime
+	 * Update properties
 	 */
-	shouldComponentUpdate: function(nextProps, nextState) {
+	componentWillReceiveProps: function(nextProps) {
 
 		// Apply 'hmd'
 		if (this.props.hmd != nextProps.hmd) {
@@ -60,9 +95,22 @@ module.exports = React.createClass({
 			IconeezinRuntime.Video.setPaused( nextProps.paused );
 		}
 
-		// DOM Never invalidates
-		return false;
+		// Apply 'experiment' change
+		if (this.props.experiment != nextProps.experiment) {
+			IconeezinRuntime.Experiments.display( nextProps.experiment );
+		}
 
+	},
+
+	/**
+	 * Hide HADE
+	 */
+	'handleHideGreeter': function() {
+		this.setState({
+			'hade': {
+				'visible': false
+			}
+		});
 	},
 
 	/**
@@ -70,7 +118,11 @@ module.exports = React.createClass({
 	 */
 	render: function() {
 		return (
-			<div ref="viewport" className="icnz-viewport" />
+			<div className="icnz-viewport">
+				<div className="icnz-canvas" ref="canvas" />
+				<HADE hmd={this.props.hmd} title={this.state.hade.title} 
+					  body={this.state.hade.desc} visible={this.state.hade.visible} />
+			</div>
 		);
 	}
 

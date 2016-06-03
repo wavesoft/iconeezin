@@ -20,23 +20,14 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioCore = require("./core/audio");
-var VideoCore = require("./core/video");
-var ExperimentsCore = require("./core/experiments");
-
 /**
- * Expose useful parts of the runtime API
+ * Expose global configuration
  */
 module.exports = {
 
-	'Audio': AudioCore,
-	'Video': VideoCore,
-	'Experiments': ExperimentsCore,
-
-	// Library dependencies
-	'lib': {
-		'three': require('three'),
-		'three': require('three'),		
-	}
+	/**
+	 * Were experiment bundles are found
+	 */
+	'experiments_dir': 'experiments'
 
 };

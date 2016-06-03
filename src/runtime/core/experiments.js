@@ -25,16 +25,34 @@ var Loaders = require("../io/loaders");
 /**
  * Kernel core is the main logic that steers the runtime 
  */
-var KernelCore = { };
+var ExperimentsCore = { };
 
-KernelCore.doit = function() {
-	Loaders.loadExperiment( "simple.jbb" );
+ExperimentsCore.doit = function() {
+
+	Loaders.loadExperiment( "simple", function( err, experiment ) {
+		if (err) {
+			console.error(err);
+		} else {
+			console.log("Loaded",experiment);
+		}
+	});
+
+}
+
+/**
+ * Initialize the kernel
+ */
+ExperimentsCore.initialize = function() {
+
+	// Initialize kernel
+	Loaders.initialize();
+
 }
 
 /**
  * Load an experiment and activate
  */
-KernelCore.loadExperiment = function( experiment ) {
+ExperimentsCore.loadExperiment = function( experiment ) {
 
 	// Load experiment
 	Loaders.loadExperimentClass( experiment, function( error, inst ) {
@@ -51,4 +69,4 @@ KernelCore.loadExperiment = function( experiment ) {
 }
 
 // Export regitry
-module.exports = KernelCore;
+module.exports = ExperimentsCore;

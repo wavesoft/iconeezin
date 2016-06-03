@@ -39,7 +39,7 @@ ExperimentAPI.ExperimentFile = function( url, className ) {
 	this.className = className;
 
 	// By default the class name is <FileName> + 'Experiment'
-	if (className === undefined) {
+	if ((className === undefined) && url) {
 		var parts = url.split("/");
 
 		// Strip query and hashtag
@@ -52,7 +52,7 @@ ExperimentAPI.ExperimentFile = function( url, className ) {
 		}
 
 		// Replace filename as class Name
-		this.className = fname.replace( /([\._-]|^)([a-zA-Z])/g ,
+		this.className = fname.replace( /([\._\-\t ]+|^)([a-zA-Z])/g ,
 			function(g,m1,m2){ return m2.toUpperCase() }) + 'Experiment';
 
 	}
@@ -62,9 +62,74 @@ ExperimentAPI.ExperimentFile = function( url, className ) {
 /**
  * Experiment base class
  */
-ExperimentAPI.Experiment = function() {
-	
+ExperimentAPI.Experiment = function( database ) {
+	var THREE = IconeezinRuntime.lib.three;
+	var m1 = new THREE.Matrix4();
+
+	// The database
+	this.database = database;
+
+	// The experiment's root object
+	this.scene = new THREE.Object3D();
+
+	// Roate matrix
+	m1.lookAt( vector, this.position, this.up );
+
+	// Anchor point and direction
+	this.anchor = {
+		point: new THREE.Vector3(0,0,0),
+		direction: new THREE.Vector3(0,0,1)
+	}
+
+	// The lights in the scene
+
 }
+
+/**
+ * Update hook triggered before the render cycle
+ */
+ExperimentAPI.Experiment.prototype.onUpdate = function( delta ) {
+
+};
+
+/**
+ * Show hook with a chance of delay the show operation
+ */
+ExperimentAPI.Experiment.prototype.onWillShow = function( callback ) {
+	callback();
+};
+
+/**
+ * Show hook called when the object is shown
+ */
+ExperimentAPI.Experiment.prototype.onShown = function() {
+};
+
+/**
+ * Hide hook with a chance of delay the hide operation
+ */
+ExperimentAPI.Experiment.prototype.onWillHide = function( callback ) {
+	callback();
+};
+
+/**
+ * Hide hook called when the object is shown
+ */
+ExperimentAPI.Experiment.prototype.onHidden = function() {
+};
+
+/**
+ * Called when the experiment is paused
+ */
+ExperimentAPI.Experiment.prototype.onPaused = function() {
+};
+
+/**
+ * Called when the experiment is resumed
+ */
+ExperimentAPI.Experiment.prototype.onResumed = function() {
+};
+
 
 // Export
 module.exports = ExperimentAPI;
