@@ -115,5 +115,12 @@ AudioCore.play = function ( buffer, loop ) {
 
 }
 
+/**
+ * Apply a global mute on all audio
+ */
+AudioCore.setGlobalMute = function( enabled ) {
+
+}
+
 // Export
 module.exports = AudioCore;

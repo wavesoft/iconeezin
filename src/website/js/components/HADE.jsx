@@ -96,7 +96,11 @@ module.exports = React.createClass({
 
 		// Render HADE
 		return (
-			<div ref="host" style={sizeStyle} className={"icnz-hade" + (this.props.hmd ? " icnz-hade-hmd" : "") + (this.props.visible ? " visible" : "")}>
+			<div ref="host" style={sizeStyle} className={
+					"icnz-hade" + (this.props.hmd ? " icnz-hade-hmd" : "") 
+							    + (this.props.visible ? " visible" : "")
+							    + " icnz-hade-type-"+this.props.type
+				}>
 				<div className="icnz-hade-left" style={sizeStyle}>
 					<HADEContent title={this.props.title} body={this.props.body} />
 				</div>

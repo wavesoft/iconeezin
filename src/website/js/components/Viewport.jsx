@@ -34,11 +34,10 @@ module.exports = React.createClass({
 	 */
 	getInitialState: function() {
 		return {
-			'hade': {
-				'visible': true,
-				'title': 'Unknown experiment',
-				'desc': 'Unknown body'
-			}
+			'hade_visible': false,
+			'hade_title': 'Unknown experiment',
+			'hade_desc': 'Unknown body',
+			'hade_type': 'message'
 		};
 	},
 
@@ -54,17 +53,14 @@ module.exports = React.createClass({
 		IconeezinRuntime.Video.setMessageHandler((function(message) {
 			if (message === null) {
 				this.setState({
-					'hade': {
-						'visible': false
-					}
+					'hade_visible': false
 				})
 			} else {
 				this.setState({
-					'hade': {
-						'visible': true,
-						'title': message.title,
-						'desc': message.body
-					}
+					'hade_visible': true,
+					'hade_title': message.title,
+					'hade_desc': message.body,
+					'hade_type': message.type,
 				})
 			}
 		}).bind(this));
@@ -107,9 +103,7 @@ module.exports = React.createClass({
 	 */
 	'handleHideGreeter': function() {
 		this.setState({
-			'hade': {
-				'visible': false
-			}
+			'hade_visible': false
 		});
 	},
 
@@ -120,8 +114,11 @@ module.exports = React.createClass({
 		return (
 			<div className="icnz-viewport">
 				<div className="icnz-canvas" ref="canvas" />
-				<HADE hmd={this.props.hmd} title={this.state.hade.title} 
-					  body={this.state.hade.desc} visible={this.state.hade.visible} />
+				<HADE hmd={this.props.hmd} 
+					  title={this.state.hade_title} 
+					  body={this.state.hade_desc}
+					  visible={this.state.hade_visible}
+					  type={this.state.hade_type} />
 			</div>
 		);
 	}

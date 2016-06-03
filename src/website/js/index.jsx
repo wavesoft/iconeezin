@@ -29,7 +29,8 @@ var Welcome = require('./components/Welcome');
 
 /**
  * initialize runtime components that do not require
- * a DOM component.
+ * a DOM component. The Viewport will be initialized
+ * when the React.js <Viewport /> component is mounted.
  */
 IconeezinRuntime.Audio.initialize();
 IconeezinRuntime.Experiments.initialize();
@@ -44,8 +45,8 @@ var IconeezinRoot = React.createClass({
 	 */
 	getInitialState: function() {
 		return {
-			'paused': true,
 			'hmd': false,
+			'paused': true,
 			'experiment': null
 		};
 	},
@@ -98,6 +99,10 @@ var IconeezinRoot = React.createClass({
 				}
 
 			}
+
+			// Apply mute on audio runtime
+			IconeezinRuntime.Audio.setGlobalMute( this.state.paused );
+
 		}
 
 	},

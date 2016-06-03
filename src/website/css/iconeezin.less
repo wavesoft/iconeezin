@@ -20,7 +20,7 @@ body {
 	height: 100%;
 }
 
-.hideable() {
+.hideable( @easing_time ) {
 
 	// Hide by default
 	-webkit-pointer-events: none;
@@ -39,11 +39,11 @@ body {
 	}
 
 	// Transition to show
-	-webkit-transition: opacity 0.25s;
-	-moz-transition: opacity 0.25s;
-	-ms-transition: opacity 0.25s;
-	-o-transition: opacity 0.25s;
-	transition: opacity 0.25s;
+	-webkit-transition: opacity @easing_time;
+	-moz-transition: opacity @easing_time;
+	-ms-transition: opacity @easing_time;
+	-o-transition: opacity @easing_time;
+	transition: opacity @easing_time;
 
 }
 
@@ -95,7 +95,7 @@ body {
 
 	.icnz-welcome-host {
 		.fillparent();
-		.hideable();
+		.hideable( 0.25s );
 		background-color: rgba(0,0,0,0.5);
 
 		.icnz-welcome-panel {
@@ -199,7 +199,7 @@ body {
 	.icnz-hade {
 		
 		// This is hideable, add .visible to show
-		.hideable();		
+		.hideable( 2s );		
 
 		// Everything is absolute positioned
 		&, .icnz-hade-left, .icnz-hade-right {
@@ -284,6 +284,18 @@ body {
 				transform: translateX(-@hade-width/2) translateY(-@hade-height/2) ;
 			}
 
+		}
+
+		//
+		// Type styling
+		//
+		&.icnz-hade-type-error .icnz-hade-center-pane {
+		    background-color: rgba(255,0,0,0.6) !important;
+		    color: #FFC0C0;
+		}
+		&.icnz-hade-type-message .icnz-hade-center-pane {
+		    background-color: rgba(90,90,90,0.5)  !important;
+		    color: #999;
 		}
 
 	}

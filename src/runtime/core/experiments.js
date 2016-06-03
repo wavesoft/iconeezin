@@ -21,6 +21,7 @@
  */
 
 var Loaders = require("../io/loaders");
+var Video = require("./video");
 
 /**
  * Kernel core is the main logic that steers the runtime 
@@ -28,10 +29,11 @@ var Loaders = require("../io/loaders");
 var ExperimentsCore = { };
 
 ExperimentsCore.doit = function() {
-
-	Loaders.loadExperiment( "simple", function( err, experiment ) {
+	var fname = "simple";
+	Loaders.loadExperiment( fname, function( err, experiment ) {
 		if (err) {
-			console.error(err);
+			Video.showError( "Loading Error", "Experiment '"+fname+"' could not be loaded. " + err );
+			return;
 		} else {
 			console.log("Loaded",experiment);
 		}

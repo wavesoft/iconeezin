@@ -24,6 +24,14 @@ var $ = require('jquery');
 var Viewport = require("../ui/viewport");
 
 /**
+ * Private properties
+ */
+var paused = true;
+var messageFn = null;
+var timeoutTimer = null;
+var timeoutVal = 0;
+
+/**
  * The VideoCore singleton contains the
  * global video management API.
  */
@@ -36,9 +44,6 @@ VideoCore.initialize = function( rootDOM ) {
 
 	// Create a new viewport instance
 	this.viewport = new Viewport( rootDOM, {} );
-
-	// Function to call for displaying a message
-	this.__messagenfn = null;
 
 	// Listen for window resize events
 	$(window).resize((function() {
@@ -54,6 +59,7 @@ VideoCore.initialize = function( rootDOM ) {
  * Start/Stop video animation
  */
 VideoCore.setPaused = function( enabled ) {
+	paused = enabled;
 	this.viewport.setPaused( enabled );
 }
 
@@ -68,27 +74,48 @@ VideoCore.setHMD = function( enabled ) {
  * Set message handler
  */
 VideoCore.setMessageHandler = function( fn ) {
-	this.__messagenfn = fn;
+	messageFn = fn;
 }
 
 /**
  * Show a message
+ * (Timeout is in seconds!)
  */
 VideoCore.showMessage = function( title, body, timeout ) {
-	if (!this.__messagenfn) return;
-	this.__messagenfn({
+	if (!messageFn) return;
+	messageFn({
 		'title': title,
 		'body': body,
 		'type': 'message'
 	})
+
+	// Schedule timeout that pauses when
+	// the scene is also paused
+	clearInterval(timeoutTimer);
+	if (timeout) {
+		timeoutVal = timeout;
+		timeoutTimer = setInterval(function() {
+
+			// Pause when paused
+			if (paused) return;
+
+			// Hide message when reached 0
+			if (--timeoutVal <= 0) {
+				VideoCore.hideMessage();
+				clearInterval(timeoutTimer);
+			}
+
+		}, 1000);
+	}
+
 }
 
 /**
  * Show an error message message
  */
 VideoCore.showError = function( title, body ) {
-	if (!this.__messagenfn) return;
-	this.__messagenfn({
+	if (!messageFn) return;
+	messageFn({
 		'title': title,
 		'body': body,
 		'type': 'error'
@@ -99,8 +126,8 @@ VideoCore.showError = function( title, body ) {
  * Hide a visible message
  */
 VideoCore.hideMessage = function() {
-	if (!this.__messagenfn) return;
-	this.__messagenfn(null);
+	if (!messageFn) return;
+	messageFn(null);
 }
 
 
