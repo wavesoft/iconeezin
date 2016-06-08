@@ -29,7 +29,7 @@ var Experiments = function( viewport ) {
 	this.viewport = viewport;
 
 	// Register ourselves for render updates
-	viewport.addRenderListener( this.onRender.bin(this) );
+	viewport.addRenderListener( this.onRender.bind(this) );
 
 	// List of experiments
 	this.experiments = [];
@@ -54,14 +54,21 @@ Experiments.prototype.add = function( experiment ) {
  */
 Experiments.prototype.remove = function( experiment ) {
 
+	// Make sure we have it
+	var i = this.experiments.indexOf(experiment);
+	if (i === -1) return;
+
 	// Remove function
 	var removeFn = (function() {
-		this.
+		var i = this.experiments.indexOf(experiment);
+		this.experiments.splice(i,1);
 	}).bind(this);
 
-	// Find experiment
+	// Fade out active experiment
 	if (this.activeExperiment === experiment) {
-
+		this.fadeOut( experiment, removeFn );
+	} else {
+		removeFn();
 	}
 
 }

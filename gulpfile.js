@@ -2,6 +2,7 @@ var path 	= require('path');
 var gulp 	= require('gulp');
 var less 	= require('gulp-less');
 var jbb 	= require('gulp-jbb');
+var merge 	= require('merge-stream');
 var webpack = require('webpack-stream');
 
 /**
@@ -150,11 +151,57 @@ gulp.task('html/website', function() {
 });
 
 /**
+ * Build experiments
+ */
+gulp.task('experiments/build', function() {
+
+	var experiments = [ "simple" ];
+	return merge(experiments.map(function(experiment) {
+
+		return gulp
+			.src([ 'experiments/'+experiment+'.jbbsrc/main.src.js' ])
+			.pipe(webpack({
+				module: {
+					loaders: [
+						{ test: /\.json$/, loader: 'json' },
+					],
+			    },
+				node: {
+					fs: 'empty'
+				},
+				output: {
+					filename: 'main.js',
+					library: ['IconeezinAPI', 'Experiments', 'simple']
+				},
+				externals: {
+					'three': 'IconeezinRuntime.lib.three',
+					'jquery': 'IconeezinRuntime.lib.jquery',
+					'iconeezin/api': 'IconeezinAPI',
+					'iconeezin/runtime': 'IconeezinRuntime',
+				},
+				plugins: [
+					new webpack.webpack.optimize.DedupePlugin(),
+					new webpack.webpack.optimize.UglifyJsPlugin({
+						minimize: true
+					})
+				],
+				resolve: {
+					modulesDirectories: [
+						'lib', 'node_modules'
+					]
+				}
+			}))
+			.pipe(gulp.dest('experiments/'+experiment+'.jbbsrc'));
+
+	}));
+})
+
+/**
  * Compile experiments
  */
-gulp.task('experiments/simple', function() {
+gulp.task('experiments/bundle', [ 'experiments/build' ], function() {
 	return gulp
-		.src([ 'experiments/simple.jbbsrc' ])
+		.src([ 'experiments/*.jbbsrc' ])
 		.pipe(jbb({ }))
 		.pipe(gulp.dest('build/experiments'));
 });

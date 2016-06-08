@@ -39,12 +39,15 @@ module.exports = React.createClass({
 						<p>Please select one of the following modes to start your experience. It will open in full screen.</p>
 					</div>
 					<div className="icnz-welcome-buttons">
+					
 						<button type="button" onClick={this.props.onStartDesktop}>
 							<span className="entypo-monitor"></span> Desktop Mode
 						</button>
+						&nbsp;
 						<button type="button" onClick={this.props.onStartHMD}>
 							<span className="entypo-eye"></span> Occulus VR Mode
 						</button>
+
 					</div>
 				</div>
 			</div>

@@ -62,6 +62,9 @@ var IconeezinRoot = React.createClass({
 		document.addEventListener("mozfullscreenchange", this.handleFullScreenChange);
 		document.addEventListener("MSFullscreenChange", this.handleFullScreenChange);
 
+		// Remove loading class from body
+		document.body.className = "";
+
 	},
 
 	/**

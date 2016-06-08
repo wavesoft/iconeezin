@@ -24,19 +24,24 @@ var AudioAPI = require("./api/audio");
 var ExperimentAPI = require("./api/experiment");
 
 /**
- * IconeezinAPI is the global namespace that
- * contains the end-user API for extending iconeezin.
- */
-var IconeezinAPI = {};
-
-/**
  * Expose useful APIs
  */
 module.exports = {
 
+	/**
+	 * Audio API
+	 */
 	'AudioFile': AudioAPI.AuidoFile,
 
+	/**
+	 * Experiments API
+	 */
 	'Experiment': ExperimentAPI.Experiment,
 	'ExperimentFile': ExperimentAPI.ExperimentFile,
+
+	/**
+	 * Experiments regitry
+	 */
+	'Experiments': { }
 
 };

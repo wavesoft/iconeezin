@@ -36,26 +36,7 @@ ExperimentAPI.ExperimentFile = function( url, className ) {
 
 	// Class name exported in the global scope
 	// after the experiment code file is loaded
-	this.className = className;
-
-	// By default the class name is <FileName> + 'Experiment'
-	if ((className === undefined) && url) {
-		var parts = url.split("/");
-
-		// Strip query and hashtag
-		var fname = parts[parts.length-1].split("?")[0];
-		fname = fname.split("#")[0];
-
-		// Strip .js extension
-		if (fname.substr(fname.length-3).toLowerCase() == ".js") {
-			fname = fname.substr(0, fname.length-3);
-		}
-
-		// Replace filename as class Name
-		this.className = fname.replace( /([\._\-\t ]+|^)([a-zA-Z])/g ,
-			function(g,m1,m2){ return m2.toUpperCase() }) + 'Experiment';
-
-	}
+	this.className = className || "experiment";
 
 }
 
@@ -64,7 +45,6 @@ ExperimentAPI.ExperimentFile = function( url, className ) {
  */
 ExperimentAPI.Experiment = function( database ) {
 	var THREE = IconeezinRuntime.lib.three;
-	var m1 = new THREE.Matrix4();
 
 	// The database
 	this.database = database;
@@ -72,16 +52,11 @@ ExperimentAPI.Experiment = function( database ) {
 	// The experiment's root object
 	this.scene = new THREE.Object3D();
 
-	// Roate matrix
-	m1.lookAt( vector, this.position, this.up );
-
 	// Anchor point and direction
 	this.anchor = {
 		point: new THREE.Vector3(0,0,0),
 		direction: new THREE.Vector3(0,0,1)
 	}
-
-	// The lights in the scene
 
 }
 

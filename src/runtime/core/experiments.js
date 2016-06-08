@@ -54,7 +54,12 @@ ExperimentsCore.initialize = function() {
 /**
  * Load an experiment and activate
  */
-ExperimentsCore.loadExperiment = function( experiment ) {
+ExperimentsCore.showExperiment = function( experiment ) {
+
+	// Check if this is already loaded
+	if (this.experiments[experiment] !== undefined) {
+
+	}
 
 	// Load experiment
 	Loaders.loadExperimentClass( experiment, function( error, inst ) {
