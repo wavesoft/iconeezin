@@ -20,39 +20,30 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var React = require('react');
+var AudioAPI = require("./src/api/audio");
+var ExperimentAPI = require("./src/api/experiment");
+var ThreeAPI = require("./src/api/three");
 
 /**
- * Export welcome panel
+ * Expose useful APIs
  */
-module.exports = React.createClass({
+module.exports = {
 
 	/**
-	 * Render the welcome panel
+	 * Audio API
 	 */
-	render: function() {
-		return (
-			<div className={"icnz-welcome-host" + (this.props.visible ? " visible" : "")}>
-				<div className="icnz-welcome-panel">
-					<div className="icnz-welcome-body">
-						<h1>Virtual Audio Exhibition</h1>
-						<p>Please select one of the following modes to start your experience. It will open in full screen.</p>
-					</div>
-					<div className="icnz-welcome-buttons">
-					
-						<button type="button" onClick={this.props.onStartDesktop}>
-							<span className="entypo-monitor"></span> Desktop Mode
-						</button>
-						&nbsp;
-						<button type="button" onClick={this.props.onStartHMD}>
-							<span className="entypo-eye"></span> Occulus VR Mode
-						</button>
+	'AudioFile': AudioAPI.AudioFile,
 
-					</div>
-				</div>
-			</div>
-		);
+	/**
+	 * An Object3D that also receives animation updates
+	 */
+	'AnimatedObject3D': ThreeAPI.AnimatedObject3D,
+	'InteractiveObject3D': ThreeAPI.InteractiveObject3D,
 
-	}
+	/**
+	 * Experiments API
+	 */
+	'Experiment': ExperimentAPI.Experiment,
+	'ExperimentFile': ExperimentAPI.ExperimentFile
 
-});
+};

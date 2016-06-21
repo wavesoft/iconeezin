@@ -25,22 +25,14 @@
   "dependencies": {
     "annyang": "^2.4.0",
     "jbb": "^1.3.6",
+    "jbb-profile-three": "^1.0.2",
+    "jbb-profile-iconeezin": "^0.1.0",
     "jquery": "^2.2.4",
-    "react": "^15.1.0",
-    "react-dom": "^15.1.0",
     "three": "^0.77.1"
   },
   "devDependencies": {
-    "babel-core": "^6.9.1",
-    "babel-loader": "^6.2.4",
-    "babel-preset-es2015": "^6.9.0",
-    "babel-preset-react": "^6.5.0",
     "gulp": "^3.9.1",
-    "gulp-jbb": "^0.1.0",
-    "gulp-less": "^3.1.0",
-    "jbb-profile-three": "^1.0.2",
     "json-loader": "^0.5.4",
-    "merge-stream": "^1.0.0",
     "webpack-stream": "^3.2.0"
   }
 }

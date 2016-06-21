@@ -20,30 +20,47 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioAPI = require("./api/audio");
-var ExperimentAPI = require("./api/experiment");
-var ThreeAPI = require("./api/three");
+// Load libraries as soon as possible
+var libTHREE = require("three");
+
+// Iconeezin API
+var IconeezinAPI = require('./api');
+
+// Load components afterwards
+var AudioCore = require("./src/runtime/core/audio");
+var VideoCore = require("./src/runtime/core/video");
+var InputCore = require("./src/runtime/core/input");
+var ExperimentsCore = require("./src/runtime/core/experiments");
 
 /**
- * Expose useful APIs
+ * Expose useful parts of the runtime API
  */
 module.exports = {
 
-	/**
-	 * Audio API
-	 */
-	'AudioFile': AudioAPI.AudioFile,
+	// Iconeezin API
+	'API': IconeezinAPI,
 
-	/**
-	 * An Object3D that also receives animation updates
-	 */
-	'AnimatedObject3D': ThreeAPI.AnimatedObject3D,
-	'InteractiveObject3D': ThreeAPI.InteractiveObject3D,
+	// Iconeezin Runtime
+	'Runtime': {
 
-	/**
-	 * Experiments API
-	 */
-	'Experiment': ExperimentAPI.Experiment,
-	'ExperimentFile': ExperimentAPI.ExperimentFile
+		'Audio': AudioCore,
+		'Video': VideoCore,
+		'Input': InputCore,
+		'Experiments': ExperimentsCore,
+
+		// Initialize helper
+		'initialize': function( viewportDOM ) {
+			VideoCore.initialize( viewportDOM );
+			AudioCore.initialize(),
+			InputCore.initialize();
+			ExperimentsCore.initialize();
+		}
+
+	},
+
+	// Exposing libraries for re-using
+	'Libraries': {
+		'three': libTHREE
+	}
 
 };

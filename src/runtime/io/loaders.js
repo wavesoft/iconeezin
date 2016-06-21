@@ -20,7 +20,7 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var Config = require("../config");
+var Config = require("../../config");
 
 var JBBLoader = require('jbb/decoder');
 var JBBProfileThreeLoader = require('jbb-profile-three/profile-decode');
