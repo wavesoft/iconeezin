@@ -36,4 +36,4 @@ node_modules
 build
 
 # Minified experiment entry points
-experiments/*.jbbsrc/main.js
+experiments/*.jbbsrc/.build.js

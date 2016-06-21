@@ -4,11 +4,15 @@
 	"exports": {
 
 		"IconeezinAPI.ExperimentFile": {
-			"main": "experiment.js"
+			"main": ".build.js"
 		},
 
 		"IconeezinAPI.AudioFile": {
-			"sounds/noise": "sounds/whitenoise.ogg"
+			"sounds/noise": "assets/sounds/whitenoise.ogg"
+		},
+
+		"THREE.OBJLoader": {
+			"models/corridor": "assets/models/corridor.obj"
 		}
 
 	}
