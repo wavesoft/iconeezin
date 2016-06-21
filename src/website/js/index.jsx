@@ -28,14 +28,6 @@ var Viewport = require('./components/Viewport');
 var Welcome = require('./components/Welcome');
 
 /**
- * initialize runtime components that do not require
- * a DOM component. The Viewport will be initialized
- * when the React.js <Viewport /> component is mounted.
- */
-IconeezinRuntime.Audio.initialize();
-IconeezinRuntime.Experiments.initialize();
-
-/**
  * Root component
  */
 var IconeezinRoot = React.createClass({

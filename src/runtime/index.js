@@ -20,8 +20,13 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+// Load libraries as soon as possible
+var libTHREE = require("three");
+
+// Load components afterwards
 var AudioCore = require("./core/audio");
 var VideoCore = require("./core/video");
+var InputCore = require("./core/input");
 var ExperimentsCore = require("./core/experiments");
 
 /**
@@ -31,12 +36,20 @@ module.exports = {
 
 	'Audio': AudioCore,
 	'Video': VideoCore,
+	'Input': InputCore,
 	'Experiments': ExperimentsCore,
+
+	// Initialize helper
+	'initialize': function( viewportDOM ) {
+		VideoCore.initialize( viewportDOM );
+		AudioCore.initialize(),
+		InputCore.initialize();
+		ExperimentsCore.initialize();
+	},
 
 	// Library dependencies
 	'lib': {
-		'three': require('three'),
-		'three': require('three'),		
+		'three': libTHREE
 	}
 
 };

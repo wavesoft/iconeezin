@@ -20,30 +20,25 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioAPI = require("./api/audio");
-var ExperimentAPI = require("./api/experiment");
-var ThreeAPI = require("./api/three");
+var Video = require("./video");
+
+var Controls = require("../input/controls");
 
 /**
- * Expose useful APIs
+ * The InputCore singleton contains the
+ * global user input management API.
  */
-module.exports = {
+var InputCore = {};
 
-	/**
-	 * Audio API
-	 */
-	'AudioFile': AudioAPI.AudioFile,
+/**
+ * Initialize the input core
+ */
+InputCore.initialize = function() {
 
-	/**
-	 * An Object3D that also receives animation updates
-	 */
-	'AnimatedObject3D': ThreeAPI.AnimatedObject3D,
-	'InteractiveObject3D': ThreeAPI.InteractiveObject3D,
+	// Initialize controls
+	this.controls = new Controls( Video.viewport );
 
-	/**
-	 * Experiments API
-	 */
-	'Experiment': ExperimentAPI.Experiment,
-	'ExperimentFile': ExperimentAPI.ExperimentFile
+}
 
-};
+// Export
+module.exports = InputCore;

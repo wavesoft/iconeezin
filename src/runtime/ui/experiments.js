@@ -31,45 +31,85 @@ var Experiments = function( viewport ) {
 	// Register ourselves for render updates
 	viewport.addRenderListener( this.onRender.bind(this) );
 
-	// List of experiments
-	this.experiments = [];
-
-	// Active experiment
+	// Active & previous experiment
 	this.activeExperiment = null;
+	this.previousExperiment = null;
 
+	// Previous event tracking function
+	this.previousTrackingFunction = null;
+
+	// The interactive objects from the active experiments
+	this.interactiveObjects = [];
 }
 
 /**
- * Add an experiment on the viewport
+ * Focus on a particular experiment
  */
-Experiments.prototype.add = function( experiment ) {
+Experiments.prototype.focusExperiment = function( experiment, cb ) {
 
-	// Add experiment on stack
-	this.experiments.push( experiment );
+	// Don't do anything if this is already the active experiment
+	if (this.activeExperiment === experiment)
+		return;
+	
+	var do_fadein = () => {
+		// Will show active
+		this.activeExperiment.onWillShow(() => {
+			// Fade in active
+			this.fadeIn( this.activeExperiment, () =>  {
+				// We are shown
+				this.activeExperiment.onShown();
+				if (cb) cb();
+			});
+		});
+	};
 
-}
+	var do_align = () => {
+		this.alignExperiment( this.activeExperiment );
+		do_fadein();
+	};
 
-/**
- * Remove an experiment from the viewport
- */
-Experiments.prototype.remove = function( experiment ) {
+	var do_fadeout = () => {
+		// Will hide previous
+		this.previousExperiment.onWillHide(() =>  {
+			// Fade out previous
+			this.fadeOut( this.previousExperiment, () =>  {
 
-	// Make sure we have it
-	var i = this.experiments.indexOf(experiment);
-	if (i === -1) return;
+				// Remove previous experiment from scene
+				this.viewport.scene.add( this.previousExperiment );
 
-	// Remove function
-	var removeFn = (function() {
-		var i = this.experiments.indexOf(experiment);
-		this.experiments.splice(i,1);
-	}).bind(this);
+				// We are hidden
+				this.previousExperiment.onHidden();
+				this.previousExperiment = null;
+				do_align();
+			});
+		});
+	};
 
-	// Fade out active experiment
-	if (this.activeExperiment === experiment) {
-		this.fadeOut( experiment, removeFn );
+	// Shift experiments
+	this.previousExperiment = this.activeExperiment;
+	this.activeExperiment = experiment;
+
+	// Add experiment on scene
+	this.viewport.scene.add( experiment );
+
+	// Fade out if we have a previous
+	if (this.previousExperiment) {
+		do_fadeout();
 	} else {
-		removeFn();
+		do_align();
 	}
+
+}
+
+/**
+ * Align given experiment with the current camera orientation
+ */
+Experiments.prototype.alignExperiment = function( experiment ) {
+
+	this.viewport.camera.position.copy( experiment.anchor.position );
+	this.viewport.camera.lookAt( 
+		experiment.anchor.position.clone().add( experiment.anchor.direction )
+	);
 
 }
 
@@ -78,6 +118,25 @@ Experiments.prototype.remove = function( experiment ) {
  */
 Experiments.prototype.fadeIn = function( experiment, cb ) {
 
+	// Collect scene lights
+	var lights = [], lightIntensity = [];
+	experiment.traverse(function(obj) {
+		if (obj instanceof THREE.Light) {
+			lights.push(obj);
+			lightIntensity.push(obj.intensity);
+		}
+	});
+
+	// Run tween
+	this.viewport.runTween( 1000, function(tweenProgress) {
+
+		// Fade in lights
+		for (var i=0,l=lights.length; i<l; i++) {
+			lights[i].intensity = lightIntensity[i]*tweenProgress;
+		}
+
+	});
+
 }
 
 /**
@@ -85,12 +144,65 @@ Experiments.prototype.fadeIn = function( experiment, cb ) {
  */
 Experiments.prototype.fadeOut = function( experiment, cb ) {
 
+	// Collect scene lights
+	var lights = [], lightIntensity = [];
+	experiment.traverse(function(obj) {
+		if (obj instanceof THREE.Light) {
+			lights.push(obj);
+			lightIntensity.push(obj.intensity);
+		}
+	});
+
+	// Run tween
+	this.viewport.runTween( 1000, function(tweenProgress) {
+
+		// Fade out lights
+		for (var i=0,l=lights.length; i<l; i++) {
+			lights[i].intensity = lightIntensity[i]*(1-tweenProgress);
+		}
+
+	})
+
+}
+
+/**
+ * Update internal state
+ *
+ * This function obtaines detailed information from the registered experiments
+ * and populates the detailed internal state objects. This takes a lot of time
+ * and should not be used in the render loop. Call this function only when
+ * a change occurs in the scene.
+ */
+Experiments.prototype.updateState = function() {
+
+	// Reset state
+	this.interactiveObjects = [];
+
+	// Don't do anything if no active experiment
+	if (!this.activeExperiment) return;
+
+	// Extract interactive objects
+	this.activeExperiment.traverse((e) => {
+
+	})
+
+
 }
 
 /**
  * Render cycle for the experiments
  */
 Experiments.prototype.onRender = function( delta, timestamp ) {
+
+	// Render previous experiment
+	if (this.previousExperiment) {
+		this.previousExperiment.onUpdate( delta, timestamp );
+	}
+
+	// Render active experiment
+	if (this.activeExperiment) {
+		this.activeExperiment.onUpdate( delta, timestamp );
+	}
 
 }
 

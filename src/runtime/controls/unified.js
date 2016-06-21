@@ -20,30 +20,24 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioAPI = require("./api/audio");
-var ExperimentAPI = require("./api/experiment");
-var ThreeAPI = require("./api/three");
+/**
+ * Unified controls merges all individual controls
+ * (VR, Mouse, Keyboard) into a unified stream that
+ * controls the camera.
+ */
+var UnifiedControls = function( viewport ) {
+
+	// Define viewport
+	this.viewport = viewport;
+
+}
 
 /**
- * Expose useful APIs
+ * Render update
  */
-module.exports = {
-
-	/**
-	 * Audio API
-	 */
-	'AudioFile': AudioAPI.AudioFile,
-
-	/**
-	 * An Object3D that also receives animation updates
-	 */
-	'AnimatedObject3D': ThreeAPI.AnimatedObject3D,
-	'InteractiveObject3D': ThreeAPI.InteractiveObject3D,
-
-	/**
-	 * Experiments API
-	 */
-	'Experiment': ExperimentAPI.Experiment,
-	'ExperimentFile': ExperimentAPI.ExperimentFile
+UnifiedControls.prototype.onUpdate = function( delta ) {
 
 };
+
+// Export
+module.exports = UnifiedControls;

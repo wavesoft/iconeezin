@@ -20,8 +20,10 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var Loaders = require("../io/loaders");
 var Video = require("./video");
+
+var Experiments = require("../ui/experiments");
+var Loaders = require("../io/loaders");
 
 /**
  * Kernel core is the main logic that steers the runtime 
@@ -29,16 +31,7 @@ var Video = require("./video");
 var ExperimentsCore = { };
 
 ExperimentsCore.doit = function() {
-	var fname = "simple";
-	Loaders.loadExperiment( fname, function( err, experiment ) {
-		if (err) {
-			Video.showError( "Loading Error", "Experiment '"+fname+"' could not be loaded. " + err );
-			return;
-		} else {
-			console.log("Loaded",experiment);
-		}
-	});
-
+	this.showExperiment("simple");
 }
 
 /**
@@ -46,8 +39,21 @@ ExperimentsCore.doit = function() {
  */
 ExperimentsCore.initialize = function() {
 
+	// Video must ve initialized
+	if (Video.viewport === undefined)
+		throw "Initialize video before Experiments";
+
 	// Initialize kernel
 	Loaders.initialize();
+
+	// Create an experiments renderer that uses the viewport
+	this.experiments = new Experiments( Video.viewport );
+
+	// Dictionary of active experiments
+	this.loadedExperiments = {};
+
+	// Load experiment
+	setTimeout(ExperimentsCore.doit.bind(this), 100);
 
 }
 
@@ -57,21 +63,33 @@ ExperimentsCore.initialize = function() {
 ExperimentsCore.showExperiment = function( experiment ) {
 
 	// Check if this is already loaded
-	if (this.experiments[experiment] !== undefined) {
+	if (this.loadedExperiments[experiment] !== undefined) {
+
+		// Focus to the given experiment instance on the viewport
+		this.experiments.focusExperiment( this.loadedExperiments[experiment] );
+
+	} else {
+
+		// Load experiment
+		Loaders.loadExperiment( experiment, ( err, inst ) => {
+
+			// Handle errors
+			if (err) {
+
+				console.error(err);
+				Video.showError( "Loading Error", "Experiment '"+fname+"' could not be loaded. " + err );
+
+			} else {
+
+				// Keep experiment reference and focus instance
+				this.loadedExperiments[experiment] = inst;
+				this.experiments.focusExperiment( inst );
+
+			}
+
+		});
 
 	}
-
-	// Load experiment
-	Loaders.loadExperimentClass( experiment, function( error, inst ) {
-
-		// Handle errors
-		if (error) {
-			console.error(error);
-		} else {
-			console.log("Loaded",inst);
-		}
-
-	});
 
 }
 

@@ -22,7 +22,6 @@
 
 var $ = require('jquery');
 var Viewport = require("../ui/viewport");
-var Experiments = require("../ui/experiments");
 
 /**
  * Private properties
@@ -46,16 +45,13 @@ VideoCore.initialize = function( rootDOM ) {
 	// Create a new viewport instance
 	this.viewport = new Viewport( rootDOM, {} );
 
-	// Create an experiments renderer that uses the viewport
-	this.experiments = new Experiments( this.viewport );
-
 	// Listen for window resize events
-	$(window).resize((function() {
+	$(window).resize(() => {
 
 		// Resize viewport
 		if (this.viewport) this.viewport.resize(); 
 
-	}).bind(this));
+	});
 
 }
 
@@ -98,7 +94,7 @@ VideoCore.showMessage = function( title, body, timeout ) {
 	clearInterval(timeoutTimer);
 	if (timeout) {
 		timeoutVal = timeout;
-		timeoutTimer = setInterval(function() {
+		timeoutTimer = setInterval(() => {
 
 			// Pause when paused
 			if (paused) return;
@@ -133,7 +129,6 @@ VideoCore.hideMessage = function() {
 	if (!messageFn) return;
 	messageFn(null);
 }
-
 
 // Export
 module.exports = VideoCore;

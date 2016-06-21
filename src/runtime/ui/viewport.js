@@ -21,7 +21,12 @@
  */
 
 var $ = require("jquery");
-var THREE = require("three-extras");
+// var THREE = require("three-extras");
+var THREE = require("three");
+global.THREE = THREE;
+require("three/examples/js/WebVR");
+require("three/examples/js/effects/VREffect");
+require("three/examples/js/controls/VRControls");
 
 /**
  * Our viewport is where everything gets rendered
@@ -53,23 +58,32 @@ var Viewport = function( viewportDOM, config ) {
 	this.scene = new THREE.Scene();
 
 	// Initialize a camera (with dummy ratio)
-	this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 1000 );
+	this.camera = new THREE.PerspectiveCamera( 70, 1.0, 0.1, 1000 );
 
-	// Set the initial location of the camera
-	// (Virtual units assumed to be in meters)
-	this.camera.position.set( 0.0, 100.0, 0.0 );
-	this.camera.lookAt( new THREE.Vector3( 0, 100.0, 2.0 ) );
+	// Look at the positive Y direction
+	this.camera.position.set( 0.0, 0.0, 3.0 );
+	this.camera.up.set( 0.0, 0.0, 1.0 );
+	this.camera.lookAt( new THREE.Vector3( 0.0, 1.0, 3.0 ) );
+
+	// // Make the system Z-Up
+	// this.scene.rotateX(Math.PI/2);
+	// this.scene.rotateY(Math.PI);
 
 	// Initialize the renderer
-	this.renderer = new THREE.WebGLRenderer();
+	this.renderer = new THREE.WebGLRenderer({ antialias: true });
 	this.viewportDOM[0].appendChild( this.renderer.domElement );
 
 	// Initialize HMD effect and controls
-	this.hmdEffect = new THREE.OculusRiftEffect( this.renderer, { worldScale: 1 } );
+	this.hmdEffect = new THREE.VREffect( this.renderer, { worldScale: 1 } );
 	this.hmdControls = new THREE.VRControls( this.camera );
 
 	// Initialize the sizes (apply actual size)
 	this.resize();
+
+	// Add axis on 0,0,0
+	var axisHelper = new THREE.AxisHelper( 5 );
+	this.scene.add( axisHelper );
+
 
 	// ==== DEBUG =====
 	window.vp = this;
@@ -236,89 +250,41 @@ Viewport.prototype.addExperiment = function( experiment ) {
 }
 
 /**
- * Activate the specified experiment
+ * Run the callback tween function for the given duration
  *
- * @param {ExperimentBase} experiment - The experiment to activate
- * @param {int} duration - How long the tween betwee the two experiments will be (in milliseconds)
+ * @param {int} duration - Tween duration
+ * @param {function} fn - Tween function
+ * @param {function} cb - Completed callback
  */
-Viewport.prototype.activateExperiment = function( experiment, duration ) {
+Viewport.prototype.runTween = function( duration, fn, cb ) {
 
-	// Calculate step and interval
+	// Calculate tween details
 	var duration = duration || 1000,
-		progressPerMs = 1.0 / duration;
+		progressPerMs = 1.0 / duration,
+		tweenProgress = 0, scope = this;
 
-	// Make sure this experiment is ours
-	if (this.experiments.indexOf(experiment) == -1) {
-		console.error("activateExperiment: The specified experiment is not registered in the viewport!");
-		return;
-	}
+	// Fade them in
+	var tweenFunction = function( delta, ts ) {
 
-	// Make sure we are not activating an active experiment
-	if (this.activeExperiment == experiment) return;
+		// Wrap bounds
+		if (tweenProgress > 1.0) tweenProgress = 1.0;
 
-	// Inform current experiment that is activated
-	experiment.onActivate();
+		// Apply tween
+		if (fn) fn( tweenProgress, delta, ts );
 
-	// Prepare for tween
-	var tweenProgress = 0,
-		tweenFunction = (function( delta, ts ) {
+		// Handle termination
+		if (tweenProgress == 1.0) {
+			scope.removeRenderListener( tweenFunction );
+			if (cb) cb();
+		}
 
-			// Wrap bounds
-			if (tweenProgress > 1.0) tweenProgress = 1.0;
+		// Update progress
+		tweenProgress += progressPerMs * delta;
 
-			// ------------------------------------------------------
-			//
-			// Tween-OUT Past experiment
-			//
-			if (this.activeExperiment) {
-				// Fade out all the lights of the previous experiment
-				for (var i=0; i<this.activeExperiment.lights.length; i++) {
-					this.activeExperiment.lights[i].color
-						.setHex( this.activeExperiment.lights[i].originalColor )
-						.multiplyScalar( 1 - tweenProgress );
-				}
-			}
-
-			// ------------------------------------------------------
-			//
-			// Tween-IN Current experiment
-			//
-
-			// Fade in the lights of the current experiment
-			for (var i=0; i<experiment.lights.length; i++) {
-				experiment.lights[i].color
-					.setHex( experiment.lights[i].originalColor )
-					.multiplyScalar( tweenProgress );
-			}
-
-			// ------------------------------------------------------
-
-			// Handle termination
-			if (tweenProgress == 1.0) {
-				// Inform past experiment that is now inactive
-				if (this.activeExperiment) {
-					this.activeExperiment.onDeactivate();
-				// Set the new active experiment
-				this.activeExperiment = experiment;
-				}
-				// Remove from render listeners
-				this.removeRenderListener( tweenFunction );
-			}
-
-			// Update progress
-			tweenProgress += progressPerMs * delta;
-
-	}).bind(this);
+	};
 
 	// Register tween function
 	this.addRenderListener( tweenFunction );
-
-}
-
-/**
- * Remove an experiment to the viewport
- */
-Viewport.prototype.removeExperiment = function( experiment ) {
 
 }
 

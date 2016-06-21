@@ -20,30 +20,33 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioAPI = require("./api/audio");
-var ExperimentAPI = require("./api/experiment");
-var ThreeAPI = require("./api/three");
-
 /**
- * Expose useful APIs
+ * Unified controls interface
  */
-module.exports = {
+var Controls = function( viewport ) {
 
-	/**
-	 * Audio API
-	 */
-	'AudioFile': AudioAPI.AudioFile,
+	// Keep a reference to the viewport
+	this.viewport = viewport;
 
-	/**
-	 * An Object3D that also receives animation updates
-	 */
-	'AnimatedObject3D': ThreeAPI.AnimatedObject3D,
-	'InteractiveObject3D': ThreeAPI.InteractiveObject3D,
+	// Create a cursor
+	this.cursor = new THREE.Mesh(
+		new THREE.RingGeometry( 0.02, 0.04, 32 ),
+		new THREE.MeshBasicMaterial( {
+			color: 0xffffff,
+			opacity: 0.5,
+			transparent: true
+		} )
+	);
+	this.cursor.position.z = - 2;
 
-	/**
-	 * Experiments API
-	 */
-	'Experiment': ExperimentAPI.Experiment,
-	'ExperimentFile': ExperimentAPI.ExperimentFile
+	// Put it on the camera
+	this.viewport.camera.add( this.cursor );
 
-};
+	// Create a raycaster
+	this.raycaster = new THREE.Raycaster();
+
+}
+
+
+// Export
+module.exports = Controls;

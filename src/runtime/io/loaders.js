@@ -21,7 +21,6 @@
  */
 
 var Config = require("../config");
-var IconeezinAPI = require("iconeezin/api");
 
 var JBBLoader = require('jbb/decoder');
 var JBBProfileThreeLoader = require('jbb-profile-three/profile-decode');
@@ -105,7 +104,7 @@ Loaders.loadExperimentClass = function( experiment, callback ) {
 	script.addEventListener( 'load', function ( event ) {
 
 		// Lookup class
-		var classDefinition = IconeezinAPI.Experiments[experiment.className];
+		var classDefinition = Iconeezin.Experiments[experiment.className];
 		if (classDefinition === undefined) {
 			callback( "The experiment does not expose class: "+experiment.className, null );
 			return;

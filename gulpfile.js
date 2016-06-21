@@ -22,11 +22,11 @@ gulp.task('js/api', function() {
 			output: {
 				filename: 'iconeezin-api.js',
 				libraryTarget: 'var',
-				library: 'IconeezinAPI'
+				library: [ 'Iconeezin', 'API' ]
 			},
 			externals: {
-				'three': 'IconeezinRuntime.lib.three',
-				'jquery': 'IconeezinRuntime.lib.jquery',
+				'three': 'Iconeezin.Runtime.lib.three',
+				'jquery': 'Iconeezin.Runtime.lib.jquery',
 			},
 			plugins: [
 				new webpack.webpack.optimize.DedupePlugin(),
@@ -63,10 +63,11 @@ gulp.task('js/runtime', function() {
 			output: {
 				filename: 'iconeezin-runtime.js',
 				libraryTarget: 'var',
-				library: 'IconeezinRuntime'
+				library: [ 'Iconeezin', 'Runtime' ]
 			},
 			externals: {
-				'iconeezin/api': 'IconeezinAPI',
+				'iconeezin': 'Iconeezin',
+				'iconeezin/api': 'Iconeezin.API',
 			},
 			plugins: [
 				new webpack.webpack.optimize.DedupePlugin(),
@@ -80,6 +81,9 @@ gulp.task('js/runtime', function() {
 				],
 				alias: {
 					'iconeezin' : path.join(__dirname, 'src'),
+
+					// Bugfix for nested modules
+					'three' : path.join(__dirname, 'node_modules/three'),
 				}
 			}
 		}))
@@ -111,10 +115,11 @@ gulp.task('js/website', function() {
 				filename: 'iconeezin-web.js',
 			},
 			externals: {
-				'iconeezin/api': 'IconeezinAPI',
-				'iconeezin/runtime': 'IconeezinRuntime',
-				'three': 'IconeezinRuntime.lib.three',
-				'jquery': 'IconeezinRuntime.lib.jquery',
+				'iconeezin': 'Iconeezin',
+				'iconeezin/api': 'Iconeezin.API',
+				'iconeezin/runtime': 'Iconeezin.Runtime',
+				'three': 'Iconeezin.Runtime.lib.three',
+				'jquery': 'Iconeezin.Runtime.lib.jquery',
 			},
 			plugins: [
 				new webpack.webpack.optimize.DedupePlugin(),
@@ -159,7 +164,7 @@ gulp.task('experiments/build', function() {
 	return merge(experiments.map(function(experiment) {
 
 		return gulp
-			.src([ 'experiments/'+experiment+'.jbbsrc/main.src.js' ])
+			.src([ 'experiments/'+experiment+'.jbbsrc/main.js' ])
 			.pipe(webpack({
 				module: {
 					loaders: [
@@ -170,14 +175,15 @@ gulp.task('experiments/build', function() {
 					fs: 'empty'
 				},
 				output: {
-					filename: 'main.js',
-					library: ['IconeezinAPI', 'Experiments', 'simple']
+					filename: '.build.js',
+					library: [ 'Iconeezin', 'Experiments', experiment ]
 				},
 				externals: {
-					'three': 'IconeezinRuntime.lib.three',
-					'jquery': 'IconeezinRuntime.lib.jquery',
-					'iconeezin/api': 'IconeezinAPI',
-					'iconeezin/runtime': 'IconeezinRuntime',
+					'three': 'Iconeezin.Runtime.lib.three',
+					'jquery': 'Iconeezin.Runtime.lib.jquery',
+					'iconeezin': 'Iconeezin',
+					'iconeezin/api': 'Iconeezin.API',
+					'iconeezin/runtime': 'Iconeezin.Runtime',
 				},
 				plugins: [
 					new webpack.webpack.optimize.DedupePlugin(),
@@ -215,6 +221,7 @@ gulp.task('live', ['default'], function() {
 	gulp.watch('src/website/js/**', ['js/website'], function(event) { })
 	gulp.watch('src/website/html/**', ['html/website'], function(event) { })
 	gulp.watch('src/website/css/*.less', ['css/website'], function(event) { })
+	gulp.watch('experiments/**/*.js', ['experiments/bundle'], function(event) { })
 });
 
 /**

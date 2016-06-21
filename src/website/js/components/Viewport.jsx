@@ -47,10 +47,10 @@ module.exports = React.createClass({
 	 */
 	componentDidMount: function() {
 		var dom = this.refs.canvas;
-		IconeezinRuntime.Video.initialize( dom );
+		IconeezinRuntime.initialize( dom );
 
 		// Handle messages
-		IconeezinRuntime.Video.setMessageHandler((function(message) {
+		IconeezinRuntime.Video.setMessageHandler((message) => {
 			if (message === null) {
 				this.setState({
 					'hade_visible': false
@@ -63,7 +63,7 @@ module.exports = React.createClass({
 					'hade_type': message.type,
 				})
 			}
-		}).bind(this));
+		});
 
 	},
 

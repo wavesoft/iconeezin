@@ -20,16 +20,13 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-/**
- * The Experiment API namespace contains the
- * classes for implementing external experiment objects.
- */
-var ExperimentAPI = {};
+var THREE = require("three");
+var ThreeAPI = require("./three");
 
 /**
  * Experiment source file
  */
-ExperimentAPI.ExperimentFile = function( url, className ) {
+var ExperimentFile = function( url, className ) {
 
 	// URL to the experiment file
 	this.url = url || "";
@@ -43,68 +40,69 @@ ExperimentAPI.ExperimentFile = function( url, className ) {
 /**
  * Experiment base class
  */
-ExperimentAPI.Experiment = function( database ) {
-	var THREE = IconeezinRuntime.lib.three;
+var Experiment = function( database ) {
+
+	// Call superclass constructor
+	ThreeAPI.AnimatedObject3D.call( this );
 
 	// The database
 	this.database = database;
 
-	// The experiment's root object
-	this.scene = new THREE.Object3D();
-
 	// Anchor point and direction
 	this.anchor = {
-		point: new THREE.Vector3(0,0,0),
-		direction: new THREE.Vector3(0,0,1)
+		position: new THREE.Vector3(0,0,3),
+		direction: new THREE.Vector3(0,1,0)
 	}
+
+	// Experiment features 
+	this.features = {
+
+		render: {
+			glow_pass: false		/* Set to TRUE to enable glow pass */
+		},
+		
+	};
 
 }
 
 /**
- * Update hook triggered before the render cycle
+ * Subclass from Object3D
  */
-ExperimentAPI.Experiment.prototype.onUpdate = function( delta ) {
-
-};
+Experiment.prototype = Object.create( ThreeAPI.AnimatedObject3D.prototype );
+Experiment.prototype.constructor = Experiment;
 
 /**
  * Show hook with a chance of delay the show operation
  */
-ExperimentAPI.Experiment.prototype.onWillShow = function( callback ) {
+Experiment.prototype.onWillShow = function( callback ) {
 	callback();
 };
 
 /**
  * Show hook called when the object is shown
  */
-ExperimentAPI.Experiment.prototype.onShown = function() {
+Experiment.prototype.onShown = function() {
 };
 
 /**
  * Hide hook with a chance of delay the hide operation
  */
-ExperimentAPI.Experiment.prototype.onWillHide = function( callback ) {
+Experiment.prototype.onWillHide = function( callback ) {
 	callback();
 };
 
 /**
  * Hide hook called when the object is shown
  */
-ExperimentAPI.Experiment.prototype.onHidden = function() {
+Experiment.prototype.onHidden = function() {
 };
+
 
 /**
- * Called when the experiment is paused
+ * The Experiment API namespace contains the
+ * classes for implementing external experiment objects.
  */
-ExperimentAPI.Experiment.prototype.onPaused = function() {
+module.exports = {
+	'ExperimentFile': ExperimentFile,
+	'Experiment': Experiment
 };
-
-/**
- * Called when the experiment is resumed
- */
-ExperimentAPI.Experiment.prototype.onResumed = function() {
-};
-
-
-// Export
-module.exports = ExperimentAPI;

@@ -74,7 +74,7 @@ AudioCore.enableLineIn = function( enabled ) {
 		//
 
 		// Handle user's positive response
-		var handleStream = (function(stream) {
+		var handleStream = ((stream) => {
 			// Create an AudioNode from the stream.
 			this.lineIn = this.context.createMediaStreamSource( stream );
 
@@ -83,13 +83,13 @@ AudioCore.enableLineIn = function( enabled ) {
 			synthDelay.connect(this.lineOut.destination);
 			synthDelay.delayTime.value = 1.0;
 
-		}).bind(this);
+		});
 
 		// Handle user's negative response
-		var handleError = (function() {
+		var handleError = (() => {
 			// Display error
 			alert("Unable to open audio input stream!");
-		}).bind(this);
+		});
 
 		// Get user media
 		navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia|| navigator.oGetUserMedia;

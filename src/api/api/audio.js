@@ -20,23 +20,20 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-// var IconeezinRuntime = require("iconeezin/runtime");
+/**
+ * An audio file is the source fo audio
+ */
+var AudioFile = function( url ) {
+
+	// Url to the audio file
+	this.url = url || "";
+
+};
 
 /**
  * The Audio API namespace contains the
  * classes for implementing external audio objects.
  */
-var AudioAPI = {};
-
-/**
- * An audio file is the source fo audio
- */
-AudioAPI.AuidoFile = function( url ) {
-
-	// Url to the audio file
-	this.url = url || "";
-
-}
-
-// Export
-module.exports = AudioAPI;
+module.exports = {
+	'AudioFile': AudioFile,
+};
