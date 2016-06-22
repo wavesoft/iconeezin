@@ -21,7 +21,7 @@
  */
 
 var THREE = require("three");
-var ThreeAPI = require("./three");
+var ThreeAPI = require("./Three");
 
 /**
  * Experiment source file

@@ -20,9 +20,9 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var AudioAPI = require("./src/api/audio");
-var ExperimentAPI = require("./src/api/experiment");
-var ThreeAPI = require("./src/api/three");
+var AudioAPI = require("./src/api/Audio");
+var ExperimentAPI = require("./src/api/Experiments");
+var ThreeAPI = require("./src/api/Three");
 
 /**
  * Expose useful APIs

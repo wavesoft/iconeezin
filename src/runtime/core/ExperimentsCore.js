@@ -20,10 +20,10 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var Video = require("./video");
+var VideoCore = require("./VideoCore");
 
-var Experiments = require("../ui/experiments");
-var Loaders = require("../io/loaders");
+var Experiments = require("../ui/Experiments");
+var Loaders = require("../io/Loaders");
 
 /**
  * Kernel core is the main logic that steers the runtime 
@@ -40,14 +40,14 @@ ExperimentsCore.doit = function() {
 ExperimentsCore.initialize = function() {
 
 	// Video must ve initialized
-	if (Video.viewport === undefined)
+	if (VideoCore.viewport === undefined)
 		throw "Initialize video before Experiments";
 
 	// Initialize kernel
 	Loaders.initialize();
 
 	// Create an experiments renderer that uses the viewport
-	this.experiments = new Experiments( Video.viewport );
+	this.experiments = new Experiments( VideoCore.viewport );
 
 	// Dictionary of active experiments
 	this.loadedExperiments = {};
@@ -77,7 +77,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 			if (err) {
 
 				console.error(err);
-				Video.showError( "Loading Error", "Experiment '"+fname+"' could not be loaded. " + err );
+				VideoCore.showError( "Loading Error", "Experiment '"+fname+"' could not be loaded. " + err );
 
 			} else {
 

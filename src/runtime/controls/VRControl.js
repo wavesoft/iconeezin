@@ -20,25 +20,19 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var Video = require("./video");
-
-var Controls = require("../input/controls");
+var BaseControl = require('./BaseControl');
 
 /**
- * The InputCore singleton contains the
- * global user input management API.
+ * Camera path locks camera into a 3D curve
  */
-var InputCore = {};
-
-/**
- * Initialize the input core
- */
-InputCore.initialize = function() {
-
-	// Initialize controls
-	this.controls = new Controls( Video.viewport );
-
+var VRControls = function( ) {
+	BaseControl.call( this );
 }
 
+/**
+ * Subclass from base controls
+ */
+VRControls.prototype = Object.create( BaseControl.prototype );
+
 // Export
-module.exports = InputCore;
+module.exports = VRControls;

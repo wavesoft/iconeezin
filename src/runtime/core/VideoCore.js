@@ -21,7 +21,7 @@
  */
 
 var $ = require('jquery');
-var Viewport = require("../ui/viewport");
+var Viewport = require("../ui/Viewport");
 
 /**
  * Private properties
@@ -41,6 +41,9 @@ var VideoCore = {};
  * Initialize the video core
  */
 VideoCore.initialize = function( rootDOM ) {
+
+	// Keep a reference to the root DOM
+	this.rootDOM = rootDOM;
 
 	// Create a new viewport instance
 	this.viewport = new Viewport( rootDOM, {} );

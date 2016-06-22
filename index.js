@@ -27,15 +27,20 @@ var libTHREE = require("three");
 var IconeezinAPI = require('./api');
 
 // Load components afterwards
-var AudioCore = require("./src/runtime/core/audio");
-var VideoCore = require("./src/runtime/core/video");
-var InputCore = require("./src/runtime/core/input");
-var ExperimentsCore = require("./src/runtime/core/experiments");
+var AudioCore = require("./src/runtime/core/AudioCore");
+var VideoCore = require("./src/runtime/core/VideoCore");
+var ControlsCore = require("./src/runtime/core/ControlsCore");
+var ExperimentsCore = require("./src/runtime/core/ExperimentsCore");
 
 /**
  * Expose useful parts of the runtime API
  */
 module.exports = {
+
+	// Iconeezin Configuration
+	'Config': {
+		'up': new libTHREE.Vector3( 0,0,1 )
+	},
 
 	// Iconeezin API
 	'API': IconeezinAPI,
@@ -45,16 +50,50 @@ module.exports = {
 
 		'Audio': AudioCore,
 		'Video': VideoCore,
-		'Input': InputCore,
+		'Controls': ControlsCore,
 		'Experiments': ExperimentsCore,
 
 		// Initialize helper
 		'initialize': function( viewportDOM ) {
+
+			// Initialize core components
 			VideoCore.initialize( viewportDOM );
 			AudioCore.initialize(),
-			InputCore.initialize();
+			ControlsCore.initialize();
 			ExperimentsCore.initialize();
-		}
+
+			// Register for some critical DOM events
+			var handleFullScreenChange = function() {
+				var is_fullscreen = 
+					document.fullscreenElement ||
+					document.webkitFullscreenElement ||
+					document.mozFullScreenElement ||
+					document.msFullscreenElement;
+
+				// Forward this events to important components
+				ControlsCore.mouseControl.handleFullScreenChange(is_fullscreen);
+
+			};
+
+			// Register full screen handler
+			document.addEventListener("fullscreenchange", handleFullScreenChange);
+			document.addEventListener("webkitfullscreenchange", handleFullScreenChange);
+			document.addEventListener("mozfullscreenchange", handleFullScreenChange);
+			document.addEventListener("MSFullscreenChange", handleFullScreenChange);
+
+		},
+
+		// Enable/Disable HMD
+		'setHMD': function( enabled ) {
+			VideoCore.setHMD( enabled );
+			ControlsCore.setHMD( enabled );
+		},
+
+		// Enable/Disable paused state
+		'setPaused': function( enabled ) {
+			VideoCore.setPaused( enabled );
+			ControlsCore.setPaused( enabled );
+		},
 
 	},
 
