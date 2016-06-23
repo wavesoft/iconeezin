@@ -21,6 +21,7 @@
  */
 
 var VideoCore = require("./VideoCore");
+var ControlsCore = require("./ControlsCore");
 
 var Experiments = require("../ui/Experiments");
 var Loaders = require("../io/Loaders");
@@ -62,11 +63,16 @@ ExperimentsCore.initialize = function() {
  */
 ExperimentsCore.showExperiment = function( experiment ) {
 
+	// Update interactions when the experiment is visible
+	var handleExperimentVisible = function() {
+		ControlsCore.updateInteractions();
+	}
+
 	// Check if this is already loaded
 	if (this.loadedExperiments[experiment] !== undefined) {
 
 		// Focus to the given experiment instance on the viewport
-		this.experiments.focusExperiment( this.loadedExperiments[experiment] );
+		this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible );
 
 	} else {
 
@@ -83,7 +89,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 				// Keep experiment reference and focus instance
 				this.loadedExperiments[experiment] = inst;
-				this.experiments.focusExperiment( inst );
+				this.experiments.focusExperiment( inst, handleExperimentVisible );
 
 			}
 

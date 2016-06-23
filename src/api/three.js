@@ -66,6 +66,12 @@ AnimatedObject3D.prototype.onResumed = function() {
  */
 var InteractiveObject3D = function( url ) {
 	THREE.Object3D.call(this);
+
+	/**
+	 * If TRUE gaze interaction will be enabled for this object
+	 */
+	this.gaze = true;
+
 };
 
 /**
@@ -74,11 +80,75 @@ var InteractiveObject3D = function( url ) {
 InteractiveObject3D.prototype = Object.create( THREE.Object3D.prototype );
 
 /**
- * An interaction occured with the interactive object
+ * Handle mouse over event
  */
-InteractiveObject3D.prototype.onInteract = function( action ) {
+InteractiveObject3D.prototype.onMouseOver = function() {
 
 };
+
+/**
+ * Handle mouse over event
+ */
+InteractiveObject3D.prototype.onMouseOut = function() {
+
+};
+
+/**
+ * Handle mouse down
+ */
+InteractiveObject3D.prototype.onMouseDown = function( e ) {
+
+};
+
+/**
+ * Handle mouse up event
+ */
+InteractiveObject3D.prototype.onMouseUp = function( e ) {
+
+};
+
+/**
+ * Handle click event
+ */
+InteractiveObject3D.prototype.onClick = function( e ) {
+
+};
+
+/**
+ * Interaction event
+ */
+InteractiveObject3D.prototype.onInteract = function( e ) {
+
+};
+
+/**
+ * Helper function to expose only onInteract
+ */
+var makeInteractive = function( object, options ) {
+
+	// Prepare interaction options
+	var opt = {};
+	if (typeof(options) == 'object') {
+		opt.onMouseOver = options.onMouseOver;
+		opt.onMouseOut = options.onMouseOut;
+		opt.onMouseDown = options.onMouseDown;
+		opt.onMouseUp = options.onMouseUp;
+		opt.onClick = options.onClick;
+		opt.onInteract = options.onInteract;
+		opt.gaze = (options.gaze === undefined) ? true : options.gaze;
+	} else {
+		opt.onInteract = options;
+		opt.gaze = true;
+	}
+
+	// Define interact options
+	Object.defineProperty(
+		object, "__interact__", {
+			enumerable: false,
+			value: opt,
+		}
+	);
+}
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -90,4 +160,5 @@ InteractiveObject3D.prototype.onInteract = function( action ) {
 module.exports = {
 	'AnimatedObject3D': AnimatedObject3D,
 	'InteractiveObject3D': InteractiveObject3D,
+	'makeInteractive': makeInteractive,
 };

@@ -22,6 +22,8 @@
 
 var VideoCore = require("./VideoCore");
 
+var SightInteraction = require("../input/SightInteraction");
+
 var PathFollower = require("../controls/PathFollower");
 var MouseControl = require("../controls/MouseControl");
 var VRControl = require("../controls/VRControl");
@@ -60,9 +62,19 @@ ControlsCore.initialize = function() {
 	this.gimbal = VideoCore.viewport.camera;
 	this.activeControl = null;
 
+	// Create sight interaction
+	this.interaction = new SightInteraction( VideoCore.viewport );
+
 	// Set defaults
 	this.setHMD( false );
 
+}
+
+/**
+ * Update interactions when something is changed on the viewport
+ */
+ControlsCore.updateInteractions = function() {
+	this.interaction.updateFromScene();
 }
 
 /**

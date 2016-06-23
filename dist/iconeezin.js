@@ -41947,6 +41947,7 @@ var Iconeezin =
 		 */
 		'AnimatedObject3D': ThreeAPI.AnimatedObject3D,
 		'InteractiveObject3D': ThreeAPI.InteractiveObject3D,
+		'makeInteractive': ThreeAPI.makeInteractive,
 
 		/**
 		 * Experiments API
@@ -42186,6 +42187,12 @@ var Iconeezin =
 	 */
 	var InteractiveObject3D = function( url ) {
 		THREE.Object3D.call(this);
+
+		/**
+		 * If TRUE gaze interaction will be enabled for this object
+		 */
+		this.gaze = true;
+
 	};
 
 	/**
@@ -42194,11 +42201,75 @@ var Iconeezin =
 	InteractiveObject3D.prototype = Object.create( THREE.Object3D.prototype );
 
 	/**
-	 * An interaction occured with the interactive object
+	 * Handle mouse over event
 	 */
-	InteractiveObject3D.prototype.onInteract = function( action ) {
+	InteractiveObject3D.prototype.onMouseOver = function() {
 
 	};
+
+	/**
+	 * Handle mouse over event
+	 */
+	InteractiveObject3D.prototype.onMouseOut = function() {
+
+	};
+
+	/**
+	 * Handle mouse down
+	 */
+	InteractiveObject3D.prototype.onMouseDown = function( e ) {
+
+	};
+
+	/**
+	 * Handle mouse up event
+	 */
+	InteractiveObject3D.prototype.onMouseUp = function( e ) {
+
+	};
+
+	/**
+	 * Handle click event
+	 */
+	InteractiveObject3D.prototype.onClick = function( e ) {
+
+	};
+
+	/**
+	 * Interaction event
+	 */
+	InteractiveObject3D.prototype.onInteract = function( e ) {
+
+	};
+
+	/**
+	 * Helper function to expose only onInteract
+	 */
+	var makeInteractive = function( object, options ) {
+
+		// Prepare interaction options
+		var opt = {};
+		if (typeof(options) == 'object') {
+			opt.onMouseOver = options.onMouseOver;
+			opt.onMouseOut = options.onMouseOut;
+			opt.onMouseDown = options.onMouseDown;
+			opt.onMouseUp = options.onMouseUp;
+			opt.onClick = options.onClick;
+			opt.onInteract = options.onInteract;
+			opt.gaze = (options.gaze === undefined) ? true : options.gaze;
+		} else {
+			opt.onInteract = options;
+			opt.gaze = true;
+		}
+
+		// Define interact options
+		Object.defineProperty(
+			object, "__interact__", {
+				enumerable: false,
+				value: opt,
+			}
+		);
+	}
 
 	////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////
@@ -42210,6 +42281,7 @@ var Iconeezin =
 	module.exports = {
 		'AnimatedObject3D': AnimatedObject3D,
 		'InteractiveObject3D': InteractiveObject3D,
+		'makeInteractive': makeInteractive,
 	};
 
 
@@ -54329,8 +54401,10 @@ var Iconeezin =
 
 	var VideoCore = __webpack_require__(8);
 
-	var PathFollower = __webpack_require__(15);
-	var MouseControl = __webpack_require__(17);
+	var SightInteraction = __webpack_require__(15);
+
+	var PathFollower = __webpack_require__(16);
+	var MouseControl = __webpack_require__(18);
 	var VRControl = __webpack_require__(19);
 
 	/**
@@ -54367,9 +54441,19 @@ var Iconeezin =
 		this.gimbal = VideoCore.viewport.camera;
 		this.activeControl = null;
 
+		// Create sight interaction
+		this.interaction = new SightInteraction( VideoCore.viewport );
+
 		// Set defaults
 		this.setHMD( false );
 
+	}
+
+	/**
+	 * Update interactions when something is changed on the viewport
+	 */
+	ControlsCore.updateInteractions = function() {
+		this.interaction.updateFromScene();
 	}
 
 	/**
@@ -54571,8 +54655,336 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
+	var ThreeAPI = __webpack_require__(5);
+
+	const C_DEFAULT = new THREE.Color( 0xffffff );
+	const C_SELECT = new THREE.Color( 0x0066ff );
+	const C_ERROR = new THREE.Color( 0xcc0000 );
+	const CENTER = new THREE.Vector2(0,0);
+
+	const SELECT_DURATION = 0.25;
+	const GAZE_DURATION = 0.75;
+
+	const ANIMATION_STEPS = 20;
+
+	/**
+	 * Sight interaction takes care of raycasting and intersecting
+	 * interesint objects.
+	 */
+	var SightInteraction = function( viewport ) {
+
+		// Keep a reference to the viewport
+		this.viewport = viewport;
+
+		// Compile a few geometries for animating the circle
+		this.animGeometries = [];
+		for (var i=0; i<ANIMATION_STEPS-1; i++) {
+			var ofs = Math.PI*2*(i/ANIMATION_STEPS);
+			this.animGeometries.push(
+				new THREE.RingGeometry( 0.02, 0.04, 20, 1, 
+					Math.PI/2-ofs ,ofs )
+			);
+		}
+		this.animGeometries.push( new THREE.RingGeometry( 0.02, 0.04, 20 ) );
+
+		// Create a cursor
+		this.cursor = new THREE.Mesh(
+			this.animGeometries[ANIMATION_STEPS-1],
+			new THREE.MeshBasicMaterial( {
+				color: C_DEFAULT,
+				opacity: 0.5,
+				transparent: true
+			} )
+		);
+		this.cursor.position.z = -2;
+
+		// Create an animation geometry
+		this.animCursor = new THREE.Mesh(
+			this.animGeometries[1],
+			new THREE.MeshBasicMaterial( {
+				color: C_SELECT
+			} )
+		);
+		this.animCursor.position.z = -1.9;
+		this.animCursor.visible = false;
+
+		// Create a confirmation cursor
+		this.confirmCursor = new THREE.Mesh(
+			new THREE.RingGeometry( 0.01, 0.06, 32 ),
+			new THREE.MeshBasicMaterial( {
+				color: C_DEFAULT,
+				opacity: 1.0,
+				transparent: true
+			} )
+		);
+		this.confirmCursor.position.z = -3;
+		this.confirmCursor.visible = false;
+
+		// Put it on the camera
+		this.viewport.camera.add( this.cursor );
+		this.viewport.camera.add( this.animCursor );
+		this.viewport.camera.add( this.confirmCursor );
+
+		// Confirmation animation
+		this.confirmAnimation = 1.0;
+
+		// Create a raycaster
+		this.raycaster = new THREE.Raycaster();
+		this.raycaster.setFromCamera( { x: 0, y: 0 }, viewport.camera );
+
+		// Interactive objects
+		this.interactiveObjects = [];
+		this.hoverObject = null;
+		this.gazeTimer = 0;
+
+		// Register render listener
+		viewport.addRenderListener( this.onRender.bind(this) );
+
+		// Register a few DOM events
+		document.addEventListener( 'mousedown', this.handleMouseDown.bind(this), false );
+		document.addEventListener( 'mouseup', this.handleMouseUp.bind(this), false );
+		document.addEventListener( 'click', this.handleClick.bind(this), false );
+
+	}
+
+	/**
+	 * Set progression animation
+	 */
+	SightInteraction.prototype.setProgressionAnimation = function(v) {
+
+		// Hide if v=0
+		if (v === 0) {
+			this.animCursor.visible = false;
+
+		// Pick appropriate geometry if v>1
+		} else {
+			
+			// Calculate animation step
+			var i = parseInt( Math.floor( v * ANIMATION_STEPS ) );
+			if (i >= ANIMATION_STEPS) i=ANIMATION_STEPS-1;
+
+			// Apply geometry
+			this.animCursor.visible = true;
+			this.animCursor.geometry = this.animGeometries[i];
+
+		}
+
+	}
+
+	/**
+	 * Change the highlight of the cursor
+	 */
+	SightInteraction.prototype.setHighlight = function( state ) {
+
+		if (state == 0) { /* Default */
+			this.cursor.material.color.copy( C_DEFAULT );
+			this.cursor.material.opacity = 0.5;
+			this.setProgressionAnimation( 0 );
+
+		} else if (state <= 1.0) { /* Fade to selection */
+
+			// Lerp to selection
+			this.animCursor.material.color.copy( C_SELECT );
+			this.setProgressionAnimation( state );
+
+		} else if (state <= 2.0) { /* Fade to error */
+
+			// Lerp to selection
+			this.animCursor.material.color.copy( C_ERROR );
+			this.setProgressionAnimation( state - 1.0 );
+
+		}
+
+	}
+
+	/**
+	 * Play confirmation animation
+	 */
+	SightInteraction.prototype.playConfirmation = function() {
+		this.confirmAnimation = 0.0;
+		this.confirmCursor.visible = true;
+	}
+
+	/**
+	 * Traverse scene and collect interesting objects
+	 */
+	SightInteraction.prototype.updateFromScene = function() {
+
+		// Mouse out of last intersecting
+		this.interactiveObjects = [];
+		this.viewport.scene.traverse((e) => {
+			if (e.__interact__ !== undefined) {
+				this.interactiveObjects.push(e);
+			}
+		});
+
+		console.log("Updated interactive objects:", this.interactiveObjects);
+
+	};
+
+	/**
+	 * Check interactions
+	 */
+	SightInteraction.prototype.handleMouseDown = function( event ) {
+		if (!this.hoverObject) return;
+		if (this.hoverObject.__interact__.onMouseDown)
+			this.hoverObject.__interact__.onMouseDown( event );
+	}
+	SightInteraction.prototype.handleMouseUp = function( event ) {
+		if (!this.hoverObject) return;
+		if (this.hoverObject.__interact__.onMouseUp)
+			this.hoverObject.__interact__.onMouseUp( event );
+	}
+	SightInteraction.prototype.handleClick = function( event ) {
+		if (!this.hoverObject) return;
+
+		// Trigger click event
+		if (this.hoverObject.__interact__.onClick)
+			this.hoverObject.__interact__.onClick();
+
+		// Trigger interact event
+		this.playConfirmation();
+		if (this.hoverObject.__interact__.onInteract)
+			this.hoverObject.__interact__.onInteract();
+
+	}
+
+	/**
+	 * Check interactions
+	 */
+	SightInteraction.prototype.onRender = function( delta ) {
+
+		// Intersect interactive objects
+		this.raycaster.setFromCamera( CENTER, this.viewport.camera );
+		var intersects = this.raycaster.intersectObjects( this.interactiveObjects, true );
+
+		// Trigger events
+		if ( intersects.length > 0 ) {
+			if (intersects[0].object !== this.hoverObject) {
+
+				// Deselect previous object
+				if (this.hoverObject) {
+
+					// Hadle mouse out
+					if (this.hoverObject.__interact__.onMouseOut)
+						this.hoverObject.__interact__.onMouseOut();
+
+					// Reset highlight
+					this.setHighlight(0);
+
+				}
+
+				// Focus new object
+				this.hoverObject = intersects[0].object;
+
+				// Handle mouse over
+				if (this.hoverObject.__interact__.onMouseOver)
+					this.hoverObject.__interact__.onMouseOver();
+
+				// Highlight if not gazing
+				if ( this.hoverObject.__interact__.gaze ) {
+
+					// Reset gaze state
+					this.gazeTimer = 0;
+
+				} else {
+
+					// Just highlight without gazing
+					this.gazeTimer = GAZE_DURATION;
+					this.setHighlight(1);
+
+				}
+
+
+			} else {
+
+				// User is gazing
+				if (this.gazeTimer < GAZE_DURATION) {
+					this.gazeTimer += delta / 1000;
+					var gazeV = this.gazeTimer / GAZE_DURATION;
+					if (gazeV > 1) gazeV = 1;
+
+					// Apply gaze as a color
+					this.setHighlight( gazeV );
+
+					// Interact when user gazes long enough
+					if (gazeV == 1) {
+						this.playConfirmation();
+
+						// Call interaction function
+						if (this.hoverObject.__interact__.onInteract)
+							this.hoverObject.__interact__.onInteract();
+
+					}
+
+				}
+
+			}
+		} else {
+			if (this.hoverObject) {
+
+				// Hadle mouse out
+				if (this.hoverObject.__interact__.onMouseOut)
+					this.hoverObject.__interact__.onMouseOut();
+				this.hoverObject = null;
+
+				// Reset gaze timer
+				this.gazeTimer = 0;
+				this.setHighlight(0);
+
+			}
+		}
+
+		// Update possible confirmation animation
+		if (this.confirmAnimation < 1.0) {
+
+			// Graduately zoom out while fading out
+			this.confirmCursor.scale.setScalar( 1.0 + 10.0 * this.confirmAnimation );
+			this.confirmCursor.material.opacity = 1.0 - this.confirmAnimation;
+
+			// Update animation (0.25 seconds)
+			this.confirmAnimation += (delta / 1000) / 0.25;
+			if (this.confirmAnimation > 1) {
+				this.confirmAnimation = 1.0;
+				this.confirmCursor.visible = false;
+			}
+
+		}
+
+	}
+
+	// Export
+	module.exports = SightInteraction;
+
+
+/***/ },
+/* 16 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 * 
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 * 
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 * 
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
 	var THREE = __webpack_require__(1);
-	var BaseControl = __webpack_require__(16);
+	var BaseControl = __webpack_require__(17);
 
 	var zero = new THREE.Vector3(0,0,0);
 	var norm = new THREE.Vector3();
@@ -54592,11 +55004,6 @@ var Iconeezin =
 		this.speed = 0.0;
 		this.matrix = new THREE.Matrix4();
 		this.j = 0;
-
-		// Frenet-frame calculations
-		this.frenetNormal = null;
-		this.frenetBinormal = null;
-		this.frenetTanget = null;
 
 	}
 
@@ -54632,121 +55039,6 @@ var Iconeezin =
 		this.firstTangent = true;
 
 	};
-
-	/**
-	 * Calculate next frenet frame based on tangent
-	 */
-	PathFollower.prototype.calcFrenetFrame = function( tangent ) {
-
-		// Check for first attemt
-		if (this.frenetTanget === null) {
-
-			// select an initial normal vector perpendicular to the first tangent vector,
-			// and in the direction of the smallest tangent xyz component
-
-			this.frenetNormal = new THREE.Vector3();
-			this.frenetBinormal = new THREE.Vector3();
-			this.frenetTanget = tangent.clone();
-
-			smallest = Number.MAX_VALUE;
-			tx = Math.abs( tangent.x );
-			ty = Math.abs( tangent.y );
-			tz = Math.abs( tangent.z );
-
-			if ( tx <= smallest ) {
-
-				smallest = tx;
-				this.frenetNormal.set( 1, 0, 0 );
-
-			}
-
-			if ( ty <= smallest ) {
-
-				smallest = ty;
-				this.frenetNormal.set( 0, 1, 0 );
-
-			}
-
-			if ( tz <= smallest ) {
-
-				this.frenetNormal.set( 0, 0, 1 );
-
-			}
-
-			vec.crossVectors( tangent, this.frenetNormal ).normalize();
-
-			this.frenetNormal.crossVectors( tangent, vec );
-			this.frenetBinormal.crossVectors( tangent, normals[ 0 ] );
-
-		} else {
-
-
-			// compute the slowly-varying normal and binormal vectors for each segment on the path
-
-			vec.crossVectors( this.frenetTanget, tangent );
-
-			if ( vec.length() > Number.EPSILON ) {
-
-				vec.normalize();
-
-				theta = Math.acos( THREE.Math.clamp( this.frenetTanget.dot( tangent ), - 1, 1 ) ); // clamp for floating pt errors
-
-				this.frenetNormal.applyMatrix4( mat.makeRotationAxis( vec, theta ) );
-
-			}
-
-			this.frenetBinormal.crossVectors( tangent, this.frenetNormal );
-
-		}
-
-	}
-
-	// /**
-	//  * Update current normal and binormal
-	//  */
-	// PathFollower.prototype.updateNormals = function( tangent ) {
-	// 	var theta;
-
-	// 	// Calculate first normal and tangent
-	// 	if (this.firstTangent) {
-
-	// 		vec.crossVectors( tangent, this.normal ).normalize();
-
-	// 		this.normal.crossVectors( tangent, vec );
-	// 		this.binormal.crossVectors( tangent, this.normal );
-
-	// 		this.firstTangent = false;
-
-	// 	} else {
-
-	// 		// Copy last normal & binormal
-	// 		this.normal.copy( this.lastNormal );
-	// 		this.binormal.copy( this.lastBinormal );
-
-	// 		// Calculate tangent cross product
-	// 		vec.crossVectors( this.lastTangent, tangent );
-
-	// 		// I have seriously no idea what's happening here...
-	// 		if ( vec.length() > Number.EPSILON ) {
-	// 			vec.normalize();
-	// 			theta = Math.acos( THREE.Math.clamp( this.lastTangent.dot( tangent ), - 1, 1 ) ); // clamp for floating pt errors
-	// 			this.normal.applyMatrix4( mat.makeRotationAxis( vec, theta ) );
-	// 		}
-
-	// 		// Update binormal value
-	// 		this.binormal.crossVectors( tangent, this.normal );
-
-	// 	}
-
-	// 	console.log("normal=",this.normal,", binormal=",this.binormal,", tangent=",tangent);
-
-	// 	// Save last values
-	// 	this.lastTangent.copy( tangent );
-	// 	this.lastNormal.copy( this.normal );
-	// 	this.lastBinormal.copy( this.binormal );
-
-
-	// }
 
 	/**
 	 * Update 
@@ -54787,7 +55079,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 16 */
+/* 17 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -54896,7 +55188,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 17 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -54922,9 +55214,8 @@ var Iconeezin =
 	 */
 
 	var VideoCore = __webpack_require__(8);
-	var BaseControl = __webpack_require__(16);
+	var BaseControl = __webpack_require__(17);
 
-	__webpack_require__(18);
 	const PI_2 = Math.PI / 2;
 
 	/**
@@ -54957,7 +55248,6 @@ var Iconeezin =
 		// Delta movement
 		this.zero = new THREE.Vector2(0,0);
 		this.delta = new THREE.Vector2(0,0);
-		// this.m2 = new THREE.Matrix4();
 
 		// View reset mechanism
 		this.resetSpeed = 0.01;
@@ -55068,18 +55358,10 @@ var Iconeezin =
 	 */
 	MouseControl.prototype.onUpdate = function( delta ) {
 
-		// Apply horizontal rotation
-		// this.rotationMatrix.makeRotationZ( this.delta.x );
-
-		// Apply vertical rotation
-		// this.m2.makeRotationX( this.delta.y );
-		// this.rotationMatrix.multiply( this.m2 );
-
+		// Apply rotation to yaw/pitch
 		this.yawObject.rotation.z = this.delta.x;
 		this.pitchObject.rotation.x = this.delta.y;
 		this.pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, this.pitchObject.rotation.x ) );
-
-		console.log(this.yawObject.rotation.y, this.pitchObject.rotation.x);
 
 		// Handle rotation reset
 		this.resetTimer += delta;
@@ -55102,81 +55384,6 @@ var Iconeezin =
 
 	// Export
 	module.exports = MouseControl;
-
-
-/***/ },
-/* 18 */
-/***/ function(module, exports) {
-
-	/**
-	 * @author mrdoob / http://mrdoob.com/
-	 */
-
-	THREE.PointerLockControls = function ( camera ) {
-
-		var scope = this;
-
-		camera.rotation.set( 0, 0, 0 );
-
-		var pitchObject = new THREE.Object3D();
-		pitchObject.add( camera );
-
-		var yawObject = new THREE.Object3D();
-		yawObject.position.y = 10;
-		yawObject.add( pitchObject );
-
-		var PI_2 = Math.PI / 2;
-
-		var onMouseMove = function ( event ) {
-
-			if ( scope.enabled === false ) return;
-
-			var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-			var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
-
-			yawObject.rotation.y -= movementX * 0.002;
-			pitchObject.rotation.x -= movementY * 0.002;
-
-			pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, pitchObject.rotation.x ) );
-
-		};
-
-		this.dispose = function() {
-
-			document.removeEventListener( 'mousemove', onMouseMove, false );
-
-		};
-
-		document.addEventListener( 'mousemove', onMouseMove, false );
-
-		this.enabled = false;
-
-		this.getObject = function () {
-
-			return yawObject;
-
-		};
-
-		this.getDirection = function() {
-
-			// assumes the camera itself is not rotated
-
-			var direction = new THREE.Vector3( 0, 0, - 1 );
-			var rotation = new THREE.Euler( 0, 0, 0, "YXZ" );
-
-			return function( v ) {
-
-				rotation.set( pitchObject.rotation.x, yawObject.rotation.y, 0 );
-
-				v.copy( direction ).applyEuler( rotation );
-
-				return v;
-
-			};
-
-		}();
-
-	};
 
 
 /***/ },
@@ -55205,7 +55412,7 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var BaseControl = __webpack_require__(16);
+	var BaseControl = __webpack_require__(17);
 
 	/**
 	 * Camera path locks camera into a 3D curve
@@ -55250,6 +55457,7 @@ var Iconeezin =
 	 */
 
 	var VideoCore = __webpack_require__(8);
+	var ControlsCore = __webpack_require__(14);
 
 	var Experiments = __webpack_require__(21);
 	var Loaders = __webpack_require__(22);
@@ -55291,11 +55499,16 @@ var Iconeezin =
 	 */
 	ExperimentsCore.showExperiment = function( experiment ) {
 
+		// Update interactions when the experiment is visible
+		var handleExperimentVisible = function() {
+			ControlsCore.updateInteractions();
+		}
+
 		// Check if this is already loaded
 		if (this.loadedExperiments[experiment] !== undefined) {
 
 			// Focus to the given experiment instance on the viewport
-			this.experiments.focusExperiment( this.loadedExperiments[experiment] );
+			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible );
 
 		} else {
 
@@ -55312,7 +55525,7 @@ var Iconeezin =
 
 					// Keep experiment reference and focus instance
 					this.loadedExperiments[experiment] = inst;
-					this.experiments.focusExperiment( inst );
+					this.experiments.focusExperiment( inst, handleExperimentVisible );
 
 				}
 
@@ -55369,6 +55582,9 @@ var Iconeezin =
 
 		// Previous event tracking function
 		this.previousTrackingFunction = null;
+
+		// Handle scene updates
+		this.onSceneUpdate = null;
 
 		// The interactive objects from the active experiments
 		this.interactiveObjects = [];
@@ -55467,7 +55683,7 @@ var Iconeezin =
 				lights[i].intensity = lightIntensity[i]*tweenProgress;
 			}
 
-		});
+		}, cb);
 
 	}
 
@@ -55493,7 +55709,7 @@ var Iconeezin =
 				lights[i].intensity = lightIntensity[i]*(1-tweenProgress);
 			}
 
-		})
+		}, cb)
 
 	}
 

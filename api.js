@@ -39,6 +39,7 @@ module.exports = {
 	 */
 	'AnimatedObject3D': ThreeAPI.AnimatedObject3D,
 	'InteractiveObject3D': ThreeAPI.InteractiveObject3D,
+	'makeInteractive': ThreeAPI.makeInteractive,
 
 	/**
 	 * Experiments API

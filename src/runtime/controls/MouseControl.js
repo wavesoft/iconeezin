@@ -23,7 +23,6 @@
 var VideoCore = require('../core/VideoCore');
 var BaseControl = require('./BaseControl');
 
-require('three/examples/js/controls/PointerLockControls');
 const PI_2 = Math.PI / 2;
 
 /**
@@ -56,7 +55,6 @@ var MouseControl = function( ) {
 	// Delta movement
 	this.zero = new THREE.Vector2(0,0);
 	this.delta = new THREE.Vector2(0,0);
-	// this.m2 = new THREE.Matrix4();
 
 	// View reset mechanism
 	this.resetSpeed = 0.01;
@@ -167,18 +165,10 @@ MouseControl.prototype.setResetTimeout = function( timeout, speed ) {
  */
 MouseControl.prototype.onUpdate = function( delta ) {
 
-	// Apply horizontal rotation
-	// this.rotationMatrix.makeRotationZ( this.delta.x );
-
-	// Apply vertical rotation
-	// this.m2.makeRotationX( this.delta.y );
-	// this.rotationMatrix.multiply( this.m2 );
-
+	// Apply rotation to yaw/pitch
 	this.yawObject.rotation.z = this.delta.x;
 	this.pitchObject.rotation.x = this.delta.y;
 	this.pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, this.pitchObject.rotation.x ) );
-
-	console.log(this.yawObject.rotation.y, this.pitchObject.rotation.x);
 
 	// Handle rotation reset
 	this.resetTimer += delta;

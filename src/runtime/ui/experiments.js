@@ -38,6 +38,9 @@ var Experiments = function( viewport ) {
 	// Previous event tracking function
 	this.previousTrackingFunction = null;
 
+	// Handle scene updates
+	this.onSceneUpdate = null;
+
 	// The interactive objects from the active experiments
 	this.interactiveObjects = [];
 }
@@ -135,7 +138,7 @@ Experiments.prototype.fadeIn = function( experiment, cb ) {
 			lights[i].intensity = lightIntensity[i]*tweenProgress;
 		}
 
-	});
+	}, cb);
 
 }
 
@@ -161,7 +164,7 @@ Experiments.prototype.fadeOut = function( experiment, cb ) {
 			lights[i].intensity = lightIntensity[i]*(1-tweenProgress);
 		}
 
-	})
+	}, cb)
 
 }
 
