@@ -23,6 +23,9 @@
 var VideoCore = require('../core/VideoCore');
 var BaseControl = require('./BaseControl');
 
+require('three/examples/js/controls/PointerLockControls');
+const PI_2 = Math.PI / 2;
+
 /**
  * Camera path locks camera into a 3D curve
  */
@@ -42,10 +45,18 @@ var MouseControl = function( ) {
 	// Register a mouse handler
 	document.addEventListener( 'mousemove', this.handleMouseMove.bind(this), false );
 
+	// Prepare nexted Y/P objects
+	this.pitchObject = new THREE.Object3D();
+	this.yawObject = new THREE.Object3D();
+	this.yawObject.add( this.pitchObject );
+
+	// Why??
+	// this.yawObject.position.y = 10;
+
 	// Delta movement
 	this.zero = new THREE.Vector2(0,0);
 	this.delta = new THREE.Vector2(0,0);
-	this.m2 = new THREE.Matrix4();
+	// this.m2 = new THREE.Matrix4();
 
 	// View reset mechanism
 	this.resetSpeed = 0.01;
@@ -59,6 +70,26 @@ var MouseControl = function( ) {
  * Subclass from base controls
  */
 MouseControl.prototype = Object.create( BaseControl.prototype );
+
+/**
+ * Chain given object in our gimbal and return the object
+ */
+MouseControl.prototype.chainGimbal = function( gimbal ) {
+	this.pitchObject.add( gimbal );
+	return this.yawObject;
+};
+
+/**
+ * Unchained the gimbal object and return it
+ */
+MouseControl.prototype.unchainGimbal = function( gimbal ) {
+	if (gimbal !== this.yawObject)
+		throw "Trying to unchain a gimbal at wrong index!";
+
+	var child = this.pitchObject.children[0];
+	this.pitchObject.remove( child );
+	return child;
+};
 
 /**
  * 
@@ -137,11 +168,17 @@ MouseControl.prototype.setResetTimeout = function( timeout, speed ) {
 MouseControl.prototype.onUpdate = function( delta ) {
 
 	// Apply horizontal rotation
-	this.rotationMatrix.makeRotationZ( this.delta.x );
+	// this.rotationMatrix.makeRotationZ( this.delta.x );
 
 	// Apply vertical rotation
-	this.m2.makeRotationX( this.delta.y );
-	this.rotationMatrix.multiply( this.m2 );
+	// this.m2.makeRotationX( this.delta.y );
+	// this.rotationMatrix.multiply( this.m2 );
+
+	this.yawObject.rotation.z = this.delta.x;
+	this.pitchObject.rotation.x = this.delta.y;
+	this.pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, this.pitchObject.rotation.x ) );
+
+	console.log(this.yawObject.rotation.y, this.pitchObject.rotation.x);
 
 	// Handle rotation reset
 	this.resetTimer += delta;

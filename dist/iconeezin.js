@@ -77,7 +77,7 @@ var Iconeezin =
 	var AudioCore = __webpack_require__(6);
 	var VideoCore = __webpack_require__(8);
 	var ControlsCore = __webpack_require__(14);
-	var ExperimentsCore = __webpack_require__(19);
+	var ExperimentsCore = __webpack_require__(20);
 
 	/**
 	 * Expose useful parts of the runtime API
@@ -54331,7 +54331,7 @@ var Iconeezin =
 
 	var PathFollower = __webpack_require__(15);
 	var MouseControl = __webpack_require__(17);
-	var VRControl = __webpack_require__(18);
+	var VRControl = __webpack_require__(19);
 
 	/**
 	 * The ControlsCore singleton contains the
@@ -54354,20 +54354,21 @@ var Iconeezin =
 		// Position-only controls
 		this.pathFollower = new PathFollower();
 
-		// Array of overall controls instances
-		this.controls = [
-			this.pathFollower,
-			this.mouseControl, 
-			this.vrControl
-		];
-
 		// Default propeties
 		this.paused = true;
-		this.hmd = false;
+		this.hmd = undefined;
 
 		// Default location
 		this.zeroPosition = new THREE.Vector3(0,0,3);
 		this.zeroRotation = new THREE.Euler(Math.PI/2,0,0);
+
+		// The currently active gimbal object
+		this.scene = VideoCore.viewport.scene;
+		this.gimbal = VideoCore.viewport.camera;
+		this.activeControl = null;
+
+		// Set defaults
+		this.setHMD( false );
 
 	}
 
@@ -54375,15 +54376,96 @@ var Iconeezin =
 	 * Start/Stop video animation
 	 */
 	ControlsCore.setHMD = function( hmd ) {
-		if (this.hmd = hmd) {
-			// Enable VR Control
-			if (!this.paused) this.vrControl.enable();
-			this.mouseControl.disable();
-		} else {
-			// Enable Mouse Control
-			if (!this.paused) this.mouseControl.enable();
-			this.vrControl.disable();
+		if (this.hmd != hmd) {
+
+			// Chain appropriate gimbal
+			if (hmd) {
+
+				// Disable VR Control
+				if (this.hmd === false) {
+					if (this.activeControl) {
+						this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+					}
+					this.gimbal = this.mouseControl.unchainGimbal();
+					this.mouseControl.disable();
+				}
+
+				// Enable VR Control
+				this.gimbal = this.vrControl.chainGimbal( this.gimbal );
+				this.vrControl.enable();
+
+				// Re-chain base control
+				if (this.activeControl) {
+					this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+				}
+
+				// Add on scene on the correct order
+				this.scene.add( this.gimbal );
+
+			} else {
+
+				// Disable VR Control
+				if (this.hmd === true) {
+					if (this.activeControl) {
+						this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+					}
+					this.gimbal = this.vrControl.unchainGimbal();
+					this.vrControl.disable();
+				}
+
+				// Enable Mouse Control
+				this.gimbal = this.mouseControl.chainGimbal( this.gimbal );
+				this.mouseControl.enable();
+
+				// Re-chain base control
+				if (this.activeControl) {
+					this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+				}
+
+				// Add on scene on the correct order
+				this.scene.add( this.gimbal );
+
+			}
+
+			// Set HMD
+			this.hmd = hmd;
+
 		}
+	}
+
+	/**
+	 * Activate a particular control
+	 */
+	ControlsCore.activateControl = function( control ) {
+
+		// Deactivate previous control
+		if (this.activeControl)
+			this.deactivateLastControl();
+
+		// Activate
+		this.gimbal = control.chainGimbal( this.gimbal );
+		this.activeControl = control;
+		this.activeControl.enable();
+
+		// Add on scene on the correct order
+		this.scene.add( this.gimbal );
+
+	}
+
+	/**
+	 * Deactivate last control
+	 */
+	ControlsCore.deactivateLastControl = function() {
+		if (!this.activeControl) return;
+
+		// Restore last control gimbal
+		this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+		this.activeControl.disable();
+		this.activeControl = undefined;
+
+		// Add on scene on the correct order
+		this.scene.add( this.gimbal );
+
 	}
 
 	/**
@@ -54392,16 +54474,29 @@ var Iconeezin =
 	ControlsCore.setPaused = function( paused ) {
 		// Disable everything
 		if (this.paused = paused) {
+			
+			// Disable all controls
 			this.vrControl.disable();
 			this.mouseControl.disable();
 
+			// Disable active control
+			if (this.activeControl)
+				this.activeControl.disable();
+
 		// Enable appropriate component
 		} else {
+
+			// Enable appropriate camera control
 			if (this.hmd) {
 				this.vrControl.enable();
 			} else {
 				this.mouseControl.enable();
 			}
+
+			// Enable active control
+			if (this.activeControl)
+				this.activeControl.enable();
+
 		}
 	}
 
@@ -54412,7 +54507,7 @@ var Iconeezin =
 
 		// Setup and enable path follower
 		this.pathFollower.followPath( curve, options );
-		this.pathFollower.enable();
+		this.activateControl( this.pathFollower );
 
 	}
 
@@ -54424,25 +54519,26 @@ var Iconeezin =
 		// Update everything
 		this.vrControl.triggerUpdate( delta );
 		this.mouseControl.triggerUpdate( delta );
-		this.pathFollower.triggerUpdate( delta );
+		if (this.activeControl)
+			this.activeControl.triggerUpdate( delta );
 
-		// Reset position
-		var camera = VideoCore.viewport.camera;
-		camera.position.copy(this.zeroPosition);
-		camera.rotation.copy(this.zeroRotation);
-		camera.updateMatrix();
+		// // Reset position
+		// var camera = VideoCore.viewport.camera;
+		// camera.position.copy(this.zeroPosition);
+		// camera.rotation.copy(this.zeroRotation);
+		// camera.updateMatrix();
 
-		// Apply translation
-		for (var i=0, l=this.controls.length; i<l; ++i) {
-			if (!this.controls[i].enabled) continue;
-			camera.applyMatrix( this.controls[i].rotationMatrix );
-		}
+		// // Apply translation
+		// for (var i=0, l=this.controls.length; i<l; ++i) {
+		// 	if (!this.controls[i].enabled) continue;
+		// 	camera.applyMatrix( this.controls[i].rotationMatrix );
+		// }
 
-		// Apply rotation
-		for (var i=0, l=this.controls.length; i<l; ++i) {
-			if (!this.controls[i].enabled) continue;
-			camera.applyMatrix( this.controls[i].translationMatrix );
-		}
+		// // Apply rotation
+		// for (var i=0, l=this.controls.length; i<l; ++i) {
+		// 	if (!this.controls[i].enabled) continue;
+		// 	camera.applyMatrix( this.controls[i].translationMatrix );
+		// }
 
 	}
 
@@ -54478,6 +54574,12 @@ var Iconeezin =
 	var THREE = __webpack_require__(1);
 	var BaseControl = __webpack_require__(16);
 
+	var zero = new THREE.Vector3(0,0,0);
+	var norm = new THREE.Vector3();
+	var vec = new THREE.Vector3();
+	var mat = new THREE.Matrix4();
+	var up = new THREE.Vector3(0,0,1);
+
 	/**
 	 * Camera path locks camera into a 3D curve
 	 */
@@ -54491,11 +54593,10 @@ var Iconeezin =
 		this.matrix = new THREE.Matrix4();
 		this.j = 0;
 
-		// The up plane
-		this.plane = new THREE.Plane(
-				new THREE.Vector3(0,0,1),
-				new THREE.Vector3(-1,0,0)
-			);
+		// Frenet-frame calculations
+		this.frenetNormal = null;
+		this.frenetBinormal = null;
+		this.frenetTanget = null;
 
 	}
 
@@ -54507,7 +54608,7 @@ var Iconeezin =
 	/**
 	 * Specify the path to follow
 	 */
-	BaseControl.prototype.followPath = function( path, options ) {
+	PathFollower.prototype.followPath = function( path, options ) {
 
 		// Prepare options
 		var opt = options || {},
@@ -54528,25 +54629,146 @@ var Iconeezin =
 
 		// Start path
 		this.j = 0;
+		this.firstTangent = true;
 
 	};
 
 	/**
+	 * Calculate next frenet frame based on tangent
+	 */
+	PathFollower.prototype.calcFrenetFrame = function( tangent ) {
+
+		// Check for first attemt
+		if (this.frenetTanget === null) {
+
+			// select an initial normal vector perpendicular to the first tangent vector,
+			// and in the direction of the smallest tangent xyz component
+
+			this.frenetNormal = new THREE.Vector3();
+			this.frenetBinormal = new THREE.Vector3();
+			this.frenetTanget = tangent.clone();
+
+			smallest = Number.MAX_VALUE;
+			tx = Math.abs( tangent.x );
+			ty = Math.abs( tangent.y );
+			tz = Math.abs( tangent.z );
+
+			if ( tx <= smallest ) {
+
+				smallest = tx;
+				this.frenetNormal.set( 1, 0, 0 );
+
+			}
+
+			if ( ty <= smallest ) {
+
+				smallest = ty;
+				this.frenetNormal.set( 0, 1, 0 );
+
+			}
+
+			if ( tz <= smallest ) {
+
+				this.frenetNormal.set( 0, 0, 1 );
+
+			}
+
+			vec.crossVectors( tangent, this.frenetNormal ).normalize();
+
+			this.frenetNormal.crossVectors( tangent, vec );
+			this.frenetBinormal.crossVectors( tangent, normals[ 0 ] );
+
+		} else {
+
+
+			// compute the slowly-varying normal and binormal vectors for each segment on the path
+
+			vec.crossVectors( this.frenetTanget, tangent );
+
+			if ( vec.length() > Number.EPSILON ) {
+
+				vec.normalize();
+
+				theta = Math.acos( THREE.Math.clamp( this.frenetTanget.dot( tangent ), - 1, 1 ) ); // clamp for floating pt errors
+
+				this.frenetNormal.applyMatrix4( mat.makeRotationAxis( vec, theta ) );
+
+			}
+
+			this.frenetBinormal.crossVectors( tangent, this.frenetNormal );
+
+		}
+
+	}
+
+	// /**
+	//  * Update current normal and binormal
+	//  */
+	// PathFollower.prototype.updateNormals = function( tangent ) {
+	// 	var theta;
+
+	// 	// Calculate first normal and tangent
+	// 	if (this.firstTangent) {
+
+	// 		vec.crossVectors( tangent, this.normal ).normalize();
+
+	// 		this.normal.crossVectors( tangent, vec );
+	// 		this.binormal.crossVectors( tangent, this.normal );
+
+	// 		this.firstTangent = false;
+
+	// 	} else {
+
+	// 		// Copy last normal & binormal
+	// 		this.normal.copy( this.lastNormal );
+	// 		this.binormal.copy( this.lastBinormal );
+
+	// 		// Calculate tangent cross product
+	// 		vec.crossVectors( this.lastTangent, tangent );
+
+	// 		// I have seriously no idea what's happening here...
+	// 		if ( vec.length() > Number.EPSILON ) {
+	// 			vec.normalize();
+	// 			theta = Math.acos( THREE.Math.clamp( this.lastTangent.dot( tangent ), - 1, 1 ) ); // clamp for floating pt errors
+	// 			this.normal.applyMatrix4( mat.makeRotationAxis( vec, theta ) );
+	// 		}
+
+	// 		// Update binormal value
+	// 		this.binormal.crossVectors( tangent, this.normal );
+
+	// 	}
+
+	// 	console.log("normal=",this.normal,", binormal=",this.binormal,", tangent=",tangent);
+
+	// 	// Save last values
+	// 	this.lastTangent.copy( tangent );
+	// 	this.lastNormal.copy( this.normal );
+	// 	this.lastBinormal.copy( this.binormal );
+
+
+	// }
+
+	/**
 	 * Update 
 	 */
-	BaseControl.prototype.onUpdate = function( delta ) {
+	PathFollower.prototype.onUpdate = function( delta ) {
 
 		// Get point
-		var pt = this.path.getPointAt(this.j).applyMatrix4(this.matrix),
-			pa = this.path.getTangentAt(this.j).applyMatrix4(this.matrix).normalize();
+		var p_pos = this.path.getPointAt(this.j).applyMatrix4(this.matrix),
+			p_dir = this.path.getTangentAt(this.j).applyMatrix4(this.matrix).normalize();
 
-		// Create translation vector
-		console.log(pt);
-		this.translationMatrix.makeTranslation(pt.x, pt.y, pt.z);
+		// Update position
+		this.gimbal.position.copy( p_pos );
 
-		// // Create a rotation matrix
-		// this.rotationMatrix.identity();
-		// this.rotationMatrix.lookAt( pt, npt, up );
+		// Find the binormal vector
+		vec.crossVectors( p_dir, up );
+
+		// Find the up vector
+		vec.crossVectors( vec, p_dir );
+
+		// Update direction
+		this.gimbal.up = p_dir;
+		this.gimbal.lookAt( p_pos.add( vec ) );
 
 		// Move forward
 		this.j += this.speed * delta / 1000;
@@ -54601,16 +54823,31 @@ var Iconeezin =
 		this.enabled = false;
 
 		/**
-		 * Translation matrix
+		 * Gimbal object
 		 */
-		this.translationMatrix = new THREE.Matrix4();
-
-		/**
-		 * Quaternion
-		 */
-		this.rotationMatrix = new THREE.Matrix4();
+		this.gimbal = new THREE.Object3D();
 
 	}
+
+	/**
+	 * Chain given object in our gimbal and return the object
+	 */
+	BaseControl.prototype.chainGimbal = function( gimbal ) {
+		this.gimbal.add( gimbal );
+		return this.gimbal;
+	};
+
+	/**
+	 * Unchained the gimbal object and return it
+	 */
+	BaseControl.prototype.unchainGimbal = function( gimbal ) {
+		if (gimbal !== this.gimbal)
+			throw "Trying to unchain a gimbal at wrong index!";
+
+		var child = this.gimbal.children[0];
+		this.gimbal.remove( child );
+		return child;
+	};
 
 	/**
 	 * Disable control
@@ -54687,6 +54924,9 @@ var Iconeezin =
 	var VideoCore = __webpack_require__(8);
 	var BaseControl = __webpack_require__(16);
 
+	__webpack_require__(18);
+	const PI_2 = Math.PI / 2;
+
 	/**
 	 * Camera path locks camera into a 3D curve
 	 */
@@ -54706,10 +54946,18 @@ var Iconeezin =
 		// Register a mouse handler
 		document.addEventListener( 'mousemove', this.handleMouseMove.bind(this), false );
 
+		// Prepare nexted Y/P objects
+		this.pitchObject = new THREE.Object3D();
+		this.yawObject = new THREE.Object3D();
+		this.yawObject.add( this.pitchObject );
+
+		// Why??
+		// this.yawObject.position.y = 10;
+
 		// Delta movement
 		this.zero = new THREE.Vector2(0,0);
 		this.delta = new THREE.Vector2(0,0);
-		this.m2 = new THREE.Matrix4();
+		// this.m2 = new THREE.Matrix4();
 
 		// View reset mechanism
 		this.resetSpeed = 0.01;
@@ -54723,6 +54971,26 @@ var Iconeezin =
 	 * Subclass from base controls
 	 */
 	MouseControl.prototype = Object.create( BaseControl.prototype );
+
+	/**
+	 * Chain given object in our gimbal and return the object
+	 */
+	MouseControl.prototype.chainGimbal = function( gimbal ) {
+		this.pitchObject.add( gimbal );
+		return this.yawObject;
+	};
+
+	/**
+	 * Unchained the gimbal object and return it
+	 */
+	MouseControl.prototype.unchainGimbal = function( gimbal ) {
+		if (gimbal !== this.yawObject)
+			throw "Trying to unchain a gimbal at wrong index!";
+
+		var child = this.pitchObject.children[0];
+		this.pitchObject.remove( child );
+		return child;
+	};
 
 	/**
 	 * 
@@ -54801,11 +55069,17 @@ var Iconeezin =
 	MouseControl.prototype.onUpdate = function( delta ) {
 
 		// Apply horizontal rotation
-		this.rotationMatrix.makeRotationZ( this.delta.x );
+		// this.rotationMatrix.makeRotationZ( this.delta.x );
 
 		// Apply vertical rotation
-		this.m2.makeRotationX( this.delta.y );
-		this.rotationMatrix.multiply( this.m2 );
+		// this.m2.makeRotationX( this.delta.y );
+		// this.rotationMatrix.multiply( this.m2 );
+
+		this.yawObject.rotation.z = this.delta.x;
+		this.pitchObject.rotation.x = this.delta.y;
+		this.pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, this.pitchObject.rotation.x ) );
+
+		console.log(this.yawObject.rotation.y, this.pitchObject.rotation.x);
 
 		// Handle rotation reset
 		this.resetTimer += delta;
@@ -54832,6 +55106,81 @@ var Iconeezin =
 
 /***/ },
 /* 18 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author mrdoob / http://mrdoob.com/
+	 */
+
+	THREE.PointerLockControls = function ( camera ) {
+
+		var scope = this;
+
+		camera.rotation.set( 0, 0, 0 );
+
+		var pitchObject = new THREE.Object3D();
+		pitchObject.add( camera );
+
+		var yawObject = new THREE.Object3D();
+		yawObject.position.y = 10;
+		yawObject.add( pitchObject );
+
+		var PI_2 = Math.PI / 2;
+
+		var onMouseMove = function ( event ) {
+
+			if ( scope.enabled === false ) return;
+
+			var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+			var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+
+			yawObject.rotation.y -= movementX * 0.002;
+			pitchObject.rotation.x -= movementY * 0.002;
+
+			pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, pitchObject.rotation.x ) );
+
+		};
+
+		this.dispose = function() {
+
+			document.removeEventListener( 'mousemove', onMouseMove, false );
+
+		};
+
+		document.addEventListener( 'mousemove', onMouseMove, false );
+
+		this.enabled = false;
+
+		this.getObject = function () {
+
+			return yawObject;
+
+		};
+
+		this.getDirection = function() {
+
+			// assumes the camera itself is not rotated
+
+			var direction = new THREE.Vector3( 0, 0, - 1 );
+			var rotation = new THREE.Euler( 0, 0, 0, "YXZ" );
+
+			return function( v ) {
+
+				rotation.set( pitchObject.rotation.x, yawObject.rotation.y, 0 );
+
+				v.copy( direction ).applyEuler( rotation );
+
+				return v;
+
+			};
+
+		}();
+
+	};
+
+
+/***/ },
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -54875,7 +55224,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 19 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -54902,8 +55251,8 @@ var Iconeezin =
 
 	var VideoCore = __webpack_require__(8);
 
-	var Experiments = __webpack_require__(20);
-	var Loaders = __webpack_require__(21);
+	var Experiments = __webpack_require__(21);
+	var Loaders = __webpack_require__(22);
 
 	/**
 	 * Kernel core is the main logic that steers the runtime 
@@ -54978,7 +55327,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 20 */
+/* 21 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -55194,7 +55543,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 21 */
+/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -55219,11 +55568,11 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var Config = __webpack_require__(22);
+	var Config = __webpack_require__(23);
 
-	var JBBLoader = __webpack_require__(23);
-	var JBBProfileThreeLoader = __webpack_require__(30);
-	var JBBProfileIconeezinLoader = __webpack_require__(32);
+	var JBBLoader = __webpack_require__(24);
+	var JBBProfileThreeLoader = __webpack_require__(31);
+	var JBBProfileIconeezinLoader = __webpack_require__(33);
 
 	/**
 	 * Loaders namespace contains all the different loading
@@ -55328,7 +55677,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 22 */
+/* 23 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -55366,7 +55715,7 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 23 */
+/* 24 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {"use strict";
@@ -55390,10 +55739,10 @@ var Iconeezin =
 	 */
 
 	/* Imports */
-	var BinaryBundle = __webpack_require__(25);
-	var DecodeProfile = __webpack_require__(26);
-	var ProgressManager = __webpack_require__(27);
-	var Errors = __webpack_require__(28);
+	var BinaryBundle = __webpack_require__(26);
+	var DecodeProfile = __webpack_require__(27);
+	var ProgressManager = __webpack_require__(28);
+	var Errors = __webpack_require__(29);
 
 	/* Production optimisations and debug metadata flags */
 	if (typeof GULP_BUILD === "undefined") var GULP_BUILD = false;
@@ -55403,7 +55752,7 @@ var Iconeezin =
 
 	/* Additional includes on node builds */
 	if (IS_NODE) {
-		var fs = __webpack_require__(29);
+		var fs = __webpack_require__(30);
 	}
 
 	/* Size constants */
@@ -56692,10 +57041,10 @@ var Iconeezin =
 	// Export the binary loader
 	module.exports = BinaryLoader;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(24)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(25)))
 
 /***/ },
-/* 24 */
+/* 25 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -56795,7 +57144,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 25 */
+/* 26 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -57155,7 +57504,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 26 */
+/* 27 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -57272,7 +57621,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 27 */
+/* 28 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -57447,7 +57796,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 28 */
+/* 29 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -57546,13 +57895,13 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 29 */
+/* 30 */
 /***/ function(module, exports) {
 
 	
 
 /***/ },
-/* 30 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -57579,7 +57928,7 @@ var Iconeezin =
 	/* Generated source follows */
 
 	var THREE = __webpack_require__(1);
-	var MD2Character = __webpack_require__(31);
+	var MD2Character = __webpack_require__(32);
 
 	/**
 	 * Factory & Initializer of THREE.CubeTexture
@@ -59351,7 +59700,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 31 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -59615,7 +59964,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 32 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Iconeezin = Iconeezin || {}; Iconeezin["API"] = __webpack_require__(2);

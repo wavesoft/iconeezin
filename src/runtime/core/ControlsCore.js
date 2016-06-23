@@ -47,20 +47,21 @@ ControlsCore.initialize = function() {
 	// Position-only controls
 	this.pathFollower = new PathFollower();
 
-	// Array of overall controls instances
-	this.controls = [
-		this.pathFollower,
-		this.mouseControl, 
-		this.vrControl
-	];
-
 	// Default propeties
 	this.paused = true;
-	this.hmd = false;
+	this.hmd = undefined;
 
 	// Default location
 	this.zeroPosition = new THREE.Vector3(0,0,3);
 	this.zeroRotation = new THREE.Euler(Math.PI/2,0,0);
+
+	// The currently active gimbal object
+	this.scene = VideoCore.viewport.scene;
+	this.gimbal = VideoCore.viewport.camera;
+	this.activeControl = null;
+
+	// Set defaults
+	this.setHMD( false );
 
 }
 
@@ -68,15 +69,96 @@ ControlsCore.initialize = function() {
  * Start/Stop video animation
  */
 ControlsCore.setHMD = function( hmd ) {
-	if (this.hmd = hmd) {
-		// Enable VR Control
-		if (!this.paused) this.vrControl.enable();
-		this.mouseControl.disable();
-	} else {
-		// Enable Mouse Control
-		if (!this.paused) this.mouseControl.enable();
-		this.vrControl.disable();
+	if (this.hmd != hmd) {
+
+		// Chain appropriate gimbal
+		if (hmd) {
+
+			// Disable VR Control
+			if (this.hmd === false) {
+				if (this.activeControl) {
+					this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+				}
+				this.gimbal = this.mouseControl.unchainGimbal();
+				this.mouseControl.disable();
+			}
+
+			// Enable VR Control
+			this.gimbal = this.vrControl.chainGimbal( this.gimbal );
+			this.vrControl.enable();
+
+			// Re-chain base control
+			if (this.activeControl) {
+				this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+			}
+
+			// Add on scene on the correct order
+			this.scene.add( this.gimbal );
+
+		} else {
+
+			// Disable VR Control
+			if (this.hmd === true) {
+				if (this.activeControl) {
+					this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+				}
+				this.gimbal = this.vrControl.unchainGimbal();
+				this.vrControl.disable();
+			}
+
+			// Enable Mouse Control
+			this.gimbal = this.mouseControl.chainGimbal( this.gimbal );
+			this.mouseControl.enable();
+
+			// Re-chain base control
+			if (this.activeControl) {
+				this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+			}
+
+			// Add on scene on the correct order
+			this.scene.add( this.gimbal );
+
+		}
+
+		// Set HMD
+		this.hmd = hmd;
+
 	}
+}
+
+/**
+ * Activate a particular control
+ */
+ControlsCore.activateControl = function( control ) {
+
+	// Deactivate previous control
+	if (this.activeControl)
+		this.deactivateLastControl();
+
+	// Activate
+	this.gimbal = control.chainGimbal( this.gimbal );
+	this.activeControl = control;
+	this.activeControl.enable();
+
+	// Add on scene on the correct order
+	this.scene.add( this.gimbal );
+
+}
+
+/**
+ * Deactivate last control
+ */
+ControlsCore.deactivateLastControl = function() {
+	if (!this.activeControl) return;
+
+	// Restore last control gimbal
+	this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+	this.activeControl.disable();
+	this.activeControl = undefined;
+
+	// Add on scene on the correct order
+	this.scene.add( this.gimbal );
+
 }
 
 /**
@@ -85,16 +167,29 @@ ControlsCore.setHMD = function( hmd ) {
 ControlsCore.setPaused = function( paused ) {
 	// Disable everything
 	if (this.paused = paused) {
+		
+		// Disable all controls
 		this.vrControl.disable();
 		this.mouseControl.disable();
 
+		// Disable active control
+		if (this.activeControl)
+			this.activeControl.disable();
+
 	// Enable appropriate component
 	} else {
+
+		// Enable appropriate camera control
 		if (this.hmd) {
 			this.vrControl.enable();
 		} else {
 			this.mouseControl.enable();
 		}
+
+		// Enable active control
+		if (this.activeControl)
+			this.activeControl.enable();
+
 	}
 }
 
@@ -105,7 +200,7 @@ ControlsCore.followPath = function( curve, options ) {
 
 	// Setup and enable path follower
 	this.pathFollower.followPath( curve, options );
-	this.pathFollower.enable();
+	this.activateControl( this.pathFollower );
 
 }
 
@@ -117,25 +212,26 @@ ControlsCore.onUpdate = function( delta ) {
 	// Update everything
 	this.vrControl.triggerUpdate( delta );
 	this.mouseControl.triggerUpdate( delta );
-	this.pathFollower.triggerUpdate( delta );
+	if (this.activeControl)
+		this.activeControl.triggerUpdate( delta );
 
-	// Reset position
-	var camera = VideoCore.viewport.camera;
-	camera.position.copy(this.zeroPosition);
-	camera.rotation.copy(this.zeroRotation);
-	camera.updateMatrix();
+	// // Reset position
+	// var camera = VideoCore.viewport.camera;
+	// camera.position.copy(this.zeroPosition);
+	// camera.rotation.copy(this.zeroRotation);
+	// camera.updateMatrix();
 
-	// Apply translation
-	for (var i=0, l=this.controls.length; i<l; ++i) {
-		if (!this.controls[i].enabled) continue;
-		camera.applyMatrix( this.controls[i].rotationMatrix );
-	}
+	// // Apply translation
+	// for (var i=0, l=this.controls.length; i<l; ++i) {
+	// 	if (!this.controls[i].enabled) continue;
+	// 	camera.applyMatrix( this.controls[i].rotationMatrix );
+	// }
 
-	// Apply rotation
-	for (var i=0, l=this.controls.length; i<l; ++i) {
-		if (!this.controls[i].enabled) continue;
-		camera.applyMatrix( this.controls[i].translationMatrix );
-	}
+	// // Apply rotation
+	// for (var i=0, l=this.controls.length; i<l; ++i) {
+	// 	if (!this.controls[i].enabled) continue;
+	// 	camera.applyMatrix( this.controls[i].translationMatrix );
+	// }
 
 }
 

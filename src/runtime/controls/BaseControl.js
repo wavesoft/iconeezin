@@ -31,16 +31,31 @@ var BaseControl = function( ) {
 	this.enabled = false;
 
 	/**
-	 * Translation matrix
+	 * Gimbal object
 	 */
-	this.translationMatrix = new THREE.Matrix4();
-
-	/**
-	 * Quaternion
-	 */
-	this.rotationMatrix = new THREE.Matrix4();
+	this.gimbal = new THREE.Object3D();
 
 }
+
+/**
+ * Chain given object in our gimbal and return the object
+ */
+BaseControl.prototype.chainGimbal = function( gimbal ) {
+	this.gimbal.add( gimbal );
+	return this.gimbal;
+};
+
+/**
+ * Unchained the gimbal object and return it
+ */
+BaseControl.prototype.unchainGimbal = function( gimbal ) {
+	if (gimbal !== this.gimbal)
+		throw "Trying to unchain a gimbal at wrong index!";
+
+	var child = this.gimbal.children[0];
+	this.gimbal.remove( child );
+	return child;
+};
 
 /**
  * Disable control
