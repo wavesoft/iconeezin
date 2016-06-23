@@ -54596,6 +54596,20 @@ var Iconeezin =
 	}
 
 	/**
+	 * Replace an existing path follower
+	 */
+	ControlsCore.replaceFollowPath = function( curve ) {
+
+		// Setup and enable path follower
+		if (this.activeControl === this.pathFollower) {
+			this.pathFollower.replacePath( curve );
+		} else {
+			console.error("Replacing path on a path follower, but path follower is not active!");
+		}
+
+	}
+
+	/**
 	 * Update all the camera controls
 	 */
 	ControlsCore.onUpdate = function( delta ) {
@@ -55000,10 +55014,14 @@ var Iconeezin =
 
 		// Path properties
 		this.path = undefined;
-		this.callback = undefined;
-		this.speed = 0.0;
-		this.matrix = new THREE.Matrix4();
+		this.opt = {};
+
+		// Lerping details
+		this.j_speed = 0.0;
 		this.j = 0;
+
+		// Intermediate object were to apply changes
+		this.target = new THREE.Object3D();
 
 	}
 
@@ -55018,20 +55036,17 @@ var Iconeezin =
 	PathFollower.prototype.followPath = function( path, options ) {
 
 		// Prepare options
-		var opt = options || {},
-			speed = opt.speed || 0.01;
+		this.opt = options || {}
+		this.opt.speed = this.opt.speed || 0.01;
 
 		// Calculate speed
 		var len = path.getLength();
-		this.speed = speed / len;
+		this.j_speed = this.opt.speed / len;
 
 		// Keep refernces
 		this.path = path;
-		this.callback = opt.callback;
-		if (opt.matrix) {
-			this.matrix.copy( opt.matrix );
-		} else {
-			this.matrix.identity();
+		if (this.opt.matrix === undefined) {
+			this.opt.matrix = new THREE.Matrix4();
 		}
 
 		// Start path
@@ -55041,16 +55056,30 @@ var Iconeezin =
 	};
 
 	/**
+	 * Replace the path on a progressing animation
+	 */
+	PathFollower.prototype.replacePath = function( path ) {
+
+		// Replace path
+		this.path = path;
+
+		// Recalculate speed
+		var len = path.getLength();
+		this.j_speed = this.opt.speed / len;
+
+	}
+
+	/**
 	 * Update 
 	 */
 	PathFollower.prototype.onUpdate = function( delta ) {
 
 		// Get point
-		var p_pos = this.path.getPointAt(this.j).applyMatrix4(this.matrix),
-			p_dir = this.path.getTangentAt(this.j).applyMatrix4(this.matrix).normalize();
+		var p_pos = this.path.getPointAt(this.j).applyMatrix4(this.opt.matrix),
+			p_dir = this.path.getTangentAt(this.j).applyMatrix4(this.opt.matrix).normalize();
 
 		// Update position
-		this.gimbal.position.copy( p_pos );
+		this.target.position.copy( p_pos );
 
 		// Find the binormal vector
 		vec.crossVectors( p_dir, up );
@@ -55059,16 +55088,21 @@ var Iconeezin =
 		vec.crossVectors( vec, p_dir );
 
 		// Update direction
+		this.target.up = p_dir;
+		this.target.lookAt( p_pos.add( vec ) );
+
+		// Ease-apply updates to gimbal
 		this.gimbal.up = p_dir;
-		this.gimbal.lookAt( p_pos.add( vec ) );
+		this.gimbal.position.lerp( this.target.position, 0.1 );
+		this.gimbal.quaternion.slerp( this.target.quaternion, 0.1 );
 
 		// Move forward
-		this.j += this.speed * delta / 1000;
+		this.j += this.j_speed * delta / 1000;
 		if (this.j > 1.0)
 			this.j = 1.0;
 
 		// Disable either through callback, or after we completed the animation
-		if (this.callback) this.callback(this.j);
+		if (this.opt.callback) this.opt.callback(this.j);
 		if ((this.j >= 1) && (this.enabled))
 			this.disable();
 

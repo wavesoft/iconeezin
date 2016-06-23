@@ -217,6 +217,20 @@ ControlsCore.followPath = function( curve, options ) {
 }
 
 /**
+ * Replace an existing path follower
+ */
+ControlsCore.replaceFollowPath = function( curve ) {
+
+	// Setup and enable path follower
+	if (this.activeControl === this.pathFollower) {
+		this.pathFollower.replacePath( curve );
+	} else {
+		console.error("Replacing path on a path follower, but path follower is not active!");
+	}
+
+}
+
+/**
  * Update all the camera controls
  */
 ControlsCore.onUpdate = function( delta ) {
