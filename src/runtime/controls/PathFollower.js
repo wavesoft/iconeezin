@@ -98,8 +98,8 @@ PathFollower.prototype.replacePath = function( path ) {
 PathFollower.prototype.onUpdate = function( delta ) {
 
 	// Get point
-	var p_pos = this.path.getPointAt(this.j).applyMatrix4(this.opt.matrix),
-		p_dir = this.path.getTangentAt(this.j).applyMatrix4(this.opt.matrix).normalize();
+	var p_pos = this.path.getPointAt(this.j),
+		p_dir = this.path.getTangentAt(this.j).normalize();
 
 	// Update position
 	this.target.position.copy( p_pos );
@@ -113,6 +113,10 @@ PathFollower.prototype.onUpdate = function( delta ) {
 	// Update direction
 	this.target.up = p_dir;
 	this.target.lookAt( p_pos.add( vec ) );
+
+	// Apply matrix
+	this.target.updateMatrix();
+	this.target.applyMatrix(this.opt.matrix);
 
 	// Ease-apply updates to gimbal
 	this.gimbal.up = p_dir;

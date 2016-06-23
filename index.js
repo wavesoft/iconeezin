@@ -31,6 +31,7 @@ var AudioCore = require("./src/runtime/core/AudioCore");
 var VideoCore = require("./src/runtime/core/VideoCore");
 var ControlsCore = require("./src/runtime/core/ControlsCore");
 var ExperimentsCore = require("./src/runtime/core/ExperimentsCore");
+var InteractionCore = require("./src/runtime/core/InteractionCore");
 
 /**
  * Expose useful parts of the runtime API
@@ -52,6 +53,7 @@ module.exports = {
 		'Video': VideoCore,
 		'Controls': ControlsCore,
 		'Experiments': ExperimentsCore,
+		'Interaction': InteractionCore,
 
 		// Initialize helper
 		'initialize': function( viewportDOM ) {
@@ -61,6 +63,7 @@ module.exports = {
 			AudioCore.initialize(),
 			ControlsCore.initialize();
 			ExperimentsCore.initialize();
+			InteractionCore.initialize();
 
 			// Register for some critical DOM events
 			var handleFullScreenChange = function() {
