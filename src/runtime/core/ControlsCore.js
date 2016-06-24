@@ -91,7 +91,7 @@ ControlsCore.setHMD = function( hmd ) {
 				if (this.activeControl) {
 					this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
 				}
-				this.gimbal = this.mouseControl.unchainGimbal();
+				this.gimbal = this.mouseControl.unchainGimbal( this.gimbal );
 				this.mouseControl.disable();
 			}
 
@@ -114,7 +114,7 @@ ControlsCore.setHMD = function( hmd ) {
 				if (this.activeControl) {
 					this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
 				}
-				this.gimbal = this.vrControl.unchainGimbal();
+				this.gimbal = this.vrControl.unchainGimbal( this.gimbal );
 				this.vrControl.disable();
 			}
 

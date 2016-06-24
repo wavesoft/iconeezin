@@ -161,7 +161,7 @@ MouseControl.prototype.setResetTimeout = function( timeout, speed ) {
 }
 
 /**
- * Disable control
+ * Update control
  */
 MouseControl.prototype.onUpdate = function( delta ) {
 

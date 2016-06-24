@@ -77,7 +77,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 	} else {
 
 		// Load experiment
-		Loaders.loadExperiment( experiment, ( err, inst ) => {
+		Loaders.loadExperiment( experiment, (function ( err, inst ) {
 
 			// Handle errors
 			if (err) {
@@ -93,7 +93,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 			}
 
-		});
+		}).bind(this) );
 
 	}
 

@@ -20,7 +20,6 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var $ = require('jquery');
 var Viewport = require("../ui/Viewport");
 
 /**
@@ -42,6 +41,9 @@ var VideoCore = {};
  */
 VideoCore.initialize = function( rootDOM ) {
 
+	// Init properties
+	this.hmd = false;
+
 	// Keep a reference to the root DOM
 	this.rootDOM = rootDOM;
 
@@ -49,12 +51,12 @@ VideoCore.initialize = function( rootDOM ) {
 	this.viewport = new Viewport( rootDOM, {} );
 
 	// Listen for window resize events
-	$(window).resize(() => {
+	window.addEventListener( 'resize', (function() {
 
 		// Resize viewport
-		if (this.viewport) this.viewport.resize(); 
+		this.viewport.resize();
 
-	});
+	}).bind(this), false );
 
 }
 
@@ -64,12 +66,37 @@ VideoCore.initialize = function( rootDOM ) {
 VideoCore.setPaused = function( enabled ) {
 	paused = enabled;
 	this.viewport.setPaused( enabled );
+
+	if (!enabled) {
+
+		if (this.hmd && (navigator.getVRDisplays !== undefined || navigator.getVRDevices !== undefined)) {
+
+			// Enter in presentation mode
+			this.viewport.hmdEffect.requestPresent();
+
+		} else {
+
+			// Enable full-screen when switching state
+			if (this.rootDOM.requestFullscreen) {
+				this.rootDOM.requestFullscreen();
+			} else if (this.rootDOM.webkitRequestFullscreen) {
+				this.rootDOM.webkitRequestFullscreen();
+			} else if (this.rootDOM.mozRequestFullScreen) {
+				this.rootDOM.mozRequestFullScreen();
+			} else if (this.rootDOM.msRequestFullscreen) {
+				this.rootDOM.msRequestFullscreen();
+			}
+
+		}
+
+	}
 }
 
 /**
  * Start/Stop video animation
  */
 VideoCore.setHMD = function( enabled ) {
+	this.hmd = enabled;
 	this.viewport.setHMD( enabled );
 }
 
@@ -97,7 +124,7 @@ VideoCore.showMessage = function( title, body, timeout ) {
 	clearInterval(timeoutTimer);
 	if (timeout) {
 		timeoutVal = timeout;
-		timeoutTimer = setInterval(() => {
+		timeoutTimer = setInterval((function() {
 
 			// Pause when paused
 			if (paused) return;
@@ -108,7 +135,7 @@ VideoCore.showMessage = function( title, body, timeout ) {
 				clearInterval(timeoutTimer);
 			}
 
-		}, 1000);
+		}).bind(this), 1000);
 	}
 
 }

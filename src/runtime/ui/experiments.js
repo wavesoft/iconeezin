@@ -54,28 +54,28 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
 	if (this.activeExperiment === experiment)
 		return;
 	
-	var do_fadein = () => {
+	var do_fadein = (function() {
 		// Will show active
-		this.activeExperiment.onWillShow(() => {
+		this.activeExperiment.onWillShow((function() {
 			// Fade in active
-			this.fadeIn( this.activeExperiment, () =>  {
+			this.fadeIn( this.activeExperiment, (function() {
 				// We are shown
 				this.activeExperiment.onShown();
 				if (cb) cb();
-			});
-		});
-	};
+			}).bind(this));
+		}).bind(this));
+	}).bind(this);
 
-	var do_align = () => {
+	var do_align = (function() {
 		this.alignExperiment( this.activeExperiment );
 		do_fadein();
-	};
+	}).bind(this);
 
-	var do_fadeout = () => {
+	var do_fadeout = (function() {
 		// Will hide previous
-		this.previousExperiment.onWillHide(() =>  {
+		this.previousExperiment.onWillHide((function() {
 			// Fade out previous
-			this.fadeOut( this.previousExperiment, () =>  {
+			this.fadeOut( this.previousExperiment, (function() {
 
 				// Remove previous experiment from scene
 				this.viewport.scene.add( this.previousExperiment );
@@ -84,9 +84,9 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
 				this.previousExperiment.onHidden();
 				this.previousExperiment = null;
 				do_align();
-			});
-		});
-	};
+			}).bind(this));
+		}).bind(this));
+	}).bind(this);
 
 	// Shift experiments
 	this.previousExperiment = this.activeExperiment;
@@ -185,10 +185,9 @@ Experiments.prototype.updateState = function() {
 	if (!this.activeExperiment) return;
 
 	// Extract interactive objects
-	this.activeExperiment.traverse((e) => {
+	this.activeExperiment.traverse((function(e) {
 
-	})
-
+	}).bind(this));
 
 }
 

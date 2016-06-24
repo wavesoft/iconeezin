@@ -22,17 +22,39 @@
 
 var BaseControl = require('./BaseControl');
 
+require("three/examples/js/controls/VRControls");
+
 /**
  * Camera path locks camera into a 3D curve
  */
 var VRControls = function( ) {
 	BaseControl.call( this );
+
+	// Control the gimbal with VR controls
+	this.controls = new THREE.VRControls( this.gimbal );
+	this.controls.userHeight = 2;
+
 }
 
 /**
  * Subclass from base controls
  */
 VRControls.prototype = Object.create( BaseControl.prototype );
+
+/**
+ * Update control
+ */
+VRControls.prototype.onUpdate = function( delta ) {
+	this.controls.update();	
+
+	// Fix order
+	this.gimbal.quaternion.set(
+			this.gimbal.quaternion.x,
+			this.gimbal.quaternion.z,
+			this.gimbal.quaternion.y,
+			this.gimbal.quaternion.w
+		);
+}
 
 // Export
 module.exports = VRControls;

@@ -20,13 +20,10 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var $ = require("jquery");
-// var THREE = require("three-extras");
 var THREE = require("three");
 global.THREE = THREE;
 require("three/examples/js/WebVR");
 require("three/examples/js/effects/VREffect");
-require("three/examples/js/controls/VRControls");
 
 /**
  * Our viewport is where everything gets rendered
@@ -48,7 +45,7 @@ var Viewport = function( viewportDOM, config ) {
 	/////////////////////////////////////////////////////////////
 
 	// Initialize properties
-	this.viewportDOM = $(viewportDOM);
+	this.viewportDOM = viewportDOM;
 	this.paused = true;
 	this.useHMD = false;
 	this.experiments = [];
@@ -65,17 +62,13 @@ var Viewport = function( viewportDOM, config ) {
 	this.camera.up.set( 0.0, 0.0, 1.0 );
 	this.camera.lookAt( new THREE.Vector3( 0.0, 1.0, 3.0 ) );
 
-	// // Make the system Z-Up
-	// this.scene.rotateX(Math.PI/2);
-	// this.scene.rotateY(Math.PI);
-
 	// Initialize the renderer
 	this.renderer = new THREE.WebGLRenderer({ antialias: true });
-	this.viewportDOM[0].appendChild( this.renderer.domElement );
+	this.renderer.setPixelRatio( window.devicePixelRatio );
+	this.viewportDOM.appendChild( this.renderer.domElement );
 
 	// Initialize HMD effect and controls
-	this.hmdEffect = new THREE.VREffect( this.renderer, { worldScale: 1 } );
-	this.hmdControls = new THREE.VRControls( this.camera );
+	this.hmdEffect = new THREE.VREffect( this.renderer );
 
 	// Initialize the sizes (apply actual size)
 	this.resize();
@@ -97,8 +90,8 @@ var Viewport = function( viewportDOM, config ) {
 Viewport.prototype.resize = function() {
 
 	// Get size of the viewport
-	var width = this.viewportDOM.width(),
-		height = this.viewportDOM.height();
+	var width = this.viewportDOM.offsetWidth,
+		height = this.viewportDOM.offsetHeight;
 
 	// Update camera
 	this.camera.aspect = width / height;
@@ -164,11 +157,6 @@ Viewport.prototype.render = function() {
 		// Update experiments
 		for (var i=0; i<this.experiments.length; i++) {
 			this.experiments[i].onUpdate( d );
-		}
-
-		// If using HMD, update camera position
-		if (this.useHMD) {
-			this.hmdControls.update();
 		}
 
 	}

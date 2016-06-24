@@ -177,11 +177,11 @@ SightInteraction.prototype.updateFromScene = function() {
 
 	// Mouse out of last intersecting
 	this.interactiveObjects = [];
-	this.viewport.scene.traverse((e) => {
+	this.viewport.scene.traverse((function(e) {
 		if (e.__interact__ !== undefined) {
 			this.interactiveObjects.push(e);
 		}
-	});
+	}).bind(this));
 
 	console.log("Updated interactive objects:", this.interactiveObjects);
 
