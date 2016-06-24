@@ -56,10 +56,10 @@ module.exports = {
 		'Interaction': InteractionCore,
 
 		// Initialize helper
-		'initialize': function( viewportDOM ) {
+		'initialize': function( viewportDOM, canvasDOM ) {
 
 			// Initialize core components
-			VideoCore.initialize( viewportDOM );
+			VideoCore.initialize( viewportDOM, canvasDOM );
 			AudioCore.initialize(),
 			ControlsCore.initialize();
 			ExperimentsCore.initialize();

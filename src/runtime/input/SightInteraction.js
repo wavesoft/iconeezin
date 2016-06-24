@@ -20,6 +20,7 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+var VideoCore = require("../core/VideoCore");
 var ThreeAPI = require("../../api/Three");
 
 const C_DEFAULT = new THREE.Color( 0xffffff );
@@ -100,6 +101,7 @@ var SightInteraction = function( viewport ) {
 	// Interactive objects
 	this.interactiveObjects = [];
 	this.hoverObject = null;
+	this.hoverInteraction = null;
 	this.gazeTimer = 0;
 
 	// Register render listener
@@ -191,26 +193,26 @@ SightInteraction.prototype.updateFromScene = function() {
  * Check interactions
  */
 SightInteraction.prototype.handleMouseDown = function( event ) {
-	if (!this.hoverObject) return;
-	if (this.hoverObject.__interact__.onMouseDown)
-		this.hoverObject.__interact__.onMouseDown( event );
+	if (!this.hoverInteraction) return;
+	if (this.hoverInteraction.onMouseDown)
+		this.hoverInteraction.onMouseDown( event );
 }
 SightInteraction.prototype.handleMouseUp = function( event ) {
-	if (!this.hoverObject) return;
-	if (this.hoverObject.__interact__.onMouseUp)
-		this.hoverObject.__interact__.onMouseUp( event );
+	if (!this.hoverInteraction) return;
+	if (this.hoverInteraction.onMouseUp)
+		this.hoverInteraction.onMouseUp( event );
 }
 SightInteraction.prototype.handleClick = function( event ) {
-	if (!this.hoverObject) return;
+	if (!this.hoverInteraction) return;
 
 	// Trigger click event
-	if (this.hoverObject.__interact__.onClick)
-		this.hoverObject.__interact__.onClick();
+	if (this.hoverInteraction.onClick)
+		this.hoverInteraction.onClick();
 
 	// Trigger interact event
 	this.playConfirmation();
-	if (this.hoverObject.__interact__.onInteract)
-		this.hoverObject.__interact__.onInteract();
+	if (this.hoverInteraction.onInteract)
+		this.hoverInteraction.onInteract();
 
 }
 
@@ -231,23 +233,27 @@ SightInteraction.prototype.onRender = function( delta ) {
 			if (this.hoverObject) {
 
 				// Hadle mouse out
-				if (this.hoverObject.__interact__.onMouseOut)
-					this.hoverObject.__interact__.onMouseOut();
+				if (this.hoverInteraction.onMouseOut)
+					this.hoverInteraction.onMouseOut();
 
 				// Reset highlight
 				this.setHighlight(0);
+
+				// Hide interaction label
+				VideoCore.hideInteractionLabel();
 
 			}
 
 			// Focus new object
 			this.hoverObject = intersects[0].object;
+			this.hoverInteraction = this.hoverObject.__interact__;
 
 			// Handle mouse over
-			if (this.hoverObject.__interact__.onMouseOver)
-				this.hoverObject.__interact__.onMouseOver();
+			if (this.hoverInteraction.onMouseOver)
+				this.hoverInteraction.onMouseOver();
 
 			// Highlight if not gazing
-			if ( this.hoverObject.__interact__.gaze ) {
+			if ( this.hoverInteraction.gaze ) {
 
 				// Reset gaze state
 				this.gazeTimer = 0;
@@ -260,6 +266,9 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 			}
 
+			// Show interaction label
+			if (this.hoverInteraction.title)
+				VideoCore.showInteractionLabel( this.hoverInteraction.title );
 
 		} else {
 
@@ -277,8 +286,8 @@ SightInteraction.prototype.onRender = function( delta ) {
 					this.playConfirmation();
 
 					// Call interaction function
-					if (this.hoverObject.__interact__.onInteract)
-						this.hoverObject.__interact__.onInteract();
+					if (this.hoverInteraction.onInteract)
+						this.hoverInteraction.onInteract();
 
 				}
 
@@ -289,13 +298,16 @@ SightInteraction.prototype.onRender = function( delta ) {
 		if (this.hoverObject) {
 
 			// Hadle mouse out
-			if (this.hoverObject.__interact__.onMouseOut)
-				this.hoverObject.__interact__.onMouseOut();
+			if (this.hoverInteraction.onMouseOut)
+				this.hoverInteraction.onMouseOut();
 			this.hoverObject = null;
 
 			// Reset gaze timer
 			this.gazeTimer = 0;
 			this.setHighlight(0);
+
+			// Hide interaction label
+			VideoCore.hideInteractionLabel();
 
 		}
 	}

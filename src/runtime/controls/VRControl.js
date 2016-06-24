@@ -48,12 +48,12 @@ VRControls.prototype.onUpdate = function( delta ) {
 	this.controls.update();	
 
 	// Fix order
-	this.gimbal.quaternion.set(
-			this.gimbal.quaternion.x,
-			this.gimbal.quaternion.z,
-			this.gimbal.quaternion.y,
-			this.gimbal.quaternion.w
-		);
+	// this.gimbal.quaternion.set(
+	// 		this.gimbal.quaternion.x,
+	// 		this.gimbal.quaternion.z,
+	// 		this.gimbal.quaternion.y,
+	// 		this.gimbal.quaternion.w
+	// 	);
 }
 
 // Export

@@ -21,6 +21,7 @@
  */
 
 var THREE = require("three");
+var InteractionCore = require("../runtime/core/InteractionCore");
 
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
@@ -121,35 +122,6 @@ InteractiveObject3D.prototype.onInteract = function( e ) {
 
 };
 
-/**
- * Helper function to expose only onInteract
- */
-var makeInteractive = function( object, options ) {
-
-	// Prepare interaction options
-	var opt = {};
-	if (typeof(options) == 'object') {
-		opt.onMouseOver = options.onMouseOver;
-		opt.onMouseOut = options.onMouseOut;
-		opt.onMouseDown = options.onMouseDown;
-		opt.onMouseUp = options.onMouseUp;
-		opt.onClick = options.onClick;
-		opt.onInteract = options.onInteract;
-		opt.gaze = (options.gaze === undefined) ? true : options.gaze;
-	} else {
-		opt.onInteract = options;
-		opt.gaze = true;
-	}
-
-	// Define interact options
-	Object.defineProperty(
-		object, "__interact__", {
-			enumerable: false,
-			value: opt,
-		}
-	);
-}
-
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
@@ -160,5 +132,5 @@ var makeInteractive = function( object, options ) {
 module.exports = {
 	'AnimatedObject3D': AnimatedObject3D,
 	'InteractiveObject3D': InteractiveObject3D,
-	'makeInteractive': makeInteractive,
+	'makeInteractive': InteractionCore.makeInteractive,
 };

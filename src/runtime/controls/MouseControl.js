@@ -24,6 +24,8 @@ var VideoCore = require('../core/VideoCore');
 var BaseControl = require('./BaseControl');
 
 const PI_2 = Math.PI / 2;
+const RESET_NORMAL_SPEED = 0.01;
+const RESET_FAST_SPEED = 0.25;
 
 /**
  * Camera path locks camera into a 3D curve
@@ -61,6 +63,7 @@ var MouseControl = function( ) {
 	this.resetActive = false;
 	this.resetTimeout = 2000;
 	this.resetTimer = 0;
+	this.resetFast = false;
 
 }
 
@@ -157,7 +160,15 @@ MouseControl.prototype.handleMouseMove = function( event ) {
  */
 MouseControl.prototype.setResetTimeout = function( timeout, speed ) {
 	this.resetTimeout = timeout;
-	this.resetSpeed = speed || 0.01;
+	this.resetSpeed = speed || RESET_NORMAL_SPEED;
+}
+
+/**
+ * Trigger a view reset
+ */
+MouseControl.prototype.resetView = function() {
+	this.resetTimer = this.resetTimeout;
+	this.resetFast = true;
 }
 
 /**
@@ -176,12 +187,17 @@ MouseControl.prototype.onUpdate = function( delta ) {
 		if (this.resetTimer > this.resetTimeout) {
 
 			// Apply lerp to self, creating a ease-out effect
-			var a = (this.resetTimer - this.resetTimeout) / 1000 * this.resetSpeed;
+			var a = (this.resetTimer - this.resetTimeout) / 1000 * ( this.resetFast ? RESET_FAST_SPEED : this.resetSpeed );
 			this.delta.lerp( this.zero, a );
 
 			// Stop when reached close to zero
 			if (this.delta.length() < 0.001) {
 				this.resetActive = false;
+
+				// Reset fast flag
+				if (this.resetFast)
+					this.resetFast = false;
+
 			}
 
 		}

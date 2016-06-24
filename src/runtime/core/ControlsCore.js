@@ -231,6 +231,13 @@ ControlsCore.replaceFollowPath = function( curve ) {
 }
 
 /**
+ * Re-orient mouse view
+ */
+ControlsCore.reorientMouseView = function() {
+	this.mouseControl.resetView();
+}
+
+/**
  * Update all the camera controls
  */
 ControlsCore.onUpdate = function( delta ) {
