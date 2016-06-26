@@ -81,7 +81,8 @@ var Viewport = function( viewportDOM, config ) {
 
 	// Create label
 	this.label = new Label("");
-	this.label.position.set( 0, 0.1, -1.0 );
+	this.label.position.set( 0, 0.3, -3.5 );
+	this.label.scale.set( 4, 4, 1 );
 	this.camera.add( this.label );
 
 	// ==== DEBUG =====
