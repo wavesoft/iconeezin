@@ -96,6 +96,7 @@ module.exports = {
 		'setPaused': function( enabled ) {
 			VideoCore.setPaused( enabled );
 			ControlsCore.setPaused( enabled );
+			AudioCore.setGlobalMute( enabled );
 		},
 
 	},

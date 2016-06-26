@@ -20,6 +20,9 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+var THREE = require("three");
+var AudioCore = require("../runtime/core/AudioCore");
+
 /**
  * An audio file is the source fo audio
  */
@@ -27,6 +30,92 @@ var AudioFile = function( url ) {
 
 	// Url to the audio file
 	this.url = url || "";
+
+	// The sound object
+	this.sound = null;
+
+	// The audio buffer
+	this.buffer = null;
+};
+
+/**
+ * Load audio URL to the buffer
+ */
+AudioFile.prototype.load = function( cb ) {
+
+	// Fire immediately if we already have the buffer
+	if (this.buffer) {
+		if (cb) cb(this.buffer);
+		return;
+	}
+
+	// Load audio buffer
+	AudioCore.audioLoader.load( this.url, (function( buffer ) {
+		this.buffer = buffer;
+		if (cb) cb(buffer);
+	}).bind(this));
+
+}
+
+/**
+ * Create an audio instance, don't start playing 
+ */
+AudioFile.prototype.create = function() {
+
+	// Create an audio object
+	var sound = new THREE.Audio( AudioCore.listener );
+
+	// Load buffer & play
+	this.load(function( buffer ) {
+		sound.setBuffer( buffer );
+		sound.play();
+	});
+
+	// Return sound object
+	return sound;
+
+};
+
+/**
+ * Create a positional audio object
+ */
+AudioFile.prototype.createPositional = function( loop ) {
+
+	// Create a new positional audio
+	var sound = new THREE.PositionalAudio( listener );
+
+	// Set loop
+	sound.setLoop( loop === undefined ? false : true );
+
+	// Load buffer & play
+	this.load(function( buffer ) {
+		sound.setBuffer( buffer );
+	});
+
+	// Return sound object
+	return sound;
+
+};
+
+/**
+ * Shorthand to create and play
+ */
+AudioFile.prototype.play = function( loop ) {
+
+	// Create an audio object
+	var sound = new THREE.Audio( AudioCore.listener );
+
+	// Set loop
+	sound.setLoop( loop === undefined ? false : true );
+
+	// Load buffer & play
+	this.load(function( buffer ) {
+		sound.setBuffer( buffer );
+		sound.play();
+	});
+
+	// Return sound object
+	return sound;
 
 };
 
