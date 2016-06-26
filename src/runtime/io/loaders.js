@@ -57,10 +57,10 @@ Loaders.initialize = function() {
 Loaders.loadExperiment = function( bundle, callback ) {
 
 	// Start loading the source bundle
-	console.time("source["+bundle+"]");
+	console.time("bundle["+bundle+"]");
 	this.jbbLoader.add( bundle + ".jbb" );
 	this.jbbLoader.load(function( err, db ) {
-		console.timeEnd("source["+bundle+"]");
+		console.timeEnd("bundle["+bundle+"]");
 
 		// Handle errors
 		if (err) {

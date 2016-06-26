@@ -28,6 +28,9 @@ const C_SELECT = new THREE.Color( 0x0066ff );
 const C_ERROR = new THREE.Color( 0xcc0000 );
 const CENTER = new THREE.Vector2(0,0);
 
+const RING_SIZE = 0.02;
+const RING_THCKNESS = 0.02;
+
 const SELECT_DURATION = 0.25;
 const GAZE_DURATION = 0.75;
 
@@ -47,11 +50,14 @@ var SightInteraction = function( viewport ) {
 	for (var i=0; i<ANIMATION_STEPS-1; i++) {
 		var ofs = Math.PI*2*(i/ANIMATION_STEPS);
 		this.animGeometries.push(
-			new THREE.RingGeometry( 0.02, 0.04, 20, 1, 
-				Math.PI/2-ofs ,ofs )
+			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 20, 
+				1, Math.PI/2-ofs ,ofs )
 		);
 	}
-	this.animGeometries.push( new THREE.RingGeometry( 0.02, 0.04, 20 ) );
+	// Add the final full-ring geometry
+	this.animGeometries.push( 
+		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 20 ) 
+	);
 
 	// Create a cursor
 	this.cursor = new THREE.Mesh(

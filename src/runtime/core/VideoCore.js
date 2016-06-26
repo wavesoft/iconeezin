@@ -149,38 +149,8 @@ VideoCore.setPaused = function( enabled ) {
 
 		if (this.hmd) {
 
-			// Grab a VR device
-			this.grabVR((function( device, error ) {
-
-				// If we had an error, abort
-				if (!device) {
-					VideoCore.showError( "VR Error", error );
-					fullScreen = true;
-					
-				} else {
-
-					// Hide possible error message
-					VideoCore.hideMessage();
-
-					// Request presentation mode
-					if (!this.vrDeprecatedAPI) {
-
-						// Use new API
-						alert('Gor Device (New)');
-						this.vrDevice.requestPresent( [ { source: VideoCore.rootDOM } ] );
-
-					} else {
-
-						// Use legacy API
-						alert('Gor Device (Old)');
-						fullScreen = { vrDisplay: this.vrDevice };
-
-					}
-
-
-				}
-
-			}).bind(this));
+			// Request presentation from the HMD effect
+			VideoCore.viewport.hmdEffect.requestPresent();
 
 		} else {
 
@@ -296,16 +266,14 @@ VideoCore.hideMessage = function() {
  * Show an interaction label
  */
 VideoCore.showInteractionLabel = function( label ) {
-	if (!interactionFn) return;
-	interactionFn( label );
+	VideoCore.viewport.label.text = label;
 }
 
 /**
  * Hide an interaction label
  */
 VideoCore.hideInteractionLabel = function() {
-	if (!interactionFn) return;
-	interactionFn( null );
+	VideoCore.viewport.label.text = "";
 }
 
 // Export

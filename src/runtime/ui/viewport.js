@@ -21,6 +21,8 @@
  */
 
 var THREE = require("three");
+var Label = require("./Label");
+
 global.THREE = THREE;
 require("three/examples/js/WebVR");
 require("three/examples/js/effects/VREffect");
@@ -77,6 +79,10 @@ var Viewport = function( viewportDOM, config ) {
 	var axisHelper = new THREE.AxisHelper( 5 );
 	this.scene.add( axisHelper );
 
+	// Create label
+	this.label = new Label("");
+	this.label.position.set( 0, 0.1, -1.0 );
+	this.camera.add( this.label );
 
 	// ==== DEBUG =====
 	window.vp = this;
