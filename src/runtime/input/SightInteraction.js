@@ -21,6 +21,7 @@
  */
 
 var VideoCore = require("../core/VideoCore");
+var TrackingCore = require("../core/TrackingCore");
 var ThreeAPI = require("../../api/Three");
 
 const C_DEFAULT = new THREE.Color( 0xffffff );
@@ -245,6 +246,11 @@ SightInteraction.prototype.onRender = function( delta ) {
 				if (this.hoverInteraction.onMouseOut)
 					this.hoverInteraction.onMouseOut();
 
+				// Stop tracking
+				if (this.hoverInteraction.trackID) {
+					TrackingCore.trackEnd('interact.gaze');
+				}
+
 				// Reset highlight
 				this.setHighlight(0);
 
@@ -260,6 +266,11 @@ SightInteraction.prototype.onRender = function( delta ) {
 			// Handle mouse over
 			if (this.hoverInteraction.onMouseOver)
 				this.hoverInteraction.onMouseOver();
+
+			// Start tracking
+			if (this.hoverInteraction.trackID) {
+				TrackingCore.trackStart('interact.gaze', { 'id': this.hoverInteraction.trackID });
+			}
 
 			// Highlight if not gazing
 			if ( this.hoverInteraction.gaze ) {
@@ -309,9 +320,14 @@ SightInteraction.prototype.onRender = function( delta ) {
 			// Hadle mouse out
 			if (this.hoverInteraction.onMouseOut)
 				this.hoverInteraction.onMouseOut();
-			this.hoverObject = null;
 
-			// Reset gaze timer
+			// Stop tracking
+			if (this.hoverInteraction.trackID) {
+				TrackingCore.trackEnd('interact.gaze');
+			}
+
+			// Reset properties
+			this.hoverObject = null;
 			this.gazeTimer = 0;
 			this.setHighlight(0);
 
