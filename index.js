@@ -30,6 +30,7 @@ var IconeezinAPI = require('./api');
 var AudioCore = require("./src/runtime/core/AudioCore");
 var VideoCore = require("./src/runtime/core/VideoCore");
 var ControlsCore = require("./src/runtime/core/ControlsCore");
+var TrackingCore = require("./src/runtime/core/TrackingCore");
 var ExperimentsCore = require("./src/runtime/core/ExperimentsCore");
 var InteractionCore = require("./src/runtime/core/InteractionCore");
 
@@ -52,6 +53,7 @@ module.exports = {
 		'Audio': AudioCore,
 		'Video': VideoCore,
 		'Controls': ControlsCore,
+		'Tracking': TrackingCore,
 		'Experiments': ExperimentsCore,
 		'Interaction': InteractionCore,
 
@@ -62,6 +64,7 @@ module.exports = {
 			VideoCore.initialize( viewportDOM, canvasDOM );
 			AudioCore.initialize(),
 			ControlsCore.initialize();
+			TrackingCore.initialize();
 			ExperimentsCore.initialize();
 			InteractionCore.initialize();
 
@@ -96,6 +99,7 @@ module.exports = {
 		'setPaused': function( enabled ) {
 			VideoCore.setPaused( enabled );
 			ControlsCore.setPaused( enabled );
+			TrackingCore.setPaused( enabled );
 			AudioCore.setGlobalMute( enabled );
 		},
 
