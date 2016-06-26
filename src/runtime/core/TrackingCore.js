@@ -43,14 +43,14 @@ TrackingCore.setPaused = function( enabled ) {
  * Start an experiment
  */
 TrackingCore.startExperiment = function( name, callback ) {
-	
+	if (callback) callback();
 }
 
 /**
  * Start an experiment trask
  */
 TrackingCore.startTask = function( name, callback ) {
-	
+	if (callback) callback({});	
 }
 
 /**

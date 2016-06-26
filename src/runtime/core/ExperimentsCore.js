@@ -22,6 +22,7 @@
 
 var VideoCore = require("./VideoCore");
 var ControlsCore = require("./ControlsCore");
+var TrackingCore = require("./TrackingCore");
 
 var Experiments = require("../ui/Experiments");
 var Loaders = require("../io/Loaders");
@@ -71,8 +72,13 @@ ExperimentsCore.showExperiment = function( experiment ) {
 	// Check if this is already loaded
 	if (this.loadedExperiments[experiment] !== undefined) {
 
-		// Focus to the given experiment instance on the viewport
-		this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible );
+		// Ask TrackingCore to prepare for the experiment
+		TrackingCore.startExperiment( experiment, (function() {
+
+			// Focus to the given experiment instance on the viewport
+			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible );
+
+		}).bind(this));
 
 	} else {
 
@@ -89,7 +95,11 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 				// Keep experiment reference and focus instance
 				this.loadedExperiments[experiment] = inst;
-				this.experiments.focusExperiment( inst, handleExperimentVisible );
+
+				// Ask TrackingCore to prepare for the experiment
+				TrackingCore.startExperiment( experiment, (function() {
+					this.experiments.focusExperiment( inst, handleExperimentVisible );
+				}).bind(this));
 
 			}
 

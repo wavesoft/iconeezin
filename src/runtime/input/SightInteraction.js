@@ -116,7 +116,10 @@ var SightInteraction = function( viewport ) {
 	// Register a few DOM events
 	document.addEventListener( 'mousedown', this.handleMouseDown.bind(this), false );
 	document.addEventListener( 'mouseup', this.handleMouseUp.bind(this), false );
+	document.addEventListener( 'touchstart', this.handleMouseDown.bind(this), false );
+	document.addEventListener( 'touchend', this.handleMouseUp.bind(this), false );
 	document.addEventListener( 'click', this.handleClick.bind(this), false );
+	document.addEventListener( 'touchend', this.handleClick.bind(this), false );
 
 }
 
