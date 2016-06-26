@@ -24,82 +24,20 @@ var VideoCore = require("../core/VideoCore");
 var TrackingCore = require("../core/TrackingCore");
 var ThreeAPI = require("../../api/Three");
 
-const C_DEFAULT = new THREE.Color( 0xffffff );
-const C_SELECT = new THREE.Color( 0x0066ff );
-const C_ERROR = new THREE.Color( 0xcc0000 );
 const CENTER = new THREE.Vector2(0,0);
-
-const RING_SIZE = 0.02;
-const RING_THCKNESS = 0.02;
 
 const SELECT_DURATION = 0.25;
 const GAZE_DURATION = 0.75;
-
-const ANIMATION_STEPS = 20;
 
 /**
  * Sight interaction takes care of raycasting and intersecting
  * interesint objects.
  */
-var SightInteraction = function( viewport ) {
+var SightInteraction = function( cursor, viewport ) {
 
-	// Keep a reference to the viewport
+	// Keep references
+	this.cursor = cursor;
 	this.viewport = viewport;
-
-	// Compile a few geometries for animating the circle
-	this.animGeometries = [];
-	for (var i=0; i<ANIMATION_STEPS-1; i++) {
-		var ofs = Math.PI*2*(i/ANIMATION_STEPS);
-		this.animGeometries.push(
-			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 20, 
-				1, Math.PI/2-ofs ,ofs )
-		);
-	}
-	// Add the final full-ring geometry
-	this.animGeometries.push( 
-		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 20 ) 
-	);
-
-	// Create a cursor
-	this.cursor = new THREE.Mesh(
-		this.animGeometries[ANIMATION_STEPS-1],
-		new THREE.MeshBasicMaterial( {
-			color: C_DEFAULT,
-			opacity: 0.5,
-			transparent: true
-		} )
-	);
-	this.cursor.position.z = -2;
-
-	// Create an animation geometry
-	this.animCursor = new THREE.Mesh(
-		this.animGeometries[1],
-		new THREE.MeshBasicMaterial( {
-			color: C_SELECT
-		} )
-	);
-	this.animCursor.position.z = -1.9;
-	this.animCursor.visible = false;
-
-	// Create a confirmation cursor
-	this.confirmCursor = new THREE.Mesh(
-		new THREE.RingGeometry( 0.01, 0.06, 32 ),
-		new THREE.MeshBasicMaterial( {
-			color: C_DEFAULT,
-			opacity: 1.0,
-			transparent: true
-		} )
-	);
-	this.confirmCursor.position.z = -3;
-	this.confirmCursor.visible = false;
-
-	// Put it on the camera
-	this.viewport.camera.add( this.cursor );
-	this.viewport.camera.add( this.animCursor );
-	this.viewport.camera.add( this.confirmCursor );
-
-	// Confirmation animation
-	this.confirmAnimation = 1.0;
 
 	// Create a raycaster
 	this.raycaster = new THREE.Raycaster();
@@ -122,64 +60,6 @@ var SightInteraction = function( viewport ) {
 	document.addEventListener( 'click', this.handleClick.bind(this), false );
 	document.addEventListener( 'touchend', this.handleClick.bind(this), false );
 
-}
-
-/**
- * Set progression animation
- */
-SightInteraction.prototype.setProgressionAnimation = function(v) {
-
-	// Hide if v=0
-	if (v === 0) {
-		this.animCursor.visible = false;
-
-	// Pick appropriate geometry if v>1
-	} else {
-		
-		// Calculate animation step
-		var i = parseInt( Math.floor( v * ANIMATION_STEPS ) );
-		if (i >= ANIMATION_STEPS) i=ANIMATION_STEPS-1;
-
-		// Apply geometry
-		this.animCursor.visible = true;
-		this.animCursor.geometry = this.animGeometries[i];
-
-	}
-
-}
-
-/**
- * Change the highlight of the cursor
- */
-SightInteraction.prototype.setHighlight = function( state ) {
-
-	if (state == 0) { /* Default */
-		this.cursor.material.color.copy( C_DEFAULT );
-		this.cursor.material.opacity = 0.5;
-		this.setProgressionAnimation( 0 );
-
-	} else if (state <= 1.0) { /* Fade to selection */
-
-		// Lerp to selection
-		this.animCursor.material.color.copy( C_SELECT );
-		this.setProgressionAnimation( state );
-
-	} else if (state <= 2.0) { /* Fade to error */
-
-		// Lerp to selection
-		this.animCursor.material.color.copy( C_ERROR );
-		this.setProgressionAnimation( state - 1.0 );
-
-	}
-
-}
-
-/**
- * Play confirmation animation
- */
-SightInteraction.prototype.playConfirmation = function() {
-	this.confirmAnimation = 0.0;
-	this.confirmCursor.visible = true;
 }
 
 /**
@@ -220,7 +100,7 @@ SightInteraction.prototype.handleClick = function( event ) {
 		this.hoverInteraction.onClick();
 
 	// Trigger interact event
-	this.playConfirmation();
+	this.cursor.playConfirmation();
 	if (this.hoverInteraction.onInteract)
 		this.hoverInteraction.onInteract();
 
@@ -252,7 +132,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 				}
 
 				// Reset highlight
-				this.setHighlight(0);
+				this.cursor.setHighlight(0);
 
 				// Hide interaction label
 				VideoCore.hideInteractionLabel();
@@ -282,7 +162,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 				// Just highlight without gazing
 				this.gazeTimer = GAZE_DURATION;
-				this.setHighlight(1);
+				this.cursor.setHighlight(1);
 
 			}
 
@@ -299,11 +179,11 @@ SightInteraction.prototype.onRender = function( delta ) {
 				if (gazeV > 1) gazeV = 1;
 
 				// Apply gaze as a color
-				this.setHighlight( gazeV );
+				this.cursor.setHighlight( gazeV );
 
 				// Interact when user gazes long enough
 				if (gazeV == 1) {
-					this.playConfirmation();
+					this.cursor.playConfirmation();
 
 					// Call interaction function
 					if (this.hoverInteraction.onInteract)
@@ -329,28 +209,12 @@ SightInteraction.prototype.onRender = function( delta ) {
 			// Reset properties
 			this.hoverObject = null;
 			this.gazeTimer = 0;
-			this.setHighlight(0);
+			this.cursor.setHighlight(0);
 
 			// Hide interaction label
 			VideoCore.hideInteractionLabel();
 
 		}
-	}
-
-	// Update possible confirmation animation
-	if (this.confirmAnimation < 1.0) {
-
-		// Graduately zoom out while fading out
-		this.confirmCursor.scale.setScalar( 1.0 + 10.0 * this.confirmAnimation );
-		this.confirmCursor.material.opacity = 1.0 - this.confirmAnimation;
-
-		// Update animation (0.25 seconds)
-		this.confirmAnimation += (delta / 1000) / 0.25;
-		if (this.confirmAnimation > 1) {
-			this.confirmAnimation = 1.0;
-			this.confirmCursor.visible = false;
-		}
-
 	}
 
 }

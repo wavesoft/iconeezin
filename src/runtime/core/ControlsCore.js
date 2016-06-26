@@ -63,7 +63,7 @@ ControlsCore.initialize = function() {
 	this.activeControl = null;
 
 	// Create sight interaction
-	this.interaction = new SightInteraction( VideoCore.viewport );
+	this.interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );
 
 	// Set defaults
 	this.setHMD( false );

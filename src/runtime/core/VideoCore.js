@@ -21,6 +21,7 @@
  */
 
 var Viewport = require("../ui/Viewport");
+var Cursor = require("../ui/Cursor");
 
 /**
  * Private properties
@@ -58,6 +59,9 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 
 	// Create a new viewport instance
 	this.viewport = new Viewport( canvasDOM, {} );
+
+	// Create a new cursor
+	this.cursor = new Cursor( this.viewport );
 
 	// Listen for window resize events
 	window.addEventListener( 'resize', (function() {

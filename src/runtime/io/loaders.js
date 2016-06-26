@@ -54,13 +54,18 @@ Loaders.initialize = function() {
  * Load experiment bundle and then get a reference to the
  * experiment class.
  */
-Loaders.loadExperiment = function( bundle, callback ) {
+Loaders.loadExperiment = function( bundle, callback, progress ) {
+
+	// Show loading screen
+	progress(0);
 
 	// Start loading the source bundle
 	console.time("bundle["+bundle+"]");
 	this.jbbLoader.add( bundle + ".jbb" );
+	this.jbbLoader.addProgressHandler(progress);
 	this.jbbLoader.load(function( err, db ) {
 		console.timeEnd("bundle["+bundle+"]");
+		progress(1);
 
 		// Handle errors
 		if (err) {
