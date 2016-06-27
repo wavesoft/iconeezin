@@ -103,16 +103,27 @@ AudioFile.prototype.createPositional = function( loop ) {
 AudioFile.prototype.play = function( loop ) {
 
 	// Create an audio object
-	var sound = new THREE.Audio( AudioCore.listener );
+	if (!this.sound) {
 
-	// Set loop
-	sound.setLoop( loop === undefined ? false : true );
+		// Create a new sound object
+		this.sound = new THREE.Audio( AudioCore.listener );
 
-	// Load buffer & play
-	this.load(function( buffer ) {
-		sound.setBuffer( buffer );
-		sound.play();
-	});
+		// Set loop
+		this.sound.setLoop( loop === undefined ? false : true );
+
+		// Load buffer & play
+		this.load(function( buffer ) {
+			this.sound.setBuffer( buffer );
+			this.sound.play();
+		});
+
+	} else {
+
+		// Just play
+		this.sound.setLoop( loop === undefined ? false : true );
+		this.sound.play();
+
+	}
 
 	// Return sound object
 	return sound;

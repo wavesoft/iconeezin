@@ -68,6 +68,10 @@ ControlsCore.initialize = function() {
 
 	// Set defaults
 	this.setHMD( false );
+	this.setZero( 
+		new THREE.Vector3(0,0,3), 
+		new THREE.Vector3(0,1,0)
+	);
 
 }
 

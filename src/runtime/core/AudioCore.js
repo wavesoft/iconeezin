@@ -67,6 +67,7 @@ AudioCore.initialize = function() {
 	 * Current gain volume for transitions
 	 */
 	this._volume = 0;
+	this.listener.setMasterVolume( 0 );
 
 	/**
 	 * Current audio fader timer

@@ -26,6 +26,7 @@ var Label = require("./Label");
 global.THREE = THREE;
 require("three/examples/js/WebVR");
 require("three/examples/js/effects/VREffect");
+require("./shaders/SkyShader");
 
 /**
  * Our viewport is where everything gets rendered
@@ -57,7 +58,7 @@ var Viewport = function( viewportDOM, config ) {
 	this.scene = new THREE.Scene();
 
 	// Initialize a camera (with dummy ratio)
-	this.camera = new THREE.PerspectiveCamera( 70, 1.0, 0.1, 1000 );
+	this.camera = new THREE.PerspectiveCamera( 70, 1.0, 0.1, 1000000 );
 
 	// Look at the positive Y direction
 	this.camera.up.set( 0.0, 0.0, 1.0 );
@@ -76,6 +77,16 @@ var Viewport = function( viewportDOM, config ) {
 	// Initialize the sizes (apply actual size)
 	this.resize();
 
+	// Add Sky Mesh
+	this.sky = new THREE.Sky();
+	this.sky.uniforms.turbidity.value = 10;
+	this.sky.uniforms.reileigh.value = 2;
+	this.sky.uniforms.mieCoefficient.value = 0.005;
+	this.sky.uniforms.mieDirectionalG.value = 0.8;
+	this.sky.uniforms.luminance.value = 0.9;
+	this.setSunPosition(0.20, 0.25);
+	this.scene.add( this.sky.mesh );
+
 	// Add axis on 0,0,0
 	var axisHelper = new THREE.AxisHelper( 5 );
 	this.scene.add( axisHelper );
@@ -89,6 +100,24 @@ var Viewport = function( viewportDOM, config ) {
 	// ==== DEBUG =====
 	window.vp = this;
 	// ================
+
+}
+
+/**
+ * Resize viewport to fit new size
+ */
+Viewport.prototype.setSunPosition = function( inclination, azimuth ) {
+
+	var distance = 400000;
+	var theta = Math.PI * ( inclination - 0.5 );
+	var phi = 2 * Math.PI * ( azimuth - 0.5 );
+
+	var position = new THREE.Object3D();
+	position.x = distance * Math.cos( phi );
+	position.z = distance * Math.sin( phi ) * Math.sin( theta );
+	position.y = distance * Math.sin( phi ) * Math.cos( theta );
+
+	this.sky.uniforms.sunPosition.value.copy( position );
 
 }
 

@@ -44,13 +44,13 @@ var Cursor = function( viewport ) {
 	for (var i=0; i<ANIMATION_STEPS-1; i++) {
 		var ofs = Math.PI*2*(i/ANIMATION_STEPS);
 		this.animGeometries.push(
-			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 20, 
+			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 30, 
 				1, Math.PI/2-ofs ,ofs )
 		);
 	}
 	// Add the final full-ring geometry
 	this.animGeometries.push( 
-		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 20 ) 
+		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 30 ) 
 	);
 
 	// Create a cursor
@@ -71,7 +71,7 @@ var Cursor = function( viewport ) {
 			color: C_SELECT
 		} )
 	);
-	this.animCursor.position.z = -1.9;
+	this.animCursor.position.z = -1.99;
 	this.animCursor.visible = false;
 
 	// Create a confirmation cursor

@@ -44,7 +44,6 @@ var Label = function( text, color, bgColor ) {
 	var mat = new THREE.SpriteMaterial({
 	    map: amap,
 	    transparent: false,
-	    useScreenCoordinates: false,
 	    color: 0xffffff
 	});
 
