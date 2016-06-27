@@ -68,8 +68,16 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
 	}).bind(this);
 
 	var do_align = (function() {
+
+		// Add experiment on scene
+		this.viewport.scene.add( this.activeExperiment );
+
+		// Algn experiment
 		this.alignExperiment( this.activeExperiment );
+
+		// Fade-in
 		do_fadein();
+
 	}).bind(this);
 
 	var do_fadeout = (function() {
@@ -93,9 +101,6 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
 	this.previousExperiment = this.activeExperiment;
 	this.activeExperiment = experiment;
 
-	// Add experiment on scene
-	this.viewport.scene.add( experiment );
-
 	// Fade out if we have a previous
 	if (this.previousExperiment) {
 		do_fadeout();
@@ -110,6 +115,10 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
  */
 Experiments.prototype.alignExperiment = function( experiment ) {
 
+	// Reset mouse view
+	this.controls.reorientMouseView( false );
+
+	// Set zero
 	this.controls.setZero( 
 		experiment.anchor.position, 
 		experiment.anchor.direction
@@ -122,24 +131,26 @@ Experiments.prototype.alignExperiment = function( experiment ) {
  */
 Experiments.prototype.fadeIn = function( experiment, cb ) {
 
-	// Collect scene lights
-	var lights = [], lightIntensity = [];
-	experiment.traverse(function(obj) {
-		if (obj instanceof THREE.Light) {
-			lights.push(obj);
-			lightIntensity.push(obj.intensity);
-		}
-	});
+	// // Collect scene lights
+	// var lights = [], lightIntensity = [];
+	// experiment.traverse(function(obj) {
+	// 	if (obj instanceof THREE.Light) {
+	// 		lights.push(obj);
+	// 		lightIntensity.push(obj.intensity);
+	// 	}
+	// });
 
 	// Run tween
-	this.viewport.runTween( 1000, function(tweenProgress) {
+	this.viewport.runTween( 1000, (function(tweenProgress) {
 
-		// Fade in lights
-		for (var i=0,l=lights.length; i<l; i++) {
-			lights[i].intensity = lightIntensity[i]*tweenProgress;
-		}
+		this.viewport.setOpacity( tweenProgress );
 
-	}, cb);
+		// // Fade in lights
+		// for (var i=0,l=lights.length; i<l; i++) {
+		// 	lights[i].intensity = lightIntensity[i]*tweenProgress;
+		// }
+
+	}).bind(this), cb);
 
 }
 
@@ -148,24 +159,26 @@ Experiments.prototype.fadeIn = function( experiment, cb ) {
  */
 Experiments.prototype.fadeOut = function( experiment, cb ) {
 
-	// Collect scene lights
-	var lights = [], lightIntensity = [];
-	experiment.traverse(function(obj) {
-		if (obj instanceof THREE.Light) {
-			lights.push(obj);
-			lightIntensity.push(obj.intensity);
-		}
-	});
+	// // Collect scene lights
+	// var lights = [], lightIntensity = [];
+	// experiment.traverse(function(obj) {
+	// 	if (obj instanceof THREE.Light) {
+	// 		lights.push(obj);
+	// 		lightIntensity.push(obj.intensity);
+	// 	}
+	// });
 
 	// Run tween
-	this.viewport.runTween( 1000, function(tweenProgress) {
+	this.viewport.runTween( 1000, (function(tweenProgress) {
 
-		// Fade out lights
-		for (var i=0,l=lights.length; i<l; i++) {
-			lights[i].intensity = lightIntensity[i]*(1-tweenProgress);
-		}
+		this.viewport.setOpacity( 1.0 - tweenProgress );
 
-	}, cb)
+		// // Fade out lights
+		// for (var i=0,l=lights.length; i<l; i++) {
+		// 	lights[i].intensity = lightIntensity[i]*(1-tweenProgress);
+		// }
+
+	}).bind(this), cb)
 
 }
 

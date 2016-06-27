@@ -248,8 +248,8 @@ ControlsCore.replaceFollowPath = function( curve ) {
 /**
  * Re-orient mouse view
  */
-ControlsCore.reorientMouseView = function() {
-	this.mouseControl.resetView();
+ControlsCore.reorientMouseView = function( animate ) {
+	this.mouseControl.resetView( animate );
 }
 
 /**

@@ -25,11 +25,11 @@ var Label = require("./Label");
 
 global.THREE = THREE;
 require("three/examples/js/WebVR");
-require("three/examples/js/shaders/DotScreenShader");
-require("three/examples/js/shaders/CopyShader");
-require("three/examples/js/postprocessing/EffectComposer");
-require("three/examples/js/postprocessing/ShaderPass");
-require("three/examples/js/postprocessing/RenderPass");
+// require("three/examples/js/shaders/DotScreenShader");
+// require("three/examples/js/shaders/CopyShader");
+// require("three/examples/js/postprocessing/EffectComposer");
+// require("three/examples/js/postprocessing/ShaderPass");
+// require("three/examples/js/postprocessing/RenderPass");
 
 // Modified version of SkyShader
 require("./custom/shaders/SkyShader");
@@ -88,6 +88,17 @@ var Viewport = function( viewportDOM, config ) {
 	// Initialize HMD effect and controls
 	this.hmdEffect = new THREE.VREffect( this.renderer );
 
+	// Camera opacity
+	var black = new THREE.MeshBasicMaterial({
+		color: 0x00,
+		opacity: 0.5,
+		transparent: true
+	});
+	this.opacityQuad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), black );
+	this.opacityQuad.position.z = -0.25;
+	this.opacityQuad.visible = false;
+	this.camera.add( this.opacityQuad );
+
 	// // Create effect composer
 	// this.composer = new THREE.EffectComposer( this.renderer );
 
@@ -143,6 +154,21 @@ var Viewport = function( viewportDOM, config ) {
 	window.vp = this;
 	// ================
 
+}
+
+/**
+ * Resize viewport to fit new size
+ */
+Viewport.prototype.setOpacity = function( value ) {
+	if (value <= 0) {
+		this.opacityQuad.visible = true;
+		this.opacityQuad.material.opacity = 1.0;
+	} else if (value >= 1) {
+		this.opacityQuad.visible = false;
+	} else {
+		this.opacityQuad.visible = true;
+		this.opacityQuad.material.opacity = 1.0 - value;
+	}
 }
 
 /**

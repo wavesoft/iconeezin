@@ -170,9 +170,13 @@ MouseControl.prototype.setResetTimeout = function( timeout, speed ) {
 /**
  * Trigger a view reset
  */
-MouseControl.prototype.resetView = function() {
-	this.resetTimer = this.resetTimeout;
-	this.resetFast = true;
+MouseControl.prototype.resetView = function( animate ) {
+	if (animate === false) {
+		this.delta.set(0,0);
+	} else {
+		this.resetTimer = this.resetTimeout;
+		this.resetFast = true;
+	}
 }
 
 /**
