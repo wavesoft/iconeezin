@@ -91,24 +91,28 @@ var Cursor = function( viewport ) {
 	this.viewport.camera.add( this.animCursor );
 	this.viewport.camera.add( this.confirmCursor );
 
+	// Create sprite material
+	var mat = new THREE.SpriteMaterial({
+		transparent: true,
+		opacity: 1.0,
+		useScreenCoordinates: false,
+		color: 0xffffff
+	});
+
+	// Sprite shown at loading time
+	this.loadingSprite = new THREE.Sprite( mat );
+	this.loadingSprite.position.z = -1.5;
+	this.loadingSprite.scale.setScalar( 0.15 );
+	this.loadingSprite.visible = false;
+	this.viewport.camera.add( this.loadingSprite );
+
 	// Create a spinner sprite
 	var loader = new THREE.TextureLoader();
 	loader.load( require('../../img/loading.png'), (function( texture ) {
 
-		// Create sprite material
-		var mat = new THREE.SpriteMaterial({
-			map: texture,
-			transparent: true,
-			opacity: 1.0,
-			useScreenCoordinates: false,
-			color: 0xffffff
-		});
-
-		// Sprite shown at loading time
-		this.loadingSprite = new THREE.Sprite( mat );
-		this.loadingSprite.position.z = -10;
-		this.loadingSprite.visible = false;
-		this.viewport.camera.add( this.loadingSprite );
+		// Set material map
+		mat.map = texture;
+		texture.needsUpdate = true;
 
 	}).bind(this));
 
@@ -262,7 +266,7 @@ Cursor.prototype.onRender = function( delta ) {
 	}
 
 	// Rotate visible loading sprite
-	if (this.loadingSprite.visible) {
+	if (this.loadingSprite && this.loadingSprite.visible) {
 		this.loadingSprite.material.rotation -= 0.02;
 	}
 

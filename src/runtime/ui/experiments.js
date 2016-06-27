@@ -79,7 +79,7 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
 			this.fadeOut( this.previousExperiment, (function() {
 
 				// Remove previous experiment from scene
-				this.viewport.scene.add( this.previousExperiment );
+				this.viewport.scene.remove( this.previousExperiment );
 
 				// We are hidden
 				this.previousExperiment.onHidden();

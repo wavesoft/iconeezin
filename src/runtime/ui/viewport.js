@@ -25,8 +25,15 @@ var Label = require("./Label");
 
 global.THREE = THREE;
 require("three/examples/js/WebVR");
-require("three/examples/js/effects/VREffect");
-require("./shaders/SkyShader");
+require("three/examples/js/shaders/DotScreenShader");
+require("three/examples/js/shaders/CopyShader");
+require("three/examples/js/postprocessing/EffectComposer");
+require("three/examples/js/postprocessing/ShaderPass");
+require("three/examples/js/postprocessing/RenderPass");
+
+// Modified version of SkyShader
+require("./custom/shaders/SkyShader");
+require("./custom/effects/VREffect");
 
 /**
  * Our viewport is where everything gets rendered
@@ -54,17 +61,24 @@ var Viewport = function( viewportDOM, config ) {
 	this.experiments = [];
 	this.activeExperiment = null;
 
+	/////////////////////////////////////////////////////////////
+	// Scene & Camera
+	/////////////////////////////////////////////////////////////
+
 	// Initialize a THREE scene
 	this.scene = new THREE.Scene();
 
 	// Initialize a camera (with dummy ratio)
 	this.camera = new THREE.PerspectiveCamera( 70, 1.0, 0.1, 1000000 );
 
-	// Look at the positive Y direction
+	// Camera looks towards +Y with Z up
 	this.camera.up.set( 0.0, 0.0, 1.0 );
 	this.camera.position.set( 0.0, 0.0, 0.0 );
 	this.camera.rotation.set( Math.PI/2, 0, 0 );
-	// this.camera.lookAt( new THREE.Vector3( 0.0, 1.0, 3.0 ) );
+
+	/////////////////////////////////////////////////////////////
+	// Rendering
+	/////////////////////////////////////////////////////////////
 
 	// Initialize the renderer
 	this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -74,8 +88,28 @@ var Viewport = function( viewportDOM, config ) {
 	// Initialize HMD effect and controls
 	this.hmdEffect = new THREE.VREffect( this.renderer );
 
+	// // Create effect composer
+	// this.composer = new THREE.EffectComposer( this.renderer );
+
+	// this.renderPass = new THREE.RenderPass( this.scene, this.camera );
+
+	// this.composer.addPass( this.renderPass );
+
+	// var effect = new THREE.ShaderPass( THREE.DotScreenShader );
+	// effect.uniforms[ 'scale' ].value = 4;
+	// effect.renderToScreen = true;
+	// this.composer.addPass( effect );
+
+	// var effect = new THREE.ShaderPass( THREE.RGBShiftShader );
+	// effect.uniforms[ 'amount' ].value = 0.0015;
+	// effect.renderToScreen = true;
+
 	// Initialize the sizes (apply actual size)
 	this.resize();
+
+	/////////////////////////////////////////////////////////////
+	// Environment
+	/////////////////////////////////////////////////////////////
 
 	// Add Sky Mesh
 	this.sky = new THREE.Sky();
@@ -87,9 +121,17 @@ var Viewport = function( viewportDOM, config ) {
 	this.setSunPosition(0.20, 0.25);
 	this.scene.add( this.sky.mesh );
 
+	/////////////////////////////////////////////////////////////
+	// Helpers
+	/////////////////////////////////////////////////////////////
+
 	// Add axis on 0,0,0
 	var axisHelper = new THREE.AxisHelper( 5 );
 	this.scene.add( axisHelper );
+
+	/////////////////////////////////////////////////////////////
+	// Cursor label
+	/////////////////////////////////////////////////////////////
 
 	// Create label
 	this.label = new Label("");
@@ -139,6 +181,9 @@ Viewport.prototype.resize = function() {
 
 	// Update renderer
 	this.renderer.setSize( width, height );
+
+	// // Update composer
+	// this.composer.setSize( width, height );
 
 	// Re-render if paused
 	if (this.paused) this.render();
@@ -206,6 +251,7 @@ Viewport.prototype.render = function() {
 		// Otherwise use classic renderer
 		this.renderer.render( this.scene, this.camera );
 	}
+	// this.composer.render();
 
 }
 

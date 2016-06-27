@@ -106,15 +106,15 @@ AudioFile.prototype.play = function( loop ) {
 	if (!this.sound) {
 
 		// Create a new sound object
-		this.sound = new THREE.Audio( AudioCore.listener );
+		var sound = this.sound = new THREE.Audio( AudioCore.listener );
 
 		// Set loop
 		this.sound.setLoop( loop === undefined ? false : true );
 
 		// Load buffer & play
 		this.load(function( buffer ) {
-			this.sound.setBuffer( buffer );
-			this.sound.play();
+			sound.setBuffer( buffer );
+			sound.play();
 		});
 
 	} else {
@@ -126,7 +126,7 @@ AudioFile.prototype.play = function( loop ) {
 	}
 
 	// Return sound object
-	return sound;
+	return this.sound;
 
 };
 

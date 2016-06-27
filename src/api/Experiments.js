@@ -21,7 +21,6 @@
  */
 
 var THREE = require("three");
-var ThreeAPI = require("./Three");
 
 /**
  * Experiment source file
@@ -43,7 +42,7 @@ var ExperimentFile = function( url, className ) {
 var Experiment = function( database ) {
 
 	// Call superclass constructor
-	ThreeAPI.AnimatedObject3D.call( this );
+	THREE.Scene.call( this );
 
 	// The database
 	this.database = database;
@@ -68,7 +67,7 @@ var Experiment = function( database ) {
 /**
  * Subclass from Object3D
  */
-Experiment.prototype = Object.create( ThreeAPI.AnimatedObject3D.prototype );
+Experiment.prototype = Object.create( THREE.Scene.prototype );
 Experiment.prototype.constructor = Experiment;
 
 /**
@@ -97,6 +96,26 @@ Experiment.prototype.onWillHide = function( callback ) {
 Experiment.prototype.onHidden = function() {
 };
 
+/**
+ * Update hook triggered before the render cycle
+ */
+Experiment.prototype.onUpdate = function( delta ) {
+
+};
+
+/**
+ * Called when the object is paused
+ */
+Experiment.prototype.onPaused = function() {
+
+};
+
+/**
+ * Called when the object is resumed
+ */
+Experiment.prototype.onResumed = function() {
+
+};
 
 /**
  * The Experiment API namespace contains the
