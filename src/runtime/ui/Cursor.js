@@ -20,12 +20,13 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+const C_PROGRESS = new THREE.Color( 0xff9900 );
 const C_DEFAULT = new THREE.Color( 0xffffff );
 const C_SELECT = new THREE.Color( 0x0066ff );
 const C_ERROR = new THREE.Color( 0xcc0000 );
 
 const RING_SIZE = 0.03;
-const RING_THCKNESS = 0.03;
+const RING_THCKNESS = 0.02;
 
 const ANIMATION_STEPS = 40;
 
@@ -89,6 +90,27 @@ var Cursor = function( viewport ) {
 	this.viewport.camera.add( this.cursor );
 	this.viewport.camera.add( this.animCursor );
 	this.viewport.camera.add( this.confirmCursor );
+
+	// Create a spinner sprite
+	var loader = new THREE.TextureLoader();
+	loader.load( require('../../img/loading.png'), (function( texture ) {
+
+		// Create sprite material
+		var mat = new THREE.SpriteMaterial({
+			map: texture,
+			transparent: true,
+			opacity: 1.0,
+			useScreenCoordinates: false,
+			color: 0xffffff
+		});
+
+		// Sprite shown at loading time
+		this.loadingSprite = new THREE.Sprite( mat );
+		this.loadingSprite.position.z = -10;
+		this.loadingSprite.visible = false;
+		this.viewport.camera.add( this.loadingSprite );
+
+	}).bind(this));
 
 	// Confirmation animation
 	this.confirmAnimation = 1.0;
@@ -166,12 +188,17 @@ Cursor.prototype.showLoading = function( icon ) {
 	if (this.progressActive) return;
 	this.progressActive = true;
 
+	// Set color to loading
+	this.animCursor.material.color.copy( C_PROGRESS );
+	this.loadingSprite.visible = true;
+
 	// Tween scaling
 	this.viewport.runTween( 250, (function(tweenProgress) {
 
 		// Apply scale
 		this.animCursor.scale.setScalar( 1 + 3 * tweenProgress );
 		this.cursor.scale.setScalar( 1 + 3 * tweenProgress );
+		this.loadingSprite.material.opacity = tweenProgress;
 
 	}).bind(this));
 
@@ -184,12 +211,22 @@ Cursor.prototype.hideLoading = function( ) {
 	if (!this.progressActive) return;
 	this.progressActive = false;
 
+	// Reset progress bar
+	this.setProgressionAnimation(0);
+	this.animCursor.material.color.copy( C_DEFAULT );
+
 	// Tween scaling
 	this.viewport.runTween( 250, (function(tweenProgress) {
 
 		// Apply scale
 		this.animCursor.scale.setScalar( 1 + 3 * (1 - tweenProgress) );
 		this.cursor.scale.setScalar( 1 + 3 * (1 - tweenProgress) );
+		this.loadingSprite.material.opacity = (1-tweenProgress);
+
+	}).bind(this), (function() {
+
+		// Hide loading sprite
+		this.loadingSprite.visible = false;
 
 	}).bind(this));
 
@@ -222,6 +259,11 @@ Cursor.prototype.onRender = function( delta ) {
 			this.confirmCursor.visible = false;
 		}
 
+	}
+
+	// Rotate visible loading sprite
+	if (this.loadingSprite.visible) {
+		this.loadingSprite.material.rotation -= 0.02;
 	}
 
 }

@@ -148,6 +148,10 @@ MouseControl.prototype.handleMouseMove = function( event ) {
 	this.delta.x -= movementX * 0.002;
 	this.delta.y -= movementY * 0.002;
 
+	// Wrap
+	this.delta.x = this.delta.x % (Math.PI*2);
+	this.delta.y = this.delta.y % (Math.PI*2);
+
 	// When the user moves the cursor, reset idle timer
 	this.resetTimer = 0;
 	this.resetActive = true;

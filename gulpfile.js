@@ -12,6 +12,7 @@ gulp.task('js/iconeezin', function() {
 			module: {
 				loaders: [
 					{ test: /\.json$/, loader: 'json' },
+					{ test: /\.(png|jpg)$/, loader: 'url-loader?limit=8192' },
 				],
 		    },
 			node: {
@@ -24,9 +25,9 @@ gulp.task('js/iconeezin', function() {
 			},
 			plugins: [
 				new webpack.webpack.optimize.DedupePlugin(),
-				new webpack.webpack.optimize.UglifyJsPlugin({
-					minimize: true
-				})
+				// new webpack.webpack.optimize.UglifyJsPlugin({
+				// 	minimize: true
+				// })
 			],
 			resolve: {
 				modulesDirectories: [

@@ -28,7 +28,8 @@
     "jbb-profile-iconeezin": "^0.1.0",
     "jbb-profile-three": "^1.0.2",
     "jquery": "^2.2.4",
-    "three": "^0.78.0"
+    "three": "^0.78.0",
+    "url-loader": "^0.5.7"
   },
   "devDependencies": {
     "gulp": "^3.9.1",
