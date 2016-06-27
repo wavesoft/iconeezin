@@ -24,7 +24,7 @@ var VideoCore = require("./VideoCore");
 
 var SightInteraction = require("../input/SightInteraction");
 
-var PathFollower = require("../controls/PathFollower");
+var PathFollowerControl = require("../controls/PathFollowerControl");
 var MouseControl = require("../controls/MouseControl");
 var VRControl = require("../controls/VRControl");
 
@@ -47,20 +47,21 @@ ControlsCore.initialize = function() {
 	this.vrControl = new VRControl();
 
 	// Position-only controls
-	this.pathFollower = new PathFollower();
+	this.pathFollower = new PathFollowerControl();
 
 	// Default propeties
 	this.paused = true;
 	this.hmd = undefined;
 
-	// Default location
-	this.zeroPosition = new THREE.Vector3(0,0,3);
-	this.zeroRotation = new THREE.Euler(Math.PI/2,0,0);
-
 	// The currently active gimbal object
 	this.scene = VideoCore.viewport.scene;
 	this.gimbal = VideoCore.viewport.camera;
 	this.activeControl = null;
+
+	// The zero gimbal that holds the reference position
+	this.zeroGimbal = new THREE.Object3D();
+	this.zeroGimbal.up.set( 0,0,1 );
+	VideoCore.viewport.scene.add( this.zeroGimbal );
 
 	// Create sight interaction
 	this.interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );
@@ -75,6 +76,16 @@ ControlsCore.initialize = function() {
  */
 ControlsCore.updateInteractions = function() {
 	this.interaction.updateFromScene();
+}
+
+/**
+ * Set zero position
+ */
+ControlsCore.setZero = function( position, direction ) {
+	this.zeroGimbal.position.copy( position );
+	// this.zeroGimbal.lookAt( 
+		// position.clone().add( direction )
+	// );
 }
 
 /**
@@ -105,7 +116,7 @@ ControlsCore.setHMD = function( hmd ) {
 			}
 
 			// Add on scene on the correct order
-			this.scene.add( this.gimbal );
+			this.zeroGimbal.add( this.gimbal );
 
 		} else {
 
@@ -128,7 +139,7 @@ ControlsCore.setHMD = function( hmd ) {
 			}
 
 			// Add on scene on the correct order
-			this.scene.add( this.gimbal );
+			this.zeroGimbal.add( this.gimbal );
 
 		}
 
@@ -153,7 +164,7 @@ ControlsCore.activateControl = function( control ) {
 	this.activeControl.enable();
 
 	// Add on scene on the correct order
-	this.scene.add( this.gimbal );
+	this.zeroGimbal.add( this.gimbal );
 
 }
 
@@ -169,7 +180,7 @@ ControlsCore.deactivateLastControl = function() {
 	this.activeControl = undefined;
 
 	// Add on scene on the correct order
-	this.scene.add( this.gimbal );
+	this.zeroGimbal.add( this.gimbal );
 
 }
 

@@ -32,7 +32,7 @@ var up = new THREE.Vector3(0,0,1);
 /**
  * Camera path locks camera into a 3D curve
  */
-var PathFollower = function( ) {
+var PathFollowerControl = function( ) {
 	BaseControl.call( this );
 
 	// Path properties
@@ -51,12 +51,12 @@ var PathFollower = function( ) {
 /**
  * Subclass from base controls
  */
-PathFollower.prototype = Object.create( BaseControl.prototype );
+PathFollowerControl.prototype = Object.create( BaseControl.prototype );
 
 /**
  * Specify the path to follow
  */
-PathFollower.prototype.followPath = function( path, options ) {
+PathFollowerControl.prototype.followPath = function( path, options ) {
 
 	// Prepare options
 	this.opt = options || {}
@@ -81,7 +81,7 @@ PathFollower.prototype.followPath = function( path, options ) {
 /**
  * Replace the path on a progressing animation
  */
-PathFollower.prototype.replacePath = function( path ) {
+PathFollowerControl.prototype.replacePath = function( path ) {
 
 	// Replace path
 	this.path = path;
@@ -95,7 +95,7 @@ PathFollower.prototype.replacePath = function( path ) {
 /**
  * Update 
  */
-PathFollower.prototype.onUpdate = function( delta ) {
+PathFollowerControl.prototype.onUpdate = function( delta ) {
 
 	// Get point
 	var p_pos = this.path.getPointAt(this.j),
@@ -136,4 +136,4 @@ PathFollower.prototype.onUpdate = function( delta ) {
 };
 
 // Export
-module.exports = PathFollower;
+module.exports = PathFollowerControl;

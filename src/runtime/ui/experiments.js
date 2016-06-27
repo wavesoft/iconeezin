@@ -23,10 +23,11 @@
 /**
  * Experiments constructor
  */
-var Experiments = function( viewport ) {
+var Experiments = function( viewport, controls ) {
 
-	// Keep a reference to the viewport
+	// Keep references
 	this.viewport = viewport;
+	this.controls = controls;
 
 	// Register ourselves for render updates
 	viewport.addRenderListener( this.onRender.bind(this) );
@@ -109,9 +110,9 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
  */
 Experiments.prototype.alignExperiment = function( experiment ) {
 
-	this.viewport.camera.position.copy( experiment.anchor.position );
-	this.viewport.camera.lookAt( 
-		experiment.anchor.position.clone().add( experiment.anchor.direction )
+	this.controls.setZero( 
+		experiment.anchor.position, 
+		experiment.anchor.direction
 	);
 
 }

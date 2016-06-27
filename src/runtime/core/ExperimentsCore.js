@@ -33,7 +33,7 @@ var Loaders = require("../io/Loaders");
 var ExperimentsCore = { };
 
 ExperimentsCore.doit = function() {
-	this.showExperiment("simple");
+	this.showExperiment("introduction");
 }
 
 /**
@@ -49,7 +49,7 @@ ExperimentsCore.initialize = function() {
 	Loaders.initialize();
 
 	// Create an experiments renderer that uses the viewport
-	this.experiments = new Experiments( VideoCore.viewport );
+	this.experiments = new Experiments( VideoCore.viewport, ControlsCore );
 
 	// Dictionary of active experiments
 	this.loadedExperiments = {};

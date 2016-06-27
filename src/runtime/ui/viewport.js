@@ -60,9 +60,10 @@ var Viewport = function( viewportDOM, config ) {
 	this.camera = new THREE.PerspectiveCamera( 70, 1.0, 0.1, 1000 );
 
 	// Look at the positive Y direction
-	this.camera.position.set( 0.0, 0.0, 3.0 );
 	this.camera.up.set( 0.0, 0.0, 1.0 );
-	this.camera.lookAt( new THREE.Vector3( 0.0, 1.0, 3.0 ) );
+	this.camera.position.set( 0.0, 0.0, 0.0 );
+	this.camera.rotation.set( Math.PI/2, 0, 0 );
+	// this.camera.lookAt( new THREE.Vector3( 0.0, 1.0, 3.0 ) );
 
 	// Initialize the renderer
 	this.renderer = new THREE.WebGLRenderer({ antialias: true });
