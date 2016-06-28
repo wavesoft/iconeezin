@@ -154,7 +154,7 @@ AudioCore.setGlobalMute = function( enabled ) {
 
 	// Start timer if missing
 	if (!this._faderTimer)
-		this._faderTimer = setInterval( faderFn, 50 );
+		this._faderTimer = setInterval( faderFn, 25 );
 
 }
 

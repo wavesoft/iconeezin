@@ -69,7 +69,7 @@ var Viewport = function( viewportDOM, config ) {
 	this.scene = new THREE.Scene();
 
 	// Initialize a camera (with dummy ratio)
-	this.camera = new THREE.PerspectiveCamera( 70, 1.0, 0.1, 1000000 );
+	this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 1000000 );
 
 	// Camera looks towards +Y with Z up
 	this.camera.up.set( 0.0, 0.0, 1.0 );
@@ -130,7 +130,7 @@ var Viewport = function( viewportDOM, config ) {
 	this.sky.uniforms.mieDirectionalG.value = 0.8;
 	this.sky.uniforms.luminance.value = 0.9;
 	this.setSunPosition(0.20, 0.25);
-	this.scene.add( this.sky.mesh );
+	// this.scene.add( this.sky.mesh );
 
 	/////////////////////////////////////////////////////////////
 	// Helpers
