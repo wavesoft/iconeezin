@@ -25,6 +25,8 @@ var Tween = require("../util/Tween");
 var AudioAPI = require("../../api/Audio");
 // var WebAudiox = require("webaudiox");
 
+require("../audio/UserAudio");
+
 /**
  * The AudioCore singleton contains the
  * global audio management API.
@@ -37,27 +39,15 @@ var AudioCore = {};
 AudioCore.initialize = function() {
 
 	/**
-	 * The web audio context
-	 * @property
+	 * Open a three.js listener
 	 */
-	// this.context = new AudioContext();
+	this.listener = new THREE.AudioListener();
 
 	/**
 	 * The line in from the user's microphone
 	 * @property
 	 */
-	// this.lineIn = null;
-
-	/**
-	 * The line out to the user's speakers
-	 * @property
-	 */
-	// this.lineOut = new WebAudiox.LineOut( this.context );
-
-	/**
-	 * Open a three.js listener
-	 */
-	this.listener = new THREE.AudioListener();
+	this.lineIn = new THREE.UserAudio( this.listener );
 
 	/**
 	 * Create audio loader
@@ -136,45 +126,11 @@ AudioCore.makeResetable = function( sound ) {
  * @param {bool} enabled - Set to true to enable microphone
  */
 AudioCore.enableLineIn = function( enabled ) {
-
-	// if (this.lineIn && !enabled) {
-
-	// 	//
-	// 	// Disable microphone
-	// 	//
-	// 	this.lineIn.stop();
-	// 	this.lineIn = null;
-
-	// } else if (!this.lineIn && enabled) {
-
-	// 	//
-	// 	// Open microphone input
-	// 	//
-
-	// 	// Handle user's positive response
-	// 	var handleStream = (function(stream) {
-	// 		// Create an AudioNode from the stream.
-	// 		this.lineIn = this.context.createMediaStreamSource( stream );
-
-	// 		var synthDelay = this.context.createDelay();
-	// 		this.lineIn.connect(synthDelay);
-	// 		synthDelay.connect(this.lineOut.destination);
-	// 		synthDelay.delayTime.value = 1.0;
-
-	// 	}).bind(this);
-
-	// 	// Handle user's negative response
-	// 	var handleError = (function() {
-	// 		// Display error
-	// 		alert("Unable to open audio input stream!");
-	// 	}).bind(this);
-
-	// 	// Get user media
-	// 	navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia|| navigator.oGetUserMedia;
-	// 	navigator.getUserMedia( {audio:true}, handleStream, handleError );
-
-	// }
-
+	if (enabled) {
+		this.lineIn.play();
+	} else {
+		this.lineIn.stop();
+	}
 }
 
 /**

@@ -310,7 +310,7 @@ THREE.VREffect = function ( renderer, onError ) {
 			// render right eye
 			renderer.setViewport( renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height );
 			renderer.setScissor( renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height );
-			renderer.render( scene, cameraR, renderTarget, forceClear );
+			renderer.render( scene, cameraR, renderTarget, false );
 
 			renderer.setScissorTest( false );
 
