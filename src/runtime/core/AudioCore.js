@@ -21,6 +21,7 @@
  */
 
 var THREE = require("three");
+var Tween = require("../util/Tween");
 var AudioAPI = require("../../api/Audio");
 // var WebAudiox = require("webaudiox");
 
@@ -66,15 +67,68 @@ AudioCore.initialize = function() {
 	/**
 	 * Current gain volume for transitions
 	 */
-	this._volume = 0;
+	this._volumeTween = null;
+	this._muted = true;
 	this.listener.setMasterVolume( 0 );
 
 	/**
-	 * Current audio fader timer
+	 * Objects that should be reset when 'reset' clicked
 	 */
-	this._faderTarget = 0;
-	this._faderTimer = null;
+	this.resetable = [];
 
+	/**
+	 * Objects paused due to global mute
+	 */
+	this.paused = [];
+
+}
+
+/**
+ * Reset state
+ */
+AudioCore.reset = function() {
+
+	// Get & Reset resetable objects
+	var resetable = this.resetable;
+	this.resetable = []
+
+	// Get resetable object max volume (for fade out)
+	var volume = [];
+	for (var i=0; i<resetable.length; i++) {
+		volume.push( resetable[i].getVolume() );
+	}
+
+	// Tween fade out
+	new Tween( 1000, 25 )
+		.step((function(v) {
+
+			// Fade out all resetable objects
+			for (var i=0; i<resetable.length; i++) {
+				resetable[i].setVolume( volume[i]*(1.0-v) );
+			}
+
+		}).bind(this))
+		.completed((function(v) {
+
+			// Stop all objects
+			for (var i=0; i<resetable.length; i++) {
+				resetable[i].stop();
+			}
+
+		}).bind(this))
+		.start();
+
+}
+
+/**
+ * Track the given sound object in order to make
+ * it stop when the experiment changes.
+ *
+ * @param {AudioFile} sound - Set to true to enable microphone
+ */
+AudioCore.makeResetable = function( sound ) {
+	if (this.resetable.indexOf(sound) !== -1) return;
+	this.resetable.push( sound );
 }
 
 /**
@@ -126,35 +180,54 @@ AudioCore.enableLineIn = function( enabled ) {
 /**
  * Apply a global mute on all audio
  */
-AudioCore.setGlobalMute = function( enabled ) {
+AudioCore.setGlobalMute = function( muted ) {
 
-	// Fader function
-	var faderFn  = (function() {
-		var step = (this._faderTarget > this._volume) ? 0.1 : -0.1;
-		this._volume += step;
+	// Don't do anything
+	if ( muted === this._muted ) return;
+	this._muted = muted;
 
-		// Ending condition
-		if (Math.abs(this._volume - this._faderTarget) < 0.1) {
-			clearInterval(this._faderTimer);
-			this._volume = this._faderTarget;
-			this._faderTimer = null;
-		}
+	// Stop previous tween
+	if (this._volumeTween)
+		this._volumeTween.stop();
 
-		// Apply volume
-		this.listener.setMasterVolume( this._volume );
+	// Create tween
+	if (muted) {
 
-	}).bind(this);
+		// Fade out
+		this._volumeTween = new Tween(250, 25)
+			.step((function(v) {
+				console.log("Fadeout",v);
+				this.listener.setMasterVolume( 1.0 - v );
+			}).bind(this))
+			.completed((function() {
 
-	// Specify fader target
-	if (enabled) {
-		this._faderTarget = 0;
+				// Pause paying audio
+				for (var i=0; i<this.resetable.length; i++) {
+					if (this.resetable[i].isPlaying) {
+						this.resetable[i].pause();
+						this.paused.push( this.resetable[i] );
+					}
+				}
+
+			}).bind(this))
+			.start();
+
 	} else {
-		this._faderTarget = 1;
-	}
 
-	// Start timer if missing
-	if (!this._faderTimer)
-		this._faderTimer = setInterval( faderFn, 25 );
+		// Unpause paused
+		for (var i=0; i<this.paused.length; i++) {
+			this.paused[i].play();
+		}
+		this.paused = [];
+
+		// Fade in
+		this._volumeTween = new Tween(250, 25)
+			.step((function(v) {
+				console.log("Fadein",v);
+				this.listener.setMasterVolume( v );
+			}).bind(this))
+			.start();
+	}
 
 }
 

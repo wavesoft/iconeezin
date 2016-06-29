@@ -266,8 +266,9 @@ TrackingCore.startTask = function( name, properties, callback ) {
 TrackingCore.completeTask = function( results ) {
 
 	// Track event completion
-	this.trackEvent("experiment.task.completed", { 
-		'task': this.activeTaskName, 'duration': this.stopTimer("task") });
+	this.trackEvent("experiment.task.completed", Object.assign({ 
+		'task': this.activeTaskName, 'duration': this.stopTimer("task") }, results
+	));
 
 	// Reset active task
 	this.activeTaskMeta = {};

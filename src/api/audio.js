@@ -64,6 +64,7 @@ AudioFile.prototype.create = function() {
 
 	// Create an audio object
 	var sound = new THREE.Audio( AudioCore.listener );
+	AudioCore.makeResetable( sound );
 
 	// Load buffer & play
 	this.load(function( buffer ) {
@@ -83,6 +84,7 @@ AudioFile.prototype.createPositional = function( loop ) {
 
 	// Create a new positional audio
 	var sound = new THREE.PositionalAudio( listener );
+	AudioCore.makeResetable( sound );
 
 	// Set loop
 	sound.setLoop( loop === undefined ? false : true );
@@ -107,6 +109,7 @@ AudioFile.prototype.play = function( loop ) {
 
 		// Create a new sound object
 		var sound = this.sound = new THREE.Audio( AudioCore.listener );
+		AudioCore.makeResetable( sound );
 
 		// Set loop
 		this.sound.setLoop( loop === undefined ? false : true );

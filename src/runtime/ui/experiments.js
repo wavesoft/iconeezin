@@ -115,9 +115,6 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
  */
 Experiments.prototype.alignExperiment = function( experiment ) {
 
-	// Reset mouse view
-	this.controls.reorientMouseView( false );
-
 	// Set zero
 	this.controls.setZero( 
 		experiment.anchor.position, 

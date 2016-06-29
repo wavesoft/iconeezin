@@ -21,6 +21,7 @@
  */
 
 var VideoCore = require("./VideoCore");
+var AudioCore = require("./AudioCore");
 var ControlsCore = require("./ControlsCore");
 var TrackingCore = require("./TrackingCore");
 
@@ -31,10 +32,6 @@ var Loaders = require("../io/Loaders");
  * Kernel core is the main logic that steers the runtime 
  */
 var ExperimentsCore = { };
-
-ExperimentsCore.doit = function() {
-	this.showExperiment("introduction");
-}
 
 /**
  * Initialize the kernel
@@ -53,9 +50,45 @@ ExperimentsCore.initialize = function() {
 
 	// Dictionary of active experiments
 	this.loadedExperiments = {};
+	this.activeExperimentName = "";
 
-	// Load experiment
-	setTimeout(ExperimentsCore.doit.bind(this), 100);
+	// Paused state properties
+	this.paused = true;
+	this.pendingExperimentName = "";
+
+	// Register listener for hash change events
+	window.addEventListener('hashchange', (function() {
+		var hash = String(window.location.hash).substr(1);
+		if (!hash) return;
+
+		// Show experiment pointed by hash
+		this.showExperiment(hash);
+
+	}).bind(this));
+
+	// Load default experiment if hash missing
+	var hash = String(window.location.hash).substr(1);
+	if (!hash) {
+		this.showExperiment("introduction");
+	} else {
+		this.showExperiment(hash);
+	}
+
+}
+
+/**
+ * Set paused state
+ */
+ExperimentsCore.setPaused = function( paused ) {
+
+	// Keep paused state
+	this.paused = paused;
+
+	// If we are un-pausing, show experiment
+	if (!paused && this.pendingExperimentName) {
+		this.showExperiment( this.pendingExperimentName );
+		this.pendingExperimentName = "";
+	}
 
 }
 
@@ -63,6 +96,22 @@ ExperimentsCore.initialize = function() {
  * Load an experiment and activate
  */
 ExperimentsCore.showExperiment = function( experiment ) {
+
+	// Don't do anything if the experiment has the same name
+	// as the active one
+	if (this.activeExperimentName == experiment) return;
+
+	// If we are paused, just schedule it
+	if (this.paused) {
+		this.pendingExperimentName = experiment;
+		return;
+	}
+
+	// Mark experiment as active
+	this.activeExperimentName = experiment;
+
+	// Update location hash
+	window.location.hash = experiment;
 
 	// Update interactions when the experiment is visible
 	var handleExperimentVisible = function() {
@@ -74,6 +123,10 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 		// Ask TrackingCore to prepare for the experiment
 		TrackingCore.startExperiment( experiment, (function() {
+
+			// Reset other cores
+			AudioCore.reset();
+			ControlsCore.reset();
 
 			// Focus to the given experiment instance on the viewport
 			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible );
@@ -89,9 +142,13 @@ ExperimentsCore.showExperiment = function( experiment ) {
 			if (err) {
 
 				console.error(err);
-				VideoCore.showError( "Loading Error", "Experiment '"+fname+"' could not be loaded. " + err );
+				VideoCore.showError( "Loading Error", "Experiment '"+experiment+"' could not be loaded. " + err );
 
 			} else {
+
+				// Reset other cores
+				AudioCore.reset();
+				ControlsCore.reset();
 
 				// Keep experiment reference and focus instance
 				this.loadedExperiments[experiment] = inst;

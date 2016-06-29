@@ -76,6 +76,19 @@ ControlsCore.initialize = function() {
 }
 
 /**
+ * Reset controls
+ */
+ControlsCore.reset = function() {
+
+	// Remove last controll
+	this.deactivateLastControl();
+
+	// Reset mouse view
+	this.reorientMouseView( false );
+
+}
+
+/**
  * Update interactions when something is changed on the viewport
  */
 ControlsCore.updateInteractions = function() {

@@ -130,7 +130,7 @@ var Viewport = function( viewportDOM, config ) {
 	this.sky.uniforms.mieDirectionalG.value = 0.8;
 	this.sky.uniforms.luminance.value = 0.9;
 	this.setSunPosition(0.20, 0.25);
-	// this.scene.add( this.sky.mesh );
+	this.scene.add( this.sky.mesh );
 
 	/////////////////////////////////////////////////////////////
 	// Helpers

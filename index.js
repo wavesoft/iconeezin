@@ -101,6 +101,7 @@ module.exports = {
 			ControlsCore.setPaused( enabled );
 			TrackingCore.setPaused( enabled );
 			AudioCore.setGlobalMute( enabled );
+			ExperimentsCore.setPaused( enabled );
 		},
 
 	},
