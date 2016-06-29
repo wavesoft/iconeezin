@@ -71,6 +71,11 @@ AudioCore.initialize = function() {
 	 */
 	this.paused = [];
 
+	/**
+	 * Line in delay
+	 */
+	this.lineInDelay = null;
+
 }
 
 /**
@@ -130,6 +135,33 @@ AudioCore.enableLineIn = function( enabled ) {
 		this.lineIn.play();
 	} else {
 		this.lineIn.stop();
+	}
+}
+
+/**
+ * Helper function to set/unset line in delay
+ * @param {int} delay - The reverberation delay
+ */
+AudioCore.setLineInDelay = function( delay ) {
+	if (!delay || (delay < 0)) {
+
+		// If we have a filter already, remove it
+		if (this.lineInDelay) {
+			this.lineIn.setFilters([]);
+			this.lineInDelay = null;
+		}
+
+	} else {
+
+		// Create effect if missing
+		if (!this.lineInDelay) {
+			this.lineInDelay = this.listener.context.createDelay();
+			this.lineIn.setFilters([ this.lineInDelay ]);
+		}
+
+		// Update delay
+		this.lineInDelay.delayTime.value = delay;
+
 	}
 }
 
