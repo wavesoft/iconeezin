@@ -124,12 +124,14 @@ ExperimentsCore.showExperiment = function( experiment ) {
 		// Ask TrackingCore to prepare for the experiment
 		TrackingCore.startExperiment( experiment, (function() {
 
-			// Reset other cores
-			AudioCore.reset();
-			ControlsCore.reset();
-
 			// Focus to the given experiment instance on the viewport
-			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible );
+			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible, function() {
+
+				// Reset other cores
+				AudioCore.reset();
+				ControlsCore.reset();
+
+			} );
 
 		}).bind(this));
 
@@ -146,16 +148,18 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 			} else {
 
-				// Reset other cores
-				AudioCore.reset();
-				ControlsCore.reset();
-
 				// Keep experiment reference and focus instance
 				this.loadedExperiments[experiment] = inst;
 
 				// Ask TrackingCore to prepare for the experiment
 				TrackingCore.startExperiment( experiment, (function() {
-					this.experiments.focusExperiment( inst, handleExperimentVisible );
+					this.experiments.focusExperiment( inst, handleExperimentVisible, function() {
+						
+						// Reset other cores
+						AudioCore.reset();
+						ControlsCore.reset();
+
+					});
 				}).bind(this));
 
 			}

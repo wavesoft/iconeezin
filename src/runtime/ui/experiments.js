@@ -49,7 +49,7 @@ var Experiments = function( viewport, controls ) {
 /**
  * Focus on a particular experiment
  */
-Experiments.prototype.focusExperiment = function( experiment, cb ) {
+Experiments.prototype.focusExperiment = function( experiment, cb, cb_transition ) {
 
 	// Don't do anything if this is already the active experiment
 	if (this.activeExperiment === experiment)
@@ -71,9 +71,11 @@ Experiments.prototype.focusExperiment = function( experiment, cb ) {
 
 		// Add experiment on scene
 		this.viewport.scene.add( this.activeExperiment );
-
 		// Algn experiment
 		this.alignExperiment( this.activeExperiment );
+		
+		// Trigger transition callback
+		if (cb_transition) cb_transition();
 
 		// Fade-in
 		do_fadein();

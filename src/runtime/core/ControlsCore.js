@@ -99,10 +99,12 @@ ControlsCore.updateInteractions = function() {
  * Set zero position
  */
 ControlsCore.setZero = function( position, direction ) {
+
+	// Set gimbal position
 	this.zeroGimbal.position.copy( position );
-	// this.zeroGimbal.lookAt( 
-		// position.clone().add( direction )
-	// );
+
+	// Project direction to XY plane
+	this.zeroGimbal.rotation.z = Math.atan2( direction.x, direction.y );
 }
 
 /**
