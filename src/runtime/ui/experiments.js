@@ -49,7 +49,7 @@ var Experiments = function( viewport, controls ) {
 /**
  * Focus on a particular experiment
  */
-Experiments.prototype.focusExperiment = function( experiment, cb, cb_transition ) {
+Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_transition ) {
 
 	// Don't do anything if this is already the active experiment
 	if (this.activeExperiment === experiment)
@@ -60,9 +60,16 @@ Experiments.prototype.focusExperiment = function( experiment, cb, cb_transition 
 		this.activeExperiment.onWillShow((function() {
 			// Fade in active
 			this.fadeIn( this.activeExperiment, (function() {
+
 				// We are shown
 				this.activeExperiment.onShown();
-				if (cb) cb();
+
+				// Render view port to update the UI
+				this.viewport.render();
+
+				// Callback completion
+				if (cb_completed) cb_completed();
+
 			}).bind(this));
 		}).bind(this));
 	}).bind(this);
@@ -130,24 +137,11 @@ Experiments.prototype.alignExperiment = function( experiment ) {
  */
 Experiments.prototype.fadeIn = function( experiment, cb ) {
 
-	// // Collect scene lights
-	// var lights = [], lightIntensity = [];
-	// experiment.traverse(function(obj) {
-	// 	if (obj instanceof THREE.Light) {
-	// 		lights.push(obj);
-	// 		lightIntensity.push(obj.intensity);
-	// 	}
-	// });
-
 	// Run tween
 	this.viewport.runTween( 1000, (function(tweenProgress) {
 
+		// Fade out
 		this.viewport.setOpacity( tweenProgress );
-
-		// // Fade in lights
-		// for (var i=0,l=lights.length; i<l; i++) {
-		// 	lights[i].intensity = lightIntensity[i]*tweenProgress;
-		// }
 
 	}).bind(this), cb);
 
@@ -158,24 +152,11 @@ Experiments.prototype.fadeIn = function( experiment, cb ) {
  */
 Experiments.prototype.fadeOut = function( experiment, cb ) {
 
-	// // Collect scene lights
-	// var lights = [], lightIntensity = [];
-	// experiment.traverse(function(obj) {
-	// 	if (obj instanceof THREE.Light) {
-	// 		lights.push(obj);
-	// 		lightIntensity.push(obj.intensity);
-	// 	}
-	// });
-
 	// Run tween
 	this.viewport.runTween( 1000, (function(tweenProgress) {
 
+		// Fade out
 		this.viewport.setOpacity( 1.0 - tweenProgress );
-
-		// // Fade out lights
-		// for (var i=0,l=lights.length; i<l; i++) {
-		// 	lights[i].intensity = lightIntensity[i]*(1-tweenProgress);
-		// }
 
 	}).bind(this), cb)
 

@@ -20,15 +20,29 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+/**
+ * Cursor colors
+ */
+const C_ERROR 	 = new THREE.Color( 0xcc0000 );
+const C_SELECT 	 = new THREE.Color( 0x0066ff );
+const C_DEFAULT  = new THREE.Color( 0xffffff );
 const C_PROGRESS = new THREE.Color( 0xff9900 );
-const C_DEFAULT = new THREE.Color( 0xffffff );
-const C_SELECT = new THREE.Color( 0x0066ff );
-const C_ERROR = new THREE.Color( 0xcc0000 );
 
+/**
+ * Ring size + Thickness
+ */
 const RING_SIZE = 0.03;
 const RING_THCKNESS = 0.02;
 
+/**
+ * Animation divisions (bigger=smoother but more memory)
+ */
 const ANIMATION_STEPS = 40;
+
+/**
+ * Ring resolution (divisions on the ring)
+ */
+const RING_RESOLUTION = 30;
 
 /**
  * Sight interaction takes care of raycasting and intersecting
@@ -44,13 +58,13 @@ var Cursor = function( viewport ) {
 	for (var i=0; i<ANIMATION_STEPS-1; i++) {
 		var ofs = Math.PI*2*(i/ANIMATION_STEPS);
 		this.animGeometries.push(
-			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 30, 
+			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, RING_RESOLUTION, 
 				1, Math.PI/2-ofs ,ofs )
 		);
 	}
 	// Add the final full-ring geometry
 	this.animGeometries.push( 
-		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, 30 ) 
+		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, RING_RESOLUTION ) 
 	);
 
 	// Create a cursor

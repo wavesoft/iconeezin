@@ -23,15 +23,8 @@
 var THREE = require("three");
 var Label = require("./Label");
 
-global.THREE = THREE;
-require("three/examples/js/WebVR");
-// require("three/examples/js/shaders/DotScreenShader");
-// require("three/examples/js/shaders/CopyShader");
-// require("three/examples/js/postprocessing/EffectComposer");
-// require("three/examples/js/postprocessing/ShaderPass");
-// require("three/examples/js/postprocessing/RenderPass");
-
-// Modified version of SkyShader
+// Modified version of example scripts
+// in order to work with Z-Up orientation
 require("./custom/shaders/SkyShader");
 require("./custom/effects/VREffect");
 
@@ -99,22 +92,6 @@ var Viewport = function( viewportDOM, config ) {
 	this.opacityQuad.visible = false;
 	this.camera.add( this.opacityQuad );
 
-	// // Create effect composer
-	// this.composer = new THREE.EffectComposer( this.renderer );
-
-	// this.renderPass = new THREE.RenderPass( this.scene, this.camera );
-
-	// this.composer.addPass( this.renderPass );
-
-	// var effect = new THREE.ShaderPass( THREE.DotScreenShader );
-	// effect.uniforms[ 'scale' ].value = 4;
-	// effect.renderToScreen = true;
-	// this.composer.addPass( effect );
-
-	// var effect = new THREE.ShaderPass( THREE.RGBShiftShader );
-	// effect.uniforms[ 'amount' ].value = 0.0015;
-	// effect.renderToScreen = true;
-
 	// Initialize the sizes (apply actual size)
 	this.resize();
 
@@ -149,10 +126,6 @@ var Viewport = function( viewportDOM, config ) {
 	this.label.position.set( 0, 0.3, -3.5 );
 	this.label.scale.set( 4, 4, 1 );
 	this.camera.add( this.label );
-
-	// ==== DEBUG =====
-	window.vp = this;
-	// ================
 
 }
 
@@ -207,9 +180,6 @@ Viewport.prototype.resize = function() {
 
 	// Update renderer
 	this.renderer.setSize( width, height );
-
-	// // Update composer
-	// this.composer.setSize( width, height );
 
 	// Re-render if paused
 	if (this.paused) this.render();
@@ -277,7 +247,6 @@ Viewport.prototype.render = function() {
 		// Otherwise use classic renderer
 		this.renderer.render( this.scene, this.camera );
 	}
-	// this.composer.render();
 
 }
 

@@ -57,7 +57,7 @@ AudioCore.initialize = function() {
 	 * API to voice effects
 	 * @property 
 	 */
-	this.voiceEffects = new VoiceEffects();
+	this.voiceEffects = new VoiceEffects( this.listener );
 
 	/**
 	 * Current gain volume for transitions

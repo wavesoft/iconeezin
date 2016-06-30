@@ -24,11 +24,11 @@
  * Start a new tween with the given duration
  * and rate.
  * @param {int} duration - Duration in milliseconds
- * @param {int} rate - Events per second
+ * @param {int} rate - Events per second (defaults to 25)
  */
 var Tween = function( duration, rate ) {
 	this.duration = duration;
-	this.rate = rate;
+	this.rate = rate || 25;
 
 	// Calculate the timer interval
 	this._interval = 1000 / rate;
