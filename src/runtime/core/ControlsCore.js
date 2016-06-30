@@ -278,24 +278,6 @@ ControlsCore.onUpdate = function( delta ) {
 	if (this.activeControl)
 		this.activeControl.triggerUpdate( delta );
 
-	// // Reset position
-	// var camera = VideoCore.viewport.camera;
-	// camera.position.copy(this.zeroPosition);
-	// camera.rotation.copy(this.zeroRotation);
-	// camera.updateMatrix();
-
-	// // Apply translation
-	// for (var i=0, l=this.controls.length; i<l; ++i) {
-	// 	if (!this.controls[i].enabled) continue;
-	// 	camera.applyMatrix( this.controls[i].rotationMatrix );
-	// }
-
-	// // Apply rotation
-	// for (var i=0, l=this.controls.length; i<l; ++i) {
-	// 	if (!this.controls[i].enabled) continue;
-	// 	camera.applyMatrix( this.controls[i].translationMatrix );
-	// }
-
 }
 
 // Export

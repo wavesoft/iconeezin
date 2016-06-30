@@ -20,12 +20,9 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var THREE = require("three");
 var Tween = require("../util/Tween");
-var AudioAPI = require("../../api/Audio");
-// var WebAudiox = require("webaudiox");
-
-require("../audio/UserAudio");
+var VoiceEffects = require("../audio/VoiceEffects");
+var VoiceCommands = require("../audio/VoiceCommands");
 
 /**
  * The AudioCore singleton contains the
@@ -39,20 +36,28 @@ var AudioCore = {};
 AudioCore.initialize = function() {
 
 	/**
-	 * Open a three.js listener
+	 * Three.js linstener (user speakers)
+	 * @property
 	 */
 	this.listener = new THREE.AudioListener();
 
 	/**
-	 * The line in from the user's microphone
+	 * Audio loader responsible for loading audio objects
 	 * @property
 	 */
-	this.lineIn = new THREE.UserAudio( this.listener );
+	this.audioLoader = new THREE.AudioLoader();
 
 	/**
-	 * Create audio loader
+	 * API to voice commands
+	 * @property 
 	 */
-	this.audioLoader = new THREE.AudioLoader();
+	this.voiceCommands = new VoiceCommands();
+
+	/**
+	 * API to voice effects
+	 * @property 
+	 */
+	this.voiceEffects = new VoiceEffects();
 
 	/**
 	 * Current gain volume for transitions
@@ -71,17 +76,16 @@ AudioCore.initialize = function() {
 	 */
 	this.paused = [];
 
-	/**
-	 * Line in delay
-	 */
-	this.lineInDelay = null;
-
 }
 
 /**
  * Reset state
  */
 AudioCore.reset = function() {
+
+	// Reset audio effects and voice commands
+	this.voiceCommands.reset();
+	this.voiceEffects.reset();
 
 	// Get & Reset resetable objects
 	var resetable = this.resetable;
@@ -124,45 +128,6 @@ AudioCore.reset = function() {
 AudioCore.makeResetable = function( sound ) {
 	if (this.resetable.indexOf(sound) !== -1) return;
 	this.resetable.push( sound );
-}
-
-/**
- * Enable or disable microphone
- * @param {bool} enabled - Set to true to enable microphone
- */
-AudioCore.enableLineIn = function( enabled ) {
-	if (enabled) {
-		this.lineIn.play();
-	} else {
-		this.lineIn.stop();
-	}
-}
-
-/**
- * Helper function to set/unset line in delay
- * @param {int} delay - The reverberation delay
- */
-AudioCore.setLineInDelay = function( delay ) {
-	if (!delay || (delay < 0)) {
-
-		// If we have a filter already, remove it
-		if (this.lineInDelay) {
-			this.lineIn.setFilters([]);
-			this.lineInDelay = null;
-		}
-
-	} else {
-
-		// Create effect if missing
-		if (!this.lineInDelay) {
-			this.lineInDelay = this.listener.context.createDelay();
-			this.lineIn.setFilters([ this.lineInDelay ]);
-		}
-
-		// Update delay
-		this.lineInDelay.delayTime.value = delay;
-
-	}
 }
 
 /**
@@ -216,6 +181,20 @@ AudioCore.setGlobalMute = function( muted ) {
 			}).bind(this))
 			.start();
 	}
+
+}
+
+/**
+ * Set paused state
+ */
+AudioCore.setPaused = function( isPaused ) {
+
+	// Mute on pause
+	this.setGlobalMute( isPaused );
+
+	// Forward to sub-components
+	this.voiceCommands.setPaused( isPaused );
+	this.voiceEffects.setPaused( isPaused );
 
 }
 
