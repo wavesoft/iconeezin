@@ -121,14 +121,16 @@ ExperimentsCore.showExperiment = function( experiment ) {
 	// Check if this is already loaded
 	if (this.loadedExperiments[experiment] !== undefined) {
 
+		// Reset other cores
+		AudioCore.reset();
+	
 		// Ask TrackingCore to prepare for the experiment
 		TrackingCore.startExperiment( experiment, (function() {
 
 			// Focus to the given experiment instance on the viewport
 			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible, function() {
 
-				// Reset other cores
-				AudioCore.reset();
+				// Reset controls core only when it's not visible
 				ControlsCore.reset();
 
 			} );
@@ -139,6 +141,9 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 		// Load experiment
 		Loaders.loadExperiment( experiment, (function ( err, inst ) {
+
+			// Reset other cores
+			AudioCore.reset();
 
 			// Handle errors
 			if (err) {
@@ -155,8 +160,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 				TrackingCore.startExperiment( experiment, (function() {
 					this.experiments.focusExperiment( inst, handleExperimentVisible, function() {
 						
-						// Reset other cores
-						AudioCore.reset();
+						// Reset controls core only when it's not visible
 						ControlsCore.reset();
 
 					});
@@ -175,6 +179,17 @@ ExperimentsCore.showExperiment = function( experiment ) {
 		});
 
 	}
+
+}
+
+/**
+ * Mark current experiment as completed
+ *
+ * This should automatically forward to next experiment and/or show
+ * the appropriate completion screen.
+ *
+ */
+ExperimentsCore.experimentCompleted = function() {
 
 }
 

@@ -42,6 +42,7 @@ TrackingCore.initialize = function( trackingID ) {
 	}
 
 	// Active experiment metadata
+	this.activeExperimentName = null;
 	this.activeExperimentMeta = { };
 	this.activeTaskMeta = { };
 	this.activeTaskName = "";
@@ -218,16 +219,42 @@ TrackingCore.stopTimer = function(name) {
  * Start an experiment (called by core)
  */
 TrackingCore.startExperiment = function( name, callback ) {
+
+	// Complete previous experiment
+	if (this.activeExperimentName) {
+		this.completeExperiment();
+	}
+
+	// Query experiment metadata
 	this.queryExperimentMeta(name, (function(meta) {
+
+		// Activate experiment
+		this.activeExperimentName = name;
+		this.restartTimer("internal.experiment");
 
 		// Set experiment tracking data
 		this.setGlobal("experiment", name);
-		this.trackEvent("experiment.started");
+		this.trackEvent("experiment.started", { 'experiment': name });
 
 		// Callback with experiment metadata
 		if (callback) callback(meta);
 
 	}).bind(this));
+}
+
+/**
+ * Complete an experiment
+ */
+TrackingCore.completeExperiment = function() {
+	if (!this.activeExperimentName) return;
+
+	// Track event
+	this.trackEvent("experiment.completed", { 
+		'experiment': this.activeExperimentName, 'duration': this.stopTimer("internal.experiment") 
+	});
+
+	// Reset active experiment name
+	this.activeExperimentName = null;
 }
 
 /**
@@ -251,7 +278,7 @@ TrackingCore.startTask = function( name, properties, callback ) {
 		this.trackEvent("experiment.task.started", { 'task': name });
 
 		// Start task timer
-		this.restartTimer("task");
+		this.restartTimer("internal.task");
 
 		// Callback with task metadata
 		if (callback) callback( meta );
@@ -267,7 +294,7 @@ TrackingCore.completeTask = function( results ) {
 
 	// Track event completion
 	this.trackEvent("experiment.task.completed", Object.assign({ 
-		'task': this.activeTaskName, 'duration': this.stopTimer("task") }, results
+		'task': this.activeTaskName, 'duration': this.stopTimer("internal.task") }, results
 	));
 
 	// Reset active task

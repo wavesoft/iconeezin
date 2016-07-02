@@ -93,24 +93,20 @@ MouseControl.prototype.unchainGimbal = function( gimbal ) {
 };
 
 /**
- * 
+ * Handle pointer lock change
  */
 MouseControl.prototype.handlePointerLockChange = function( event ) {
 	if ( document.pointerLockElement === VideoCore.rootDOM 
 		|| document.mozPointerLockElement === VideoCore.rootDOM 
 		|| document.webkitPointerLockElement === VideoCore.rootDOM ) {
 
-		console.log("Grabbed!");
-
 	} else {
-
-		console.log("Released!");
 
 	}
 }
 
 /**
- * 
+ * Handle pointer lock error
  */
 MouseControl.prototype.handlePointerLockError = function( event ) {
 

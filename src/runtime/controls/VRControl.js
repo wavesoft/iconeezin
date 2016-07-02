@@ -21,8 +21,8 @@
  */
 
 var BaseControl = require('./BaseControl');
-
-require("three/examples/js/controls/VRControls");
+var Browser = require("../util/Browser");
+require("./custom/controls/VRControls");
 
 var vec = new THREE.Vector3();
 
@@ -33,8 +33,13 @@ var VRControls = function( ) {
 	BaseControl.call( this );
 
 	// Control the gimbal with VR controls
-	this.controls = new THREE.VRControls( this.gimbal );
+	this.controls = new THREE.VRControls( this.gimbal, Browser.vrHMD );
 	this.controls.userHeight = 2;
+
+	// Receive VR updates from browser
+	Browser.onVRSupportChange( (function( isPlugged, vrHMD ) {
+		this.controls.setHMDDevice( isPlugged ? vrHMD : undefined );
+	}).bind(this) );
 
 }
 

@@ -154,8 +154,12 @@ Cursor.prototype.setProgressionAnimation = function(v) {
 	} else {
 		
 		// Calculate animation step
-		var i = parseInt( Math.floor( v * ANIMATION_STEPS ) );
-		if (i >= ANIMATION_STEPS) i=ANIMATION_STEPS-1;
+		var i = 0;
+		if (v) {
+			i = parseInt( Math.floor( v * ANIMATION_STEPS ) );
+			if (i >= ANIMATION_STEPS) i=ANIMATION_STEPS-1;
+			if (i < 0) i=0;
+		}
 
 		// Apply geometry
 		this.animCursor.visible = true;

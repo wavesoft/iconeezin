@@ -75,8 +75,6 @@ SightInteraction.prototype.updateFromScene = function() {
 		}
 	}).bind(this));
 
-	console.log("Updated interactive objects:", this.interactiveObjects);
-
 };
 
 /**

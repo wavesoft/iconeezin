@@ -22,6 +22,7 @@
 
 var Viewport = require("../ui/Viewport");
 var Cursor = require("../ui/Cursor");
+var Browser = require("../util/Browser");
 
 /**
  * Private properties
@@ -31,6 +32,9 @@ var messageFn = null;
 var interactionFn = null;
 var timeoutTimer = null;
 var timeoutVal = 0;
+var isPresenting = false;
+var viewportWidth = 0;
+var viewportHeight = 0;
 
 /**
  * The VideoCore singleton contains the
@@ -43,11 +47,6 @@ var VideoCore = {};
  */
 VideoCore.initialize = function( rootDOM, canvasDOM ) {
 
-	// Init properties
-	this.hmd = false;
-	this.vrDevice = null;
-	this.vrDeprecatedAPI = false;
-
 	// Keep a reference to the root DOM
 	this.rootDOM = rootDOM;
 
@@ -58,134 +57,72 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 	}
 
 	// Create a new viewport instance
-	this.viewport = new Viewport( canvasDOM, {} );
+	this.viewport = new Viewport( canvasDOM, Browser.vrHMD );
+	Browser.onVRSupportChange(function( isPlugged, vrHMD ) {
+		VideoCore.viewport.setHMDDevice( isPlugged ? vrHMD : undefined );
+	});
 
 	// Create a new cursor
 	this.cursor = new Cursor( this.viewport );
 
-	// Listen for window resize events
-	window.addEventListener( 'resize', (function() {
+	// Set initial viewport size
+	viewportWidth = canvasDOM.offsetWidth;
+	viewportHeight =  canvasDOM.offsetHeight;
+	VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
 
-		// Resize viewport
-		this.viewport.resize();
-
-	}).bind(this), false );
-
-}
-
-/**
- * Check if the browser supports VR
- */
-VideoCore.hasVR = function() {
-	return navigator.getVRDisplays !== undefined || navigator.getVRDevices !== undefined;
-}
-
-/**
- * Check if we have VR and get first VR Device
- */
-VideoCore.grabVR = function( cb ) {
-
-	// Check for missing VR
-	if (!this.hasVR()) {
-		if (cb) cb(null, "Your browser does not support WebVR");
-		return;
-	}
-
-	// Got VR Devices
-	var gotVRDevices = (function( devices ) {
-
-		// Iterate over devices
-		this.vrDevice = null;
-		for ( var i = 0; i < devices.length; i ++ ) {
-
-			if ( 'VRDisplay' in window && devices[ i ] instanceof VRDisplay ) {
-
-				this.vrDevice = devices[ i ];
-				this.vrDeprecatedAPI = false;
-				break; // We keep the first we encounter
-
-			} else if ( 'HMDVRDevice' in window && devices[ i ] instanceof HMDVRDevice ) {
-
-				this.vrDevice = devices[ i ];
-				this.vrDeprecatedAPI = true;
-				break; // We keep the first we encounter
-
-			}
-
-		}
-
-		// Check if we couldn't find a device
-		if (!this.vrDevice) {
-			if (cb) cb(null, "No devices found");
+	// Bind on document events
+	Browser.onVRDisplayPresentChange(function( presenting, width, height, pixelAspectRatio ) {
+		alert("VR RESIZE: w="+width+", h="+height);
+		if (isPresenting = presenting) {
+			VideoCore.viewport.setSize( width, height, pixelAspectRatio );
 		} else {
-			if (cb) cb( this.vrDevice );
+			VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
+		}
+	});
+	window.addEventListener( 'resize', function() {
+		viewportWidth = canvasDOM.offsetWidth;
+		viewportHeight =  canvasDOM.offsetHeight;
+		alert("RESIZE: w="+viewportWidth+", h="+viewportHeight);
+
+		// When presenting in VR mode the size is defined by
+		// the HMD display. So any resize event just updates the
+		// DOM element (the viewport) and not the canvas
+		if (!isPresenting) {
+			VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
 		}
 
-	}).bind(this);
+	}, false );
 
-	// VR Displays
-	if ( navigator.getVRDisplays ) {
-		navigator.getVRDisplays().then( gotVRDevices );
-	} else if ( navigator.getVRDevices ) {
-		// Deprecated API.
-		navigator.getVRDevices().then( gotVRDevices );
-	}
 
-};
-
-/**
- * Release VR Resources
- */
-VideoCore.releaseVR = function() {
-	if (!this.vrDevice) return;
-	this.vrDevice = null;
-};
+}
 
 /**
  * Start/Stop video animation
  */
-VideoCore.setPaused = function( enabled ) {
+VideoCore.hasVR = Browser.hasVR;
+
+/**
+ * Start/Stop video animation
+ */
+VideoCore.setPaused = function( isPaused ) {
 	var fullScreen = false;
-	paused = enabled;
-	this.viewport.setPaused( enabled );
+	paused = isPaused;
+	this.viewport.setPaused( isPaused );
 
-	if (!enabled) {
+	if (!isPaused) {
 
+		// Request HMD present or fullscreen
 		if (this.hmd) {
-
-			// Request presentation from the HMD effect
-			VideoCore.viewport.hmdEffect.requestPresent();
-
+			Browser.requestHMDPresent();
 		} else {
-
-			// Enter fullscreen
-			VideoCore.hideMessage();
-			fullScreen = true;
-
-		}
-
-		//
-		// Check fullscreen request
-		//
-		if (fullScreen) {
-			if (fullScreen === true) fullScreen = undefined;
-
-			// Enable full-screen when switching state
-			if (this.rootDOM.requestFullscreen) {
-				this.rootDOM.requestFullscreen( fullScreen );
-			} else if (this.rootDOM.webkitRequestFullscreen) {
-				this.rootDOM.webkitRequestFullscreen( fullScreen );
-			} else if (this.rootDOM.mozRequestFullScreen) {
-				this.rootDOM.mozRequestFullScreen( fullScreen );
-			} else if (this.rootDOM.msRequestFullscreen) {
-				this.rootDOM.msRequestFullscreen( fullScreen );
-			}
-
+			Browser.requestFullscreen( VideoCore.rootDOM );
 		}
 
 	} else {
 
 		// Exit VR/Full screen
+		Browser.exitHMDPresent();
+		Browser.exitFullscreen();
 
 	}
 

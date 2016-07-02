@@ -26,8 +26,56 @@
 module.exports = {
 
 	/**
-	 * Were experiment bundles are found
+	 * Global 'up' direction
 	 */
-	'experiments_dir': 'experiments'
+	'up': null,
+
+	/**
+	 * Path configuration
+	 */
+	'path': {
+
+		/**
+		 * Path to experiments base directory
+		 */
+		'experiments': 'experiments',
+
+		/**
+		 * Path to experiments metadata
+		 */
+		'metadata': 'experiments/meta.json'
+
+	},
+
+	/**
+	 * Tracking configuration
+	 */
+	'track': {
+
+		/**
+		 * Tracking ID for this session
+		 */
+		'id': '',
+
+		/**
+		 * Tracking provider configuration
+		 */
+		'provider': {
+
+			/**
+			 * We are using our custom real-time tracking,
+			 * but this can easily be replaced with google analytics
+			 */
+			'className': 'RealTimeTracker',
+
+			/**
+			 * Path to real-time tracker URL
+			 */
+			'url': 'tracker/api.php'
+
+		}
+
+
+	}
 
 };

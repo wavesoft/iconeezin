@@ -42,7 +42,7 @@ Loaders.initialize = function() {
 
 	// Create jbb singleton to the shared database in order
 	// to shared graphics and other shared resources
-	this.jbbLoader = new JBBLoader( Config.experiments_dir, this.database );
+	this.jbbLoader = new JBBLoader( Config.path.experiments, this.database );
 
 	// Add jbb profiles 
 	this.jbbLoader.addProfile( JBBProfileThreeLoader );

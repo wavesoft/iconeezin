@@ -45,7 +45,7 @@ var Iconeezin =
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	/* WEBPACK VAR INJECTION */(function(global) {"use strict";
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
@@ -69,17 +69,23 @@ var Iconeezin =
 
 	// Load libraries as soon as possible
 	var libTHREE = __webpack_require__(1);
+	global.THREE = libTHREE;
 
 	// Iconeezin API
 	var IconeezinAPI = __webpack_require__(2);
 
+	// Load default configuration
+	var DefaultConfig = __webpack_require__(13);
+	DefaultConfig.up = new libTHREE.Vector3( 0,0,1 );
+
 	// Load components afterwards
 	var AudioCore = __webpack_require__(4);
-	var VideoCore = __webpack_require__(13);
-	var ControlsCore = __webpack_require__(20);
-	var TrackingCore = __webpack_require__(22);
-	var ExperimentsCore = __webpack_require__(28);
+	var VideoCore = __webpack_require__(14);
+	var ControlsCore = __webpack_require__(32);
+	var TrackingCore = __webpack_require__(34);
+	var ExperimentsCore = __webpack_require__(40);
 	var InteractionCore = __webpack_require__(12);
+	var BrowserUtil = __webpack_require__(17);
 
 	/**
 	 * Expose useful parts of the runtime API
@@ -87,9 +93,7 @@ var Iconeezin =
 	module.exports = {
 
 		// Iconeezin Configuration
-		'Config': {
-			'up': new libTHREE.Vector3( 0,0,1 )
-		},
+		'Config': DefaultConfig,
 
 		// Iconeezin API
 		'API': IconeezinAPI,
@@ -103,6 +107,7 @@ var Iconeezin =
 			'Tracking': TrackingCore,
 			'Experiments': ExperimentsCore,
 			'Interaction': InteractionCore,
+			'Browser': BrowserUtil,
 
 			// Initialize helper
 			'initialize': function( viewportDOM, canvasDOM ) {
@@ -124,7 +129,7 @@ var Iconeezin =
 						document.msFullscreenElement;
 
 					// Forward this events to important components
-					ControlsCore.mouseControl.handleFullScreenChange(is_fullscreen);
+					ControlsCore.updateFullscreenState( is_fullscreen );
 
 				};
 
@@ -145,9 +150,9 @@ var Iconeezin =
 			// Enable/Disable paused state
 			'setPaused': function( enabled ) {
 				VideoCore.setPaused( enabled );
+				AudioCore.setPaused( enabled );
 				ControlsCore.setPaused( enabled );
 				TrackingCore.setPaused( enabled );
-				AudioCore.setGlobalMute( enabled );
 				ExperimentsCore.setPaused( enabled );
 			},
 
@@ -160,6 +165,7 @@ var Iconeezin =
 
 	};
 
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
 /* 1 */
@@ -42396,7 +42402,6 @@ var Iconeezin =
 			// Fade out
 			this._volumeTween = new Tween(250, 25)
 				.step((function(v) {
-					console.log("Fadeout",v);
 					this.listener.setMasterVolume( 1.0 - v );
 				}).bind(this))
 				.completed((function() {
@@ -42423,7 +42428,6 @@ var Iconeezin =
 			// Fade in
 			this._volumeTween = new Tween(250, 25)
 				.step((function(v) {
-					console.log("Fadein",v);
 					this.listener.setMasterVolume( v );
 				}).bind(this))
 				.start();
@@ -44030,6 +44034,92 @@ var Iconeezin =
 
 /***/ },
 /* 13 */
+/***/ function(module, exports) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 * 
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 * 
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 * 
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
+	/**
+	 * Expose global configuration
+	 */
+	module.exports = {
+
+		/**
+		 * Global 'up' direction
+		 */
+		'up': null,
+
+		/**
+		 * Path configuration
+		 */
+		'path': {
+
+			/**
+			 * Path to experiments base directory
+			 */
+			'experiments': 'experiments',
+
+			/**
+			 * Path to experiments metadata
+			 */
+			'metadata': 'experiments/meta.json'
+
+		},
+
+		/**
+		 * Tracking configuration
+		 */
+		'track': {
+
+			/**
+			 * Tracking ID for this session
+			 */
+			'id': '',
+
+			/**
+			 * Tracking provider configuration
+			 */
+			'provider': {
+
+				/**
+				 * We are using our custom real-time tracking,
+				 * but this can easily be replaced with google analytics
+				 */
+				'className': 'RealTimeTracker',
+
+				/**
+				 * Path to real-time tracker URL
+				 */
+				'url': 'tracker/api.php'
+
+			}
+
+
+		}
+
+	};
+
+/***/ },
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -44054,8 +44144,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var Viewport = __webpack_require__(14);
-	var Cursor = __webpack_require__(18);
+	var Viewport = __webpack_require__(15);
+	var Cursor = __webpack_require__(30);
+	var Browser = __webpack_require__(17);
 
 	/**
 	 * Private properties
@@ -44065,6 +44156,9 @@ var Iconeezin =
 	var interactionFn = null;
 	var timeoutTimer = null;
 	var timeoutVal = 0;
+	var isPresenting = false;
+	var viewportWidth = 0;
+	var viewportHeight = 0;
 
 	/**
 	 * The VideoCore singleton contains the
@@ -44077,11 +44171,6 @@ var Iconeezin =
 	 */
 	VideoCore.initialize = function( rootDOM, canvasDOM ) {
 
-		// Init properties
-		this.hmd = false;
-		this.vrDevice = null;
-		this.vrDeprecatedAPI = false;
-
 		// Keep a reference to the root DOM
 		this.rootDOM = rootDOM;
 
@@ -44092,134 +44181,72 @@ var Iconeezin =
 		}
 
 		// Create a new viewport instance
-		this.viewport = new Viewport( canvasDOM, {} );
+		this.viewport = new Viewport( canvasDOM, Browser.vrHMD );
+		Browser.onVRSupportChange(function( isPlugged, vrHMD ) {
+			VideoCore.viewport.setHMDDevice( isPlugged ? vrHMD : undefined );
+		});
 
 		// Create a new cursor
 		this.cursor = new Cursor( this.viewport );
 
-		// Listen for window resize events
-		window.addEventListener( 'resize', (function() {
+		// Set initial viewport size
+		viewportWidth = canvasDOM.offsetWidth;
+		viewportHeight =  canvasDOM.offsetHeight;
+		VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
 
-			// Resize viewport
-			this.viewport.resize();
-
-		}).bind(this), false );
-
-	}
-
-	/**
-	 * Check if the browser supports VR
-	 */
-	VideoCore.hasVR = function() {
-		return navigator.getVRDisplays !== undefined || navigator.getVRDevices !== undefined;
-	}
-
-	/**
-	 * Check if we have VR and get first VR Device
-	 */
-	VideoCore.grabVR = function( cb ) {
-
-		// Check for missing VR
-		if (!this.hasVR()) {
-			if (cb) cb(null, "Your browser does not support WebVR");
-			return;
-		}
-
-		// Got VR Devices
-		var gotVRDevices = (function( devices ) {
-
-			// Iterate over devices
-			this.vrDevice = null;
-			for ( var i = 0; i < devices.length; i ++ ) {
-
-				if ( 'VRDisplay' in window && devices[ i ] instanceof VRDisplay ) {
-
-					this.vrDevice = devices[ i ];
-					this.vrDeprecatedAPI = false;
-					break; // We keep the first we encounter
-
-				} else if ( 'HMDVRDevice' in window && devices[ i ] instanceof HMDVRDevice ) {
-
-					this.vrDevice = devices[ i ];
-					this.vrDeprecatedAPI = true;
-					break; // We keep the first we encounter
-
-				}
-
-			}
-
-			// Check if we couldn't find a device
-			if (!this.vrDevice) {
-				if (cb) cb(null, "No devices found");
+		// Bind on document events
+		Browser.onVRDisplayPresentChange(function( presenting, width, height, pixelAspectRatio ) {
+			alert("VR RESIZE: w="+width+", h="+height);
+			if (isPresenting = presenting) {
+				VideoCore.viewport.setSize( width, height, pixelAspectRatio );
 			} else {
-				if (cb) cb( this.vrDevice );
+				VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
+			}
+		});
+		window.addEventListener( 'resize', function() {
+			viewportWidth = canvasDOM.offsetWidth;
+			viewportHeight =  canvasDOM.offsetHeight;
+			alert("RESIZE: w="+viewportWidth+", h="+viewportHeight);
+
+			// When presenting in VR mode the size is defined by
+			// the HMD display. So any resize event just updates the
+			// DOM element (the viewport) and not the canvas
+			if (!isPresenting) {
+				VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
 			}
 
-		}).bind(this);
+		}, false );
 
-		// VR Displays
-		if ( navigator.getVRDisplays ) {
-			navigator.getVRDisplays().then( gotVRDevices );
-		} else if ( navigator.getVRDevices ) {
-			// Deprecated API.
-			navigator.getVRDevices().then( gotVRDevices );
-		}
 
-	};
-
-	/**
-	 * Release VR Resources
-	 */
-	VideoCore.releaseVR = function() {
-		if (!this.vrDevice) return;
-		this.vrDevice = null;
-	};
+	}
 
 	/**
 	 * Start/Stop video animation
 	 */
-	VideoCore.setPaused = function( enabled ) {
+	VideoCore.hasVR = Browser.hasVR;
+
+	/**
+	 * Start/Stop video animation
+	 */
+	VideoCore.setPaused = function( isPaused ) {
 		var fullScreen = false;
-		paused = enabled;
-		this.viewport.setPaused( enabled );
+		paused = isPaused;
+		this.viewport.setPaused( isPaused );
 
-		if (!enabled) {
+		if (!isPaused) {
 
+			// Request HMD present or fullscreen
 			if (this.hmd) {
-
-				// Request presentation from the HMD effect
-				VideoCore.viewport.hmdEffect.requestPresent();
-
+				Browser.requestHMDPresent();
 			} else {
-
-				// Enter fullscreen
-				VideoCore.hideMessage();
-				fullScreen = true;
-
-			}
-
-			//
-			// Check fullscreen request
-			//
-			if (fullScreen) {
-				if (fullScreen === true) fullScreen = undefined;
-
-				// Enable full-screen when switching state
-				if (this.rootDOM.requestFullscreen) {
-					this.rootDOM.requestFullscreen( fullScreen );
-				} else if (this.rootDOM.webkitRequestFullscreen) {
-					this.rootDOM.webkitRequestFullscreen( fullScreen );
-				} else if (this.rootDOM.mozRequestFullScreen) {
-					this.rootDOM.mozRequestFullScreen( fullScreen );
-				} else if (this.rootDOM.msRequestFullscreen) {
-					this.rootDOM.msRequestFullscreen( fullScreen );
-				}
-
+				Browser.requestFullscreen( VideoCore.rootDOM );
 			}
 
 		} else {
 
 			// Exit VR/Full screen
+			Browser.exitHMDPresent();
+			Browser.exitFullscreen();
 
 		}
 
@@ -44318,7 +44345,7 @@ var Iconeezin =
 	module.exports = VideoCore;
 
 /***/ },
-/* 14 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -44344,17 +44371,32 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var Label = __webpack_require__(15);
+	var Label = __webpack_require__(16);
+	var Browser = __webpack_require__(17);
 
 	// Modified version of example scripts
 	// in order to work with Z-Up orientation
-	__webpack_require__(16);
-	__webpack_require__(17);
+	__webpack_require__(18);
+	// require("./custom/effects/VRComposerEffect");
+
+	// Effect composer complex
+	__webpack_require__(19);
+	__webpack_require__(20);
+	__webpack_require__(21);
+	__webpack_require__(22);
+	__webpack_require__(23);
+
+	__webpack_require__(24);
+	__webpack_require__(25);
+	__webpack_require__(26);
+	__webpack_require__(27);
+	__webpack_require__(28);
+	__webpack_require__(29);
 
 	/**
 	 * Our viewport is where everything gets rendered
 	 */
-	var Viewport = function( viewportDOM, config ) {
+	var Viewport = function( viewportDOM, vrHMD ) {
 
 		/////////////////////////////////////////////////////////////
 		// Properties
@@ -44376,6 +44418,10 @@ var Iconeezin =
 		this.useHMD = false;
 		this.experiments = [];
 		this.activeExperiment = null;
+
+		// DOM Size
+		this.width = 0;
+		this.height = 0;
 
 		/////////////////////////////////////////////////////////////
 		// Scene & Camera
@@ -44401,9 +44447,6 @@ var Iconeezin =
 		this.renderer.setPixelRatio( window.devicePixelRatio );
 		this.viewportDOM.appendChild( this.renderer.domElement );
 
-		// Initialize HMD effect and controls
-		this.hmdEffect = new THREE.VREffect( this.renderer );
-
 		// Camera opacity
 		var black = new THREE.MeshBasicMaterial({
 			color: 0x00,
@@ -44415,8 +44458,36 @@ var Iconeezin =
 		this.opacityQuad.visible = false;
 		this.camera.add( this.opacityQuad );
 
+		// Effect composer
+		this.effectComposer = new THREE.EffectComposer( this.renderer );
+
+		// Render pass
+		this.renderPass = new THREE.VRPass( this.scene, this.camera, vrHMD );
+		this.renderPass.renderToScreen = false;
+		this.effectComposer.addPass( this.renderPass );
+
+		// FXAA anti-alias pass
+		this.fxaaPass = new THREE.ShaderPass( THREE.FXAAShader );
+		this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / window.innerWidth, 1 / window.innerHeight );
+		this.fxaaPass.renderToScreen = true;
+		this.effectComposer.addPass( this.fxaaPass );
+
+		// var effect = new THREE.ShaderPass( THREE.CopyShader );
+		// effect.uniforms[ 'scale' ].value = 4;
+		// effect.renderToScreen = true;
+		// this.effectComposer.addPass( effect );
+
+		// Glitch pass
+		// this.glitchPass = new THREE.GlitchPass();
+		// this.glitchPass.renderToScreen = true;
+		// this.effectComposer.addPass( this.glitchPass );
+
+
+		// Initialize HMD effect
+		// this.vrComposerEffect = new THREE.VRComposerEffect( this.effectComposer, this.renderPass );
+
 		// Initialize the sizes (apply actual size)
-		this.resize();
+		this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
 
 		/////////////////////////////////////////////////////////////
 		// Environment
@@ -44488,24 +44559,29 @@ var Iconeezin =
 	/**
 	 * Resize viewport to fit new size
 	 */
-	Viewport.prototype.resize = function() {
+	Viewport.prototype.setSize = function( width, height, pixelRatio ) {
 
 		// Get size of the viewport
-		var width = this.viewportDOM.offsetWidth,
-			height = this.viewportDOM.offsetHeight;
+		this.width = width;
+		this.height = height;
 
 		// Update camera
 		this.camera.aspect = width / height;
 		this.camera.updateProjectionMatrix();
 
-		// Update effect
-		this.hmdEffect.setSize( width, height );
-
 		// Update renderer
+		this.renderer.setPixelRatio( pixelRatio || window.devicePixelRatio );
 		this.renderer.setSize( width, height );
 
+		// Update VR Composer size
+		this.effectComposer.setSize( width, height );
+
+		// Update antialias
+		this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / width, 1 / height );
+
 		// Re-render if paused
-		if (this.paused) this.render();
+		if (this.paused)
+			this.render();
 
 	}
 
@@ -44562,15 +44638,27 @@ var Iconeezin =
 
 		}
 			
-		// Render scene
-		if (this.useHMD) {
-			// Use HMD Effect for rendering the sterep image
-			this.hmdEffect.render( this.scene, this.camera );
-		} else {
-			// Otherwise use classic renderer
-			this.renderer.render( this.scene, this.camera );
-		}
+		// // Render scene
+		// if (this.useHMD) {
+		// 	// Use HMD Effect for rendering the sterep image
+		// 	this.hmdEffect.render( this.scene, this.camera );
+		// } else {
+		// 	// Otherwise use classic renderer
+		// 	this.renderer.render( this.scene, this.camera );
+		// }
 
+		// Render composer
+		this.effectComposer.render( d );
+		// this.hmdEffect.vrHMD.submitFrame();
+		// this.vrComposerEffect.render( d );
+
+	}
+
+	/**
+	 * Define the HMD Device to use
+	 */
+	Viewport.prototype.setHMDDevice = function( device ) {
+		this.renderPass.vrHMD = device;
 	}
 
 	/**
@@ -44579,8 +44667,6 @@ var Iconeezin =
 	Viewport.prototype.setHMD = function( enabled ) {
 		// Set the HMD flag
 		this.useHMD = enabled;
-		// Resize
-		this.resize();
 	}
 
 	/**
@@ -44682,7 +44768,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 15 */
+/* 16 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -44917,7 +45003,344 @@ var Iconeezin =
 	module.exports = Label;
 
 /***/ },
-/* 16 */
+/* 17 */
+/***/ function(module, exports) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 * 
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 * 
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 * 
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
+	/**
+	 * Browser function normalization
+	 */
+	var Browser = {};
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	// Full-Screen API
+	//////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * HTML5 Fully-compliant API
+	 */
+	if (document.body.requestFullscreen) {
+
+		Browser.requestFullscreen = function( elm, opt ) { return elm.requestFullscreen(opt); }
+		Browser.exitFullscreen = function() { return document.exitFullscreen(); }
+		Browser.getFullscreenElement = function() { return document.fullscreenElement }
+
+		Browser.onFullscreenChange = function( cb ) { return document.addEventListener( 'fullscreenchange', cb, false); }
+		Browser.offFullscreenChange = function( cb ) { return document.removeEventListener( 'fullscreenchange', cb); }
+
+	/**
+	 * Mozila-Prefixed HTML5 API
+	 */
+	} else if (document.body.mozRequestFullScreen) {
+
+		Browser.requestFullscreen = function( elm, opt ) { return elm.mozRequestFullScreen(opt); }
+		Browser.exitFullscreen = function() { return document.mozCancelFullScreen(); }
+		Browser.getFullscreenElement = function() { return document.mozFullScreenElement }
+
+		Browser.onFullscreenChange = function( cb ) { return document.addEventListener( 'mozfullscreenchange', cb, false); }
+		Browser.offFullscreenChange = function( cb ) { return document.removeEventListener( 'mozfullscreenchange', cb); }
+
+	/**
+	 * Webkit-Prefixed HTML5 API
+	 */
+	} else if (document.body.webkitRequestFullscreen) {
+
+		Browser.requestFullscreen = function( elm, opt ) { elm.webkitRequestFullscreen(opt); }
+		Browser.exitFullscreen = function() { return document.webkitExitFullscreen(); }
+		Browser.getFullscreenElement = function() { return document.webkitFullscreenElement }
+
+		Browser.onFullscreenChange = function( cb ) { return document.addEventListener( 'webkitfullscreenchange', cb, false); }
+		Browser.offFullscreenChange = function( cb ) { return document.removeEventListener( 'webkitfullscreenchange', cb); }
+
+	}
+
+	/**
+	 * Helper functions
+	 */
+	Browser.isFullscreen = function() { return !!Browser.getFullscreenElement(); }
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	// WebVR API
+	//////////////////////////////////////////////////////////////////////////////////////////
+
+	const VR_UNSUPPORTED = 0;
+	const VR_DEPRECATED = 1;
+	const VR_LATEST = 2;
+
+	/**
+	 * Usable VR Display
+	 */
+	Browser.vrHMD = undefined;
+	Browser.vrAPIVersion = VR_UNSUPPORTED;
+	Browser.vrPresenting = false;
+
+	/**
+	 * Private VR Properties
+	 */
+	var onVRSupportChange_Callbacks = [];
+	var onVRDisplayPresentChange_Callbacks = [];
+
+	/**
+	 * VR Support change listeners
+	 */
+	Browser.onVRSupportChange = function( cb ) { 
+		onVRSupportChange_Callbacks.push(cb); 
+		if (Browser.vrHMD) {
+			cb( true, Browser.vrHMD );
+		}
+	}
+	Browser.offVRSupportChange = function( cb ) { 
+		var i = onVRSupportChange_Callbacks.indexOf(cb); 
+		if (i>=0) onVRSupportChange_Callbacks.splice(i,1);
+	}
+
+	/**
+	 * VR Present change listeners
+	 */
+	Browser.onVRDisplayPresentChange = function( cb ) { 
+		onVRDisplayPresentChange_Callbacks.push(cb);
+	}
+	Browser.offVRSupportChange = function( cb ) { 
+		var i = onVRDisplayPresentChange_Callbacks.indexOf(cb); 
+		if (i>=0) onVRDisplayPresentChange_Callbacks.splice(i,1);
+	}
+	var vrDisplayPresentChangeHandler = function() {
+
+		// Check if we are presenting
+		if (Browser.vrHMD.isPresenting) {
+
+			// Get render size
+			var eyeParamsL = Browser.vrHMD.getEyeParameters( 'left' );
+			var eyeWidth, eyeHeight;
+
+			// We are presenting
+			Browser.vrPresenting = true;
+
+			// Check according to old/new API
+			if (typeof eyeParamsL.renderRect === 'undefined') {
+				eyeWidth = eyeParamsL.renderWidth;
+				eyeHeight = eyeParamsL.renderHeight;
+			} else {
+				eyeWidth = eyeParamsL.renderRect.width;
+				eyeHeight = eyeParamsL.renderRect.height;
+			}
+
+			// Callback with enabled VR + custom render size
+			for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
+				onVRDisplayPresentChange_Callbacks[i]( false, eyeWidth*2, eyeHeight, 1 );		
+
+		} else {
+
+			// We are not presenting
+			Browser.vrPresenting = false;
+
+			// Callback with disabled VR
+			for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
+				onVRDisplayPresentChange_Callbacks[i]( false, 0, 0, 0 );		
+
+		}
+
+	}
+	var vrOldAPIPresentChangeHandler = function() {
+
+		// Skip if this full-screen event does not originate from a VR event
+		if (!Browser.vrHMD || (Browser.vrAPIVersion == VR_LATEST)) return;
+
+		// Get fullscreen element
+		var elm = Browser.getFullscreenElement();
+
+		// Trigger accordingly
+		if (elm) {
+
+			// We are presenting
+			Browser.vrPresenting = true;
+
+			// Callback with enabled VR
+			for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
+				onVRDisplayPresentChange_Callbacks[i]( true, 
+					elm.offsetWidth, elm.offsetHeight, window.devicePixelRatio );		
+
+		} else {
+
+			// We are not presenting
+			Browser.vrPresenting = true;
+
+			// Callback with disabled VR
+			for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
+				onVRDisplayPresentChange_Callbacks[i]( false, 0, 0, 0 );		
+
+		}
+
+	}
+
+	/**
+	 * Bind VR change listeners
+	 */
+	window.addEventListener('vrdisplayconnected', Browser.detectVR, false );
+	window.addEventListener('vrdisplaydisconnected', Browser.detectVR, false );
+	window.addEventListener('vrdisplaypresentchange', vrDisplayPresentChangeHandler, false );
+	Browser.onFullscreenChange( vrOldAPIPresentChangeHandler );
+
+	/**
+	 * Test if browser has VR support
+	 */
+	Browser.hasVR = function() {
+		return (navigator.getVRDisplays !== undefined || navigator.getVRDevices !== undefined);
+	};
+
+	/**
+	 * Test if browser has VR support
+	 */
+	Browser.hasVRDisplay = function() {
+		return !!Browser.vrHMD;
+	}
+
+	/**
+	 * Detect and initialize VR objects
+	 */
+	Browser.detectVR = function( callback ) {
+
+		function gotVRDevices( devices ) {
+
+			var hasPrevDevice = false;
+			var pickDevice = undefined;
+
+			for ( var i = 0; i < devices.length; i ++ ) {
+
+				// Check if previous device is still present
+				// (when called via 'vrdisplaydisconnected')
+				if (Browser.vrHMD && Browser.vrHMD === devices[i]) {
+					hasPrevDevice = true;
+					break;
+				}
+
+				// Pick first available device
+				if ( 'VRDisplay' in window && devices[ i ] instanceof VRDisplay ) {
+					if (!pickDevice) pickDevice = devices[ i ];
+
+				} else if ( 'HMDVRDevice' in window && devices[ i ] instanceof HMDVRDevice ) {
+					if (!pickDevice) pickDevice = devices[ i ];
+
+				}
+
+			}
+
+			if (hasPrevDevice) {
+				// Nothing changed
+			} else {
+
+				// First trigger 'unplugged' on the previous device
+				if (Browser.vrHMD) {
+					for (var i=0, l=onVRSupportChange_Callbacks.length; i<l; ++i) {
+						onVRSupportChange_Callbacks[i]( false, Browser.vrHMD );
+					}
+				}
+
+				// Then trigger 'plugged' on the new device
+				Browser.vrHMD = pickDevice;
+				for (var i=0, l=onVRSupportChange_Callbacks.length; i<l; ++i) {
+					onVRSupportChange_Callbacks[i]( true, Browser.vrHMD );
+				}
+
+			}
+
+		}
+
+		if ( navigator.getVRDisplays ) {
+
+			// Latest API
+			Browser.vrAPIVersion = VR_LATEST;
+			navigator.getVRDisplays().then( gotVRDevices );
+
+		} else if ( navigator.getVRDevices ) {
+
+			// Deprecated API
+			Browser.vrAPIVersion = VR_DEPRECATED;
+			navigator.getVRDevices().then( gotVRDevices );
+
+		}
+
+	};
+
+	Browser.requestHMDPresent = function( canvas, callback ) {
+		if (!Browser.vrHMD) return;
+
+		return new Promise( function ( resolve, reject ) {
+
+			// Skip if already presenting
+			if (Browser.vrPresenting) {
+				resolve();
+				return;
+			}
+
+			// Handle request according to API version
+			if (Browser.vrAPIVersion == VR_LATEST) {
+				resolve( Browser.vrHMD.requestPresent( [ { source: canvas } ] ) );
+
+			} else if (Browser.vrAPIVersion == VR_DEPRECATED) {
+				Browser.requestFullscreen( canvas, { vrDisplay: Browser.vrHMD } );
+				resolve();
+
+			}
+
+		});
+
+	};
+
+	Browser.exitHMDPresent = function( callback ) {
+		if (!Browser.vrHMD) return;
+
+		return new Promise( function ( resolve, reject ) {
+
+			// Skip if already not presenting
+			if (!Browser.vrPresenting) {
+				resolve();
+				return;
+			}
+
+
+			// Handle request according to API version
+			if (Browser.vrAPIVersion == VR_LATEST) {
+				resolve( Browser.vrHMD.exitPresent() );
+
+			} else if (Browser.vrAPIVersion == VR_DEPRECATED) {
+				Browser.exitPresent();
+
+			}
+
+		});
+
+	};
+
+	// Detect VR
+	Browser.detectVR();
+
+	// Export Browser
+	module.exports = Browser;
+
+/***/ },
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -45189,7 +45612,934 @@ var Iconeezin =
 
 
 /***/ },
-/* 17 */
+/* 19 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 *
+	 * Full-screen textured quad shader
+	 */
+
+	THREE.CopyShader = {
+
+		uniforms: {
+
+			"tDiffuse": { value: null },
+			"opacity":  { value: 1.0 }
+
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"uniform float opacity;",
+
+			"uniform sampler2D tDiffuse;",
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vec4 texel = texture2D( tDiffuse, vUv );",
+				"gl_FragColor = opacity * texel;",
+
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 20 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 *
+	 * Dot screen shader
+	 * based on glfx.js sepia shader
+	 * https://github.com/evanw/glfx.js
+	 */
+
+	THREE.DotScreenShader = {
+
+		uniforms: {
+
+			"tDiffuse": { value: null },
+			"tSize":    { value: new THREE.Vector2( 256, 256 ) },
+			"center":   { value: new THREE.Vector2( 0.5, 0.5 ) },
+			"angle":    { value: 1.57 },
+			"scale":    { value: 1.0 }
+
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"uniform vec2 center;",
+			"uniform float angle;",
+			"uniform float scale;",
+			"uniform vec2 tSize;",
+
+			"uniform sampler2D tDiffuse;",
+
+			"varying vec2 vUv;",
+
+			"float pattern() {",
+
+				"float s = sin( angle ), c = cos( angle );",
+
+				"vec2 tex = vUv * tSize - center;",
+				"vec2 point = vec2( c * tex.x - s * tex.y, s * tex.x + c * tex.y ) * scale;",
+
+				"return ( sin( point.x ) * sin( point.y ) ) * 4.0;",
+
+			"}",
+
+			"void main() {",
+
+				"vec4 color = texture2D( tDiffuse, vUv );",
+
+				"float average = ( color.r + color.g + color.b ) / 3.0;",
+
+				"gl_FragColor = vec4( vec3( average * 10.0 - 5.0 + pattern() ), color.a );",
+
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 21 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author felixturner / http://airtight.cc/
+	 *
+	 * RGB Shift Shader
+	 * Shifts red and blue channels from center in opposite directions
+	 * Ported from http://kriss.cx/tom/2009/05/rgb-shift/
+	 * by Tom Butterworth / http://kriss.cx/tom/
+	 *
+	 * amount: shift distance (1 is width of input)
+	 * angle: shift angle in radians
+	 */
+
+	THREE.RGBShiftShader = {
+
+		uniforms: {
+
+			"tDiffuse": { value: null },
+			"amount":   { value: 0.005 },
+			"angle":    { value: 0.0 }
+
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"uniform sampler2D tDiffuse;",
+			"uniform float amount;",
+			"uniform float angle;",
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vec2 offset = amount * vec2( cos(angle), sin(angle));",
+				"vec4 cr = texture2D(tDiffuse, vUv + offset);",
+				"vec4 cga = texture2D(tDiffuse, vUv);",
+				"vec4 cb = texture2D(tDiffuse, vUv - offset);",
+				"gl_FragColor = vec4(cr.r, cga.g, cb.b, cga.a);",
+
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 22 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author felixturner / http://airtight.cc/
+	 *
+	 * RGB Shift Shader
+	 * Shifts red and blue channels from center in opposite directions
+	 * Ported from http://kriss.cx/tom/2009/05/rgb-shift/
+	 * by Tom Butterworth / http://kriss.cx/tom/
+	 *
+	 * amount: shift distance (1 is width of input)
+	 * angle: shift angle in radians
+	 */
+
+	THREE.DigitalGlitch = {
+
+		uniforms: {
+
+			"tDiffuse":		{ value: null },//diffuse texture
+			"tDisp":		{ value: null },//displacement texture for digital glitch squares
+			"byp":			{ value: 0 },//apply the glitch ?
+			"amount":		{ value: 0.08 },
+			"angle":		{ value: 0.02 },
+			"seed":			{ value: 0.02 },
+			"seed_x":		{ value: 0.02 },//-1,1
+			"seed_y":		{ value: 0.02 },//-1,1
+			"distortion_x":	{ value: 0.5 },
+			"distortion_y":	{ value: 0.6 },
+			"col_s":		{ value: 0.05 }
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+			"void main() {",
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+			"}"
+		].join( "\n" ),
+
+		fragmentShader: [
+			"uniform int byp;",//should we apply the glitch ?
+			
+			"uniform sampler2D tDiffuse;",
+			"uniform sampler2D tDisp;",
+			
+			"uniform float amount;",
+			"uniform float angle;",
+			"uniform float seed;",
+			"uniform float seed_x;",
+			"uniform float seed_y;",
+			"uniform float distortion_x;",
+			"uniform float distortion_y;",
+			"uniform float col_s;",
+				
+			"varying vec2 vUv;",
+			
+			
+			"float rand(vec2 co){",
+				"return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);",
+			"}",
+					
+			"void main() {",
+				"if(byp<1) {",
+					"vec2 p = vUv;",
+					"float xs = floor(gl_FragCoord.x / 0.5);",
+					"float ys = floor(gl_FragCoord.y / 0.5);",
+					//based on staffantans glitch shader for unity https://github.com/staffantan/unityglitch
+					"vec4 normal = texture2D (tDisp, p*seed*seed);",
+					"if(p.y<distortion_x+col_s && p.y>distortion_x-col_s*seed) {",
+						"if(seed_x>0.){",
+							"p.y = 1. - (p.y + distortion_y);",
+						"}",
+						"else {",
+							"p.y = distortion_y;",
+						"}",
+					"}",
+					"if(p.x<distortion_y+col_s && p.x>distortion_y-col_s*seed) {",
+						"if(seed_y>0.){",
+							"p.x=distortion_x;",
+						"}",
+						"else {",
+							"p.x = 1. - (p.x + distortion_x);",
+						"}",
+					"}",
+					"p.x+=normal.x*seed_x*(seed/5.);",
+					"p.y+=normal.y*seed_y*(seed/5.);",
+					//base from RGB shift shader
+					"vec2 offset = amount * vec2( cos(angle), sin(angle));",
+					"vec4 cr = texture2D(tDiffuse, p + offset);",
+					"vec4 cga = texture2D(tDiffuse, p);",
+					"vec4 cb = texture2D(tDiffuse, p - offset);",
+					"gl_FragColor = vec4(cr.r, cga.g, cb.b, cga.a);",
+					//add noise
+					"vec4 snow = 200.*amount*vec4(rand(vec2(xs * seed,ys * seed*50.))*0.2);",
+					"gl_FragColor = gl_FragColor+ snow;",
+				"}",
+				"else {",
+					"gl_FragColor=texture2D (tDiffuse, vUv);",
+				"}",
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 23 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 * @author davidedc / http://www.sketchpatch.net/
+	 *
+	 * NVIDIA FXAA by Timothy Lottes
+	 * http://timothylottes.blogspot.com/2011/06/fxaa3-source-released.html
+	 * - WebGL port by @supereggbert
+	 * http://www.glge.org/demos/fxaa/
+	 */
+
+	THREE.FXAAShader = {
+
+		uniforms: {
+
+			"tDiffuse":   { value: null },
+			"resolution": { value: new THREE.Vector2( 1 / 1024, 1 / 512 ) }
+
+		},
+
+		vertexShader: [
+
+			"void main() {",
+
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"uniform sampler2D tDiffuse;",
+			"uniform vec2 resolution;",
+
+			"#define FXAA_REDUCE_MIN   (1.0/128.0)",
+			"#define FXAA_REDUCE_MUL   (1.0/8.0)",
+			"#define FXAA_SPAN_MAX     8.0",
+
+			"void main() {",
+
+				"vec3 rgbNW = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( -1.0, -1.0 ) ) * resolution ).xyz;",
+				"vec3 rgbNE = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( 1.0, -1.0 ) ) * resolution ).xyz;",
+				"vec3 rgbSW = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( -1.0, 1.0 ) ) * resolution ).xyz;",
+				"vec3 rgbSE = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( 1.0, 1.0 ) ) * resolution ).xyz;",
+				"vec4 rgbaM  = texture2D( tDiffuse,  gl_FragCoord.xy  * resolution );",
+				"vec3 rgbM  = rgbaM.xyz;",
+				"vec3 luma = vec3( 0.299, 0.587, 0.114 );",
+
+				"float lumaNW = dot( rgbNW, luma );",
+				"float lumaNE = dot( rgbNE, luma );",
+				"float lumaSW = dot( rgbSW, luma );",
+				"float lumaSE = dot( rgbSE, luma );",
+				"float lumaM  = dot( rgbM,  luma );",
+				"float lumaMin = min( lumaM, min( min( lumaNW, lumaNE ), min( lumaSW, lumaSE ) ) );",
+				"float lumaMax = max( lumaM, max( max( lumaNW, lumaNE) , max( lumaSW, lumaSE ) ) );",
+
+				"vec2 dir;",
+				"dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));",
+				"dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));",
+
+				"float dirReduce = max( ( lumaNW + lumaNE + lumaSW + lumaSE ) * ( 0.25 * FXAA_REDUCE_MUL ), FXAA_REDUCE_MIN );",
+
+				"float rcpDirMin = 1.0 / ( min( abs( dir.x ), abs( dir.y ) ) + dirReduce );",
+				"dir = min( vec2( FXAA_SPAN_MAX,  FXAA_SPAN_MAX),",
+					  "max( vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX),",
+							"dir * rcpDirMin)) * resolution;",
+				"vec4 rgbA = (1.0/2.0) * (",
+	        	"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (1.0/3.0 - 0.5)) +",
+				"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (2.0/3.0 - 0.5)));",
+	    		"vec4 rgbB = rgbA * (1.0/2.0) + (1.0/4.0) * (",
+				"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (0.0/3.0 - 0.5)) +",
+	      		"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (3.0/3.0 - 0.5)));",
+	    		"float lumaB = dot(rgbB, vec4(luma, 0.0));",
+
+				"if ( ( lumaB < lumaMin ) || ( lumaB > lumaMax ) ) {",
+
+					"gl_FragColor = rgbA;",
+
+				"} else {",
+					"gl_FragColor = rgbB;",
+
+				"}",
+
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 24 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+	THREE.EffectComposer = function ( renderer, renderTarget ) {
+
+		this.renderer = renderer;
+
+		if ( renderTarget === undefined ) {
+
+			var parameters = {
+				minFilter: THREE.LinearFilter,
+				magFilter: THREE.LinearFilter,
+				format: THREE.RGBAFormat,
+				stencilBuffer: false
+			};
+			var size = renderer.getSize();
+			renderTarget = new THREE.WebGLRenderTarget( size.width, size.height, parameters );
+
+		}
+
+		this.renderTarget1 = renderTarget;
+		this.renderTarget2 = renderTarget.clone();
+
+		this.writeBuffer = this.renderTarget1;
+		this.readBuffer = this.renderTarget2;
+
+		this.passes = [];
+
+		if ( THREE.CopyShader === undefined )
+			console.error( "THREE.EffectComposer relies on THREE.CopyShader" );
+
+		this.copyPass = new THREE.ShaderPass( THREE.CopyShader );
+
+	};
+
+	Object.assign( THREE.EffectComposer.prototype, {
+
+		swapBuffers: function() {
+
+			var tmp = this.readBuffer;
+			this.readBuffer = this.writeBuffer;
+			this.writeBuffer = tmp;
+
+		},
+
+		addPass: function ( pass ) {
+
+			this.passes.push( pass );
+
+			var size = this.renderer.getSize();
+			pass.setSize( size.width, size.height );
+
+		},
+
+		insertPass: function ( pass, index ) {
+
+			this.passes.splice( index, 0, pass );
+
+		},
+
+		render: function ( delta ) {
+
+			var maskActive = false;
+
+			var pass, i, il = this.passes.length;
+
+			for ( i = 0; i < il; i ++ ) {
+
+				pass = this.passes[ i ];
+
+				if ( pass.enabled === false ) continue;
+
+				pass.render( this.renderer, this.writeBuffer, this.readBuffer, delta, maskActive );
+
+				if ( pass.needsSwap ) {
+
+					if ( maskActive ) {
+
+						var context = this.renderer.context;
+
+						context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
+
+						this.copyPass.render( this.renderer, this.writeBuffer, this.readBuffer, delta );
+
+						context.stencilFunc( context.EQUAL, 1, 0xffffffff );
+
+					}
+
+					this.swapBuffers();
+
+				}
+
+				if ( THREE.MaskPass !== undefined ) {
+
+					if ( pass instanceof THREE.MaskPass ) {
+
+						maskActive = true;
+
+					} else if ( pass instanceof THREE.ClearMaskPass ) {
+
+						maskActive = false;
+
+					}
+
+				}
+
+			}
+
+		},
+
+		reset: function ( renderTarget ) {
+
+			if ( renderTarget === undefined ) {
+
+				var size = this.renderer.getSize();
+
+				renderTarget = this.renderTarget1.clone();
+				renderTarget.setSize( size.width, size.height );
+
+			}
+
+			this.renderTarget1.dispose();
+			this.renderTarget2.dispose();
+			this.renderTarget1 = renderTarget;
+			this.renderTarget2 = renderTarget.clone();
+
+			this.writeBuffer = this.renderTarget1;
+			this.readBuffer = this.renderTarget2;
+
+		},
+
+		setSize: function ( width, height ) {
+
+			this.renderTarget1.setSize( width, height );
+			this.renderTarget2.setSize( width, height );
+
+			for ( var i = 0; i < this.passes.length; i ++ ) {
+
+				this.passes[i].setSize( width, height );
+
+			}
+
+		}
+
+	} );
+
+
+	THREE.Pass = function () {
+
+		// if set to true, the pass is processed by the composer
+		this.enabled = true;
+
+		// if set to true, the pass indicates to swap read and write buffer after rendering
+		this.needsSwap = true;
+
+		// if set to true, the pass clears its buffer before rendering
+		this.clear = false;
+
+		// if set to true, the result of the pass is rendered to screen
+		this.renderToScreen = false;
+
+	};
+
+	Object.assign( THREE.Pass.prototype, {
+
+		setSize: function( width, height ) {},
+
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			console.error( "THREE.Pass: .render() must be implemented in derived pass." );
+
+		}
+
+	} );
+
+
+/***/ },
+/* 25 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+	THREE.RenderPass = function ( scene, camera, overrideMaterial, clearColor, clearAlpha ) {
+
+		THREE.Pass.call( this );
+
+		this.scene = scene;
+		this.camera = camera;
+
+		this.overrideMaterial = overrideMaterial;
+
+		this.clearColor = clearColor;
+		this.clearAlpha = ( clearAlpha !== undefined ) ? clearAlpha : 0;
+
+		this.clear = true;
+		this.needsSwap = false;
+
+	};
+
+	THREE.RenderPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+
+		constructor: THREE.RenderPass,
+
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			this.scene.overrideMaterial = this.overrideMaterial;
+
+			var oldClearColor, oldClearAlpha;
+
+			if ( this.clearColor ) {
+
+				oldClearColor = renderer.getClearColor().getHex();
+				oldClearAlpha = renderer.getClearAlpha();
+
+				renderer.setClearColor( this.clearColor, this.clearAlpha );
+
+			}
+
+			renderer.render( this.scene, this.camera, this.renderToScreen ? null : readBuffer, this.clear );
+
+			if ( this.clearColor ) {
+
+				renderer.setClearColor( oldClearColor, oldClearAlpha );
+
+			}
+
+			this.scene.overrideMaterial = null;
+
+		}
+
+	} );
+
+
+/***/ },
+/* 26 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+	THREE.MaskPass = function ( scene, camera ) {
+
+		THREE.Pass.call( this );
+
+		this.scene = scene;
+		this.camera = camera;
+
+		this.clear = true;
+		this.needsSwap = false;
+
+		this.inverse = false;
+
+	};
+
+	THREE.MaskPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+
+		constructor: THREE.MaskPass,
+
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			var context = renderer.context;
+			var state = renderer.state;
+
+			// don't update color or depth
+
+			state.buffers.color.setMask( false );
+			state.buffers.depth.setMask( false );
+
+			// lock buffers
+
+			state.buffers.color.setLocked( true );
+			state.buffers.depth.setLocked( true );
+
+			// set up stencil
+
+			var writeValue, clearValue;
+
+			if ( this.inverse ) {
+
+				writeValue = 0;
+				clearValue = 1;
+
+			} else {
+
+				writeValue = 1;
+				clearValue = 0;
+
+			}
+
+			state.buffers.stencil.setTest( true );
+			state.buffers.stencil.setOp( context.REPLACE, context.REPLACE, context.REPLACE );
+			state.buffers.stencil.setFunc( context.ALWAYS, writeValue, 0xffffffff );
+			state.buffers.stencil.setClear( clearValue );
+
+			// draw into the stencil buffer
+
+			renderer.render( this.scene, this.camera, readBuffer, this.clear );
+			renderer.render( this.scene, this.camera, writeBuffer, this.clear );
+
+			// unlock color and depth buffer for subsequent rendering
+
+			state.buffers.color.setLocked( false );
+			state.buffers.depth.setLocked( false );
+
+			// only render where stencil is set to 1
+
+			state.buffers.stencil.setFunc( context.EQUAL, 1, 0xffffffff );  // draw if == 1
+			state.buffers.stencil.setOp( context.KEEP, context.KEEP, context.KEEP );
+
+		}
+
+	} );
+
+
+	THREE.ClearMaskPass = function () {
+
+		THREE.Pass.call( this );
+
+		this.needsSwap = false;
+
+	};
+
+	THREE.ClearMaskPass.prototype = Object.create( THREE.Pass.prototype );
+
+	Object.assign( THREE.ClearMaskPass.prototype, {
+
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			renderer.state.buffers.stencil.setTest( false );
+
+		}
+
+	} );
+
+
+/***/ },
+/* 27 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+	THREE.ShaderPass = function ( shader, textureID ) {
+
+		THREE.Pass.call( this );
+
+		this.textureID = ( textureID !== undefined ) ? textureID : "tDiffuse";
+
+		if ( shader instanceof THREE.ShaderMaterial ) {
+
+			this.uniforms = shader.uniforms;
+
+			this.material = shader;
+
+		} else if ( shader ) {
+
+			this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+			this.material = new THREE.ShaderMaterial( {
+
+				defines: shader.defines || {},
+				uniforms: this.uniforms,
+				vertexShader: shader.vertexShader,
+				fragmentShader: shader.fragmentShader
+
+			} );
+
+		}
+
+		this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+		this.scene = new THREE.Scene();
+
+		this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
+		this.scene.add( this.quad );
+
+	};
+
+	THREE.ShaderPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+
+		constructor: THREE.ShaderPass,
+
+		render: function( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			if ( this.uniforms[ this.textureID ] ) {
+
+				this.uniforms[ this.textureID ].value = readBuffer.texture;
+
+			}
+
+			this.quad.material = this.material;
+
+			if ( this.renderToScreen ) {
+
+				renderer.render( this.scene, this.camera );
+
+			} else {
+
+				renderer.render( this.scene, this.camera, writeBuffer, this.clear );
+
+			}
+
+		}
+
+	} );
+
+
+/***/ },
+/* 28 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+	THREE.GlitchPass = function ( dt_size ) {
+
+		THREE.Pass.call( this );
+
+		if ( THREE.DigitalGlitch === undefined ) console.error( "THREE.GlitchPass relies on THREE.DigitalGlitch" );
+
+		var shader = THREE.DigitalGlitch;
+		this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+		if ( dt_size == undefined ) dt_size = 64;
+
+
+		this.uniforms[ "tDisp" ].value = this.generateHeightmap( dt_size );
+
+
+		this.material = new THREE.ShaderMaterial( {
+			uniforms: this.uniforms,
+			vertexShader: shader.vertexShader,
+			fragmentShader: shader.fragmentShader
+		} );
+
+		this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+		this.scene  = new THREE.Scene();
+
+		this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
+		this.scene.add( this.quad );
+
+		this.goWild = false;
+		this.curF = 0;
+		this.generateTrigger();
+
+	};
+
+	THREE.GlitchPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+
+		constructor: THREE.GlitchPass,
+
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			this.uniforms[ "tDiffuse" ].value = readBuffer.texture;
+			this.uniforms[ 'seed' ].value = Math.random();//default seeding
+			this.uniforms[ 'byp' ].value = 0;
+
+			if ( this.curF % this.randX == 0 || this.goWild == true ) {
+
+				this.uniforms[ 'amount' ].value = Math.random() / 30;
+				this.uniforms[ 'angle' ].value = THREE.Math.randFloat( - Math.PI, Math.PI );
+				this.uniforms[ 'seed_x' ].value = THREE.Math.randFloat( - 1, 1 );
+				this.uniforms[ 'seed_y' ].value = THREE.Math.randFloat( - 1, 1 );
+				this.uniforms[ 'distortion_x' ].value = THREE.Math.randFloat( 0, 1 );
+				this.uniforms[ 'distortion_y' ].value = THREE.Math.randFloat( 0, 1 );
+				this.curF = 0;
+				this.generateTrigger();
+
+			} else if ( this.curF % this.randX < this.randX / 5 ) {
+
+				this.uniforms[ 'amount' ].value = Math.random() / 90;
+				this.uniforms[ 'angle' ].value = THREE.Math.randFloat( - Math.PI, Math.PI );
+				this.uniforms[ 'distortion_x' ].value = THREE.Math.randFloat( 0, 1 );
+				this.uniforms[ 'distortion_y' ].value = THREE.Math.randFloat( 0, 1 );
+				this.uniforms[ 'seed_x' ].value = THREE.Math.randFloat( - 0.3, 0.3 );
+				this.uniforms[ 'seed_y' ].value = THREE.Math.randFloat( - 0.3, 0.3 );
+
+			} else if ( this.goWild == false ) {
+
+				this.uniforms[ 'byp' ].value = 1;
+
+			}
+
+			this.curF ++;
+			this.quad.material = this.material;
+
+			if ( this.renderToScreen ) {
+
+				renderer.render( this.scene, this.camera );
+
+			} else {
+
+				renderer.render( this.scene, this.camera, writeBuffer, this.clear );
+
+			}
+
+		},
+
+		generateTrigger: function() {
+
+			this.randX = THREE.Math.randInt( 120, 240 );
+
+		},
+
+		generateHeightmap: function( dt_size ) {
+
+			var data_arr = new Float32Array( dt_size * dt_size * 3 );
+			var length = dt_size * dt_size;
+
+			for ( var i = 0; i < length; i ++ ) {
+
+				var val = THREE.Math.randFloat( 0, 1 );
+				data_arr[ i * 3 + 0 ] = val;
+				data_arr[ i * 3 + 1 ] = val;
+				data_arr[ i * 3 + 2 ] = val;
+
+			}
+
+			var texture = new THREE.DataTexture( data_arr, dt_size, dt_size, THREE.RGBFormat, THREE.FloatType );
+			texture.needsUpdate = true;
+			return texture;
+
+		}
+
+	} );
+
+
+/***/ },
+/* 29 */
 /***/ function(module, exports) {
 
 	/**
@@ -45203,412 +46553,294 @@ var Iconeezin =
 	 *
 	 */
 
-	THREE.VREffect = function ( renderer, onError ) {
+	function fovToProjection( fov, rightHanded, zNear, zFar ) {
 
-		var vrHMD;
-		var isDeprecatedAPI = false;
-		var eyeTranslationL = new THREE.Vector3();
-		var eyeTranslationR = new THREE.Vector3();
-		var renderRectL, renderRectR;
-		var eyeFOVL, eyeFOVR;
+		var DEG2RAD = Math.PI / 180.0;
 
+		var fovPort = {
+			upTan: Math.tan( fov.upDegrees * DEG2RAD ),
+			downTan: Math.tan( fov.downDegrees * DEG2RAD ),
+			leftTan: Math.tan( fov.leftDegrees * DEG2RAD ),
+			rightTan: Math.tan( fov.rightDegrees * DEG2RAD )
+		};
+
+		return fovPortToProjection( fovPort, rightHanded, zNear, zFar );
+
+	}
+
+	function fovToNDCScaleOffset( fov ) {
+
+		var pxscale = 2.0 / ( fov.leftTan + fov.rightTan );
+		var pxoffset = ( fov.leftTan - fov.rightTan ) * pxscale * 0.5;
+		var pyscale = 2.0 / ( fov.upTan + fov.downTan );
+		var pyoffset = ( fov.upTan - fov.downTan ) * pyscale * 0.5;
+		return { scale: [ pxscale, pyscale ], offset: [ pxoffset, pyoffset ] };
+
+	}
+
+	function fovPortToProjection( fov, rightHanded, zNear, zFar ) {
+
+		rightHanded = rightHanded === undefined ? true : rightHanded;
+		zNear = zNear === undefined ? 0.01 : zNear;
+		zFar = zFar === undefined ? 10000.0 : zFar;
+
+		var handednessScale = rightHanded ? - 1.0 : 1.0;
+
+		// start with an identity matrix
+		var mobj = new THREE.Matrix4();
+		var m = mobj.elements;
+
+		// and with scale/offset info for normalized device coords
+		var scaleAndOffset = fovToNDCScaleOffset( fov );
+
+		// X result, map clip edges to [-w,+w]
+		m[ 0 * 4 + 0 ] = scaleAndOffset.scale[ 0 ];
+		m[ 0 * 4 + 1 ] = 0.0;
+		m[ 0 * 4 + 2 ] = scaleAndOffset.offset[ 0 ] * handednessScale;
+		m[ 0 * 4 + 3 ] = 0.0;
+
+		// Y result, map clip edges to [-w,+w]
+		// Y offset is negated because this proj matrix transforms from world coords with Y=up,
+		// but the NDC scaling has Y=down (thanks D3D?)
+		m[ 1 * 4 + 0 ] = 0.0;
+		m[ 1 * 4 + 1 ] = scaleAndOffset.scale[ 1 ];
+		m[ 1 * 4 + 2 ] = - scaleAndOffset.offset[ 1 ] * handednessScale;
+		m[ 1 * 4 + 3 ] = 0.0;
+
+		// Z result (up to the app)
+		m[ 2 * 4 + 0 ] = 0.0;
+		m[ 2 * 4 + 1 ] = 0.0;
+		m[ 2 * 4 + 2 ] = zFar / ( zNear - zFar ) * - handednessScale;
+		m[ 2 * 4 + 3 ] = ( zFar * zNear ) / ( zNear - zFar );
+
+		// W result (= Z in)
+		m[ 3 * 4 + 0 ] = 0.0;
+		m[ 3 * 4 + 1 ] = 0.0;
+		m[ 3 * 4 + 2 ] = handednessScale;
+		m[ 3 * 4 + 3 ] = 0.0;
+
+		mobj.transpose();
+
+		return mobj;
+
+	}
+
+	/**
+	 * Virtual Reality EffectComposer pass
+	 */
+	THREE.VRPass = function ( scene, camera, vrHMD, overrideMaterial, clearColor, clearAlpha ) {
+		THREE.Pass.call(this);
+
+		this.scene = scene;
+		this.camera = camera;
+
+		this.overrideMaterial = overrideMaterial;
+
+		this.clearColor = clearColor;
+		this.clearAlpha = ( clearAlpha !== undefined ) ? clearAlpha : 0;
+
+		this.clear = true;
+		this.needsSwap = false;
+
+		this.vrHMD = vrHMD;
+		this.isDeprecatedAPI = vrHMD && (vrHMD instanceof HMDVRDevice);
+		this.eyeTranslationL = new THREE.Vector3();
+		this.eyeTranslationR = new THREE.Vector3();
+		this.renderRectL = null;
+		this.renderRectR = null;
+		this.eyeFOVL = null;
+		this.eyeFOVR = null;
+
+		this.requestPresentCallback = null;
+
+		//
+
+		this.scale = 1;
+
+		// render
+
+		this.cameraL = new THREE.PerspectiveCamera();
+		this.cameraL.layers.enable( 1 );
+
+		this.cameraR = new THREE.PerspectiveCamera();
+		this.cameraR.layers.enable( 2 );
+
+		// If user did not specify a VR device, try to get one now
 		function gotVRDevices( devices ) {
 
 			for ( var i = 0; i < devices.length; i ++ ) {
 
 				if ( 'VRDisplay' in window && devices[ i ] instanceof VRDisplay ) {
 
-					vrHMD = devices[ i ];
-					isDeprecatedAPI = false;
+					this.vrHMD = devices[ i ];
+					this.isDeprecatedAPI = false;
 					break; // We keep the first we encounter
 
 				} else if ( 'HMDVRDevice' in window && devices[ i ] instanceof HMDVRDevice ) {
 
-					vrHMD = devices[ i ];
-					isDeprecatedAPI = true;
+					this.vrHMD = devices[ i ];
+					this.isDeprecatedAPI = true;
 					break; // We keep the first we encounter
 
 				}
 
 			}
-
-			if ( vrHMD === undefined ) {
-
-				if ( onError ) onError( 'HMD not available' );
-
-			}
-
 		}
 
+		// Query for VR displays
 		if ( navigator.getVRDisplays ) {
-
-			navigator.getVRDisplays().then( gotVRDevices );
-
+			navigator.getVRDisplays().then( gotVRDevices.bind(this) );
 		} else if ( navigator.getVRDevices ) {
-
-			// Deprecated API.
-			navigator.getVRDevices().then( gotVRDevices );
-
+			navigator.getVRDevices().then( gotVRDevices.bind(this) );
 		}
 
-		//
+	};
 
-		this.isPresenting = false;
-		this.scale = 1;
+	THREE.VRPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
 
-		var scope = this;
+		constructor: THREE.VRPass,
 
-		var rendererSize = renderer.getSize();
-		var rendererPixelRatio = renderer.getPixelRatio();
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
 
-		this.setSize = function ( width, height ) {
+			// Apply material override
+			this.scene.overrideMaterial = this.overrideMaterial;
 
-			rendererSize = { width: width, height: height };
+			// apply clear color
+			var oldClearColor, oldClearAlpha;
+			if ( this.clearColor ) {
 
-			if ( scope.isPresenting ) {
+				oldClearColor = renderer.getClearColor().getHex();
+				oldClearAlpha = renderer.getClearAlpha();
 
-				var eyeParamsL = vrHMD.getEyeParameters( 'left' );
-				renderer.setPixelRatio( 1 );
-
-				if ( isDeprecatedAPI ) {
-
-					renderer.setSize( eyeParamsL.renderRect.width * 2, eyeParamsL.renderRect.height, false );
-
-				} else {
-
-					renderer.setSize( eyeParamsL.renderWidth * 2, eyeParamsL.renderHeight, false );
-
-				}
-
-
-			} else {
-
-				renderer.setPixelRatio( rendererPixelRatio );
-				renderer.setSize( width, height );
+				renderer.setClearColor( this.clearColor, this.clearAlpha );
 
 			}
 
-		};
+			// Check for VR pass
+			if ( this.vrHMD && this.vrHMD.isPresenting ) {
 
-		// fullscreen
-
-		var canvas = renderer.domElement;
-		var requestFullscreen;
-		var exitFullscreen;
-		var fullscreenElement;
-
-		function onFullscreenChange () {
-
-			var wasPresenting = scope.isPresenting;
-			scope.isPresenting = vrHMD !== undefined && ( vrHMD.isPresenting || ( isDeprecatedAPI && document[ fullscreenElement ] instanceof window.HTMLElement ) );
-
-			if ( wasPresenting === scope.isPresenting ) {
-
-				return;
-
-			}
-
-			if ( scope.isPresenting ) {
-
-				rendererPixelRatio = renderer.getPixelRatio();
-				rendererSize = renderer.getSize();
-
-				var eyeParamsL = vrHMD.getEyeParameters( 'left' );
-				var eyeWidth, eyeHeight;
-
-				if ( isDeprecatedAPI ) {
-
-					eyeWidth = eyeParamsL.renderRect.width;
-					eyeHeight = eyeParamsL.renderRect.height;
-
-				} else {
-
-					eyeWidth = eyeParamsL.renderWidth;
-					eyeHeight = eyeParamsL.renderHeight;
-
-				}
-
-				renderer.setPixelRatio( 1 );
-				renderer.setSize( eyeWidth * 2, eyeHeight, false );
-
-			} else {
-
-				renderer.setPixelRatio( rendererPixelRatio );
-				renderer.setSize( rendererSize.width, rendererSize.height );
-
-			}
-
-		}
-
-		if ( canvas.requestFullscreen ) {
-
-			requestFullscreen = 'requestFullscreen';
-			fullscreenElement = 'fullscreenElement';
-			exitFullscreen = 'exitFullscreen';
-			document.addEventListener( 'fullscreenchange', onFullscreenChange, false );
-
-		} else if ( canvas.mozRequestFullScreen ) {
-
-			requestFullscreen = 'mozRequestFullScreen';
-			fullscreenElement = 'mozFullScreenElement';
-			exitFullscreen = 'mozCancelFullScreen';
-			document.addEventListener( 'mozfullscreenchange', onFullscreenChange, false );
-
-		} else {
-
-			requestFullscreen = 'webkitRequestFullscreen';
-			fullscreenElement = 'webkitFullscreenElement';
-			exitFullscreen = 'webkitExitFullscreen';
-			document.addEventListener( 'webkitfullscreenchange', onFullscreenChange, false );
-
-		}
-
-		window.addEventListener( 'vrdisplaypresentchange', onFullscreenChange, false );
-
-		this.setFullScreen = function ( boolean ) {
-
-			return new Promise( function ( resolve, reject ) {
-
-				if ( vrHMD === undefined ) {
-
-					reject( new Error( 'No VR hardware found.' ) );
-					return;
-
-				}
-
-				if ( scope.isPresenting === boolean ) {
-
-					resolve();
-					return;
-
-				}
-
-				if ( ! isDeprecatedAPI ) {
-
-					if ( boolean ) {
-
-						resolve( vrHMD.requestPresent( [ { source: canvas } ] ) );
-
-					} else {
-
-						resolve( vrHMD.exitPresent() );
-
-					}
-
-				} else {
-
-					if ( canvas[ requestFullscreen ] ) {
-
-						canvas[ boolean ? requestFullscreen : exitFullscreen ]( { vrDisplay: vrHMD } );
-						resolve();
-
-					} else {
-
-						console.error( 'No compatible requestFullscreen method found.' );
-						reject( new Error( 'No compatible requestFullscreen method found.' ) );
-
-					}
-
-				}
-
-			} );
-
-		};
-
-		this.requestPresent = function () {
-
-			return this.setFullScreen( true );
-
-		};
-
-		this.exitPresent = function () {
-
-			return this.setFullScreen( false );
-
-		};
-
-		// render
-
-		var cameraL = new THREE.PerspectiveCamera();
-		cameraL.layers.enable( 1 );
-
-		var cameraR = new THREE.PerspectiveCamera();
-		cameraR.layers.enable( 2 );
-
-		this.render = function ( scene, camera, renderTarget, forceClear ) {
-
-			if ( vrHMD && scope.isPresenting ) {
-
-				var autoUpdate = scene.autoUpdate;
+				var autoUpdate = this.scene.autoUpdate;
 
 				if ( autoUpdate ) {
 
-					scene.updateMatrixWorld();
-					scene.autoUpdate = false;
+					this.scene.updateMatrixWorld();
+					this.scene.autoUpdate = false;
 
 				}
 
-				var eyeParamsL = vrHMD.getEyeParameters( 'left' );
-				var eyeParamsR = vrHMD.getEyeParameters( 'right' );
+				var eyeParamsL = this.vrHMD.getEyeParameters( 'left' );
+				var eyeParamsR = this.vrHMD.getEyeParameters( 'right' );
 
-				if ( ! isDeprecatedAPI ) {
+				if ( ! this.isDeprecatedAPI ) {
 
-					eyeTranslationL.fromArray( eyeParamsL.offset );
-					eyeTranslationR.fromArray( eyeParamsR.offset );
-					eyeFOVL = eyeParamsL.fieldOfView;
-					eyeFOVR = eyeParamsR.fieldOfView;
+					this.eyeTranslationL.fromArray( eyeParamsL.offset );
+					this.eyeTranslationR.fromArray( eyeParamsR.offset );
+					this.eyeFOVL = eyeParamsL.fieldOfView;
+					this.eyeFOVR = eyeParamsR.fieldOfView;
 
 				} else {
 
-					eyeTranslationL.copy( eyeParamsL.eyeTranslation );
-					eyeTranslationR.copy( eyeParamsR.eyeTranslation );
-					eyeFOVL = eyeParamsL.recommendedFieldOfView;
-					eyeFOVR = eyeParamsR.recommendedFieldOfView;
-
-				}
-
-				if ( Array.isArray( scene ) ) {
-
-					console.warn( 'THREE.VREffect.render() no longer supports arrays. Use object.layers instead.' );
-					scene = scene[ 0 ];
+					this.eyeTranslationL.copy( eyeParamsL.eyeTranslation );
+					this.eyeTranslationR.copy( eyeParamsR.eyeTranslation );
+					this.eyeFOVL = eyeParamsL.recommendedFieldOfView;
+					this.eyeFOVR = eyeParamsR.recommendedFieldOfView;
 
 				}
 
 				// When rendering we don't care what the recommended size is, only what the actual size
 				// of the backbuffer is.
 				var size = renderer.getSize();
-				renderRectL = { x: 0, y: 0, width: size.width / 2, height: size.height };
-				renderRectR = { x: size.width / 2, y: 0, width: size.width / 2, height: size.height };
+				this.renderRectL = { x: 0, y: 0, width: size.width / 2, height: size.height };
+				this.renderRectR = { x: size.width / 2, y: 0, width: size.width / 2, height: size.height };
 
-				renderer.setScissorTest( true );
-				renderer.clear();
+				if ( this.camera.parent === null ) this.camera.updateMatrixWorld();
 
-				if ( camera.parent === null ) camera.updateMatrixWorld();
+				this.cameraL.projectionMatrix = fovToProjection( this.eyeFOVL, true, this.camera.near, this.camera.far );
+				this.cameraR.projectionMatrix = fovToProjection( this.eyeFOVR, true, this.camera.near, this.camera.far );
 
-				cameraL.projectionMatrix = fovToProjection( eyeFOVL, true, camera.near, camera.far );
-				cameraR.projectionMatrix = fovToProjection( eyeFOVR, true, camera.near, camera.far );
-
-				camera.matrixWorld.decompose( cameraL.position, cameraL.quaternion, cameraL.scale );
-				camera.matrixWorld.decompose( cameraR.position, cameraR.quaternion, cameraR.scale );
+				this.camera.matrixWorld.decompose( this.cameraL.position, this.cameraL.quaternion, this.cameraL.scale );
+				this.camera.matrixWorld.decompose( this.cameraR.position, this.cameraR.quaternion, this.cameraR.scale );
 
 				var scale = this.scale;
-				cameraL.translateOnAxis( eyeTranslationL, scale );
-				cameraR.translateOnAxis( eyeTranslationR, scale );
+				this.cameraL.translateOnAxis( this.eyeTranslationL, scale );
+				this.cameraR.translateOnAxis( this.eyeTranslationR, scale );
+
+				if (this.renderToScreen) {
+
+					renderer.setScissorTest( true );
+					renderer.clear();
+
+					// render left eye
+					renderer.setViewport( this.renderRectL.x, this.renderRectL.y, this.renderRectL.width, this.renderRectL.height );
+					renderer.setScissor( this.renderRectL.x, this.renderRectL.y, this.renderRectL.width, this.renderRectL.height );
+					renderer.render( this.scene, this.cameraL );
+
+					// render right eye
+					renderer.setViewport( this.renderRectR.x, this.renderRectR.y, this.renderRectR.width, this.renderRectR.height );
+					renderer.setScissor( this.renderRectR.x, this.renderRectR.y, this.renderRectR.width, this.renderRectR.height );
+					renderer.render( this.scene, this.cameraR );
+
+					renderer.setScissorTest( false );
+
+				} else {
+
+					// Disable auto-clear on renderer
+					renderer.autoClear = false;
+					// renderer.setScissorTest( true );
+					// renderer.clear();
+
+					// render left eye on texture
+					readBuffer.viewport.set( this.renderRectL.x, this.renderRectL.y, this.renderRectL.width, this.renderRectL.height );
+					readBuffer.scissor.set( this.renderRectL.x, this.renderRectL.y, this.renderRectL.width, this.renderRectL.height );
+					renderer.render( this.scene, this.cameraL, readBuffer, this.clear );
+
+					// render right eye on texture
+					readBuffer.viewport.set( this.renderRectR.x, this.renderRectR.y, this.renderRectR.width, this.renderRectR.height );
+					readBuffer.scissor.set( this.renderRectR.x, this.renderRectR.y, this.renderRectR.width, this.renderRectR.height );
+					renderer.render( this.scene, this.cameraR, readBuffer, false );
+
+					// renderer.setScissorTest( false );
+					renderer.setViewport( 0, 0, size.width, size.height );
+					renderer.setScissor( 0, 0, size.width, size.height );
 
 
-				// render left eye
-				renderer.setViewport( renderRectL.x, renderRectL.y, renderRectL.width, renderRectL.height );
-				renderer.setScissor( renderRectL.x, renderRectL.y, renderRectL.width, renderRectL.height );
-				renderer.render( scene, cameraL, renderTarget, forceClear );
-
-				// render right eye
-				renderer.setViewport( renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height );
-				renderer.setScissor( renderRectR.x, renderRectR.y, renderRectR.width, renderRectR.height );
-				renderer.render( scene, cameraR, renderTarget, false );
-
-				renderer.setScissorTest( false );
+				}
 
 				if ( autoUpdate ) {
 
-					scene.autoUpdate = true;
+					this.scene.autoUpdate = true;
 
 				}
 
-				if ( ! isDeprecatedAPI ) {
+				if ( ! this.isDeprecatedAPI ) {
 
-					vrHMD.submitFrame();
+					this.vrHMD.submitFrame();
 
 				}
 
-				return;
+			} else {
+
+				// Regular render mode if not HMD
+				renderer.render( this.scene, this.camera, this.renderToScreen ? null : readBuffer, this.clear );
 
 			}
 
-			// Regular render mode if not HMD
+			// Restore clear color
+			if ( this.clearColor ) {
+				renderer.setClearColor( oldClearColor, oldClearAlpha );
+			}
 
-			renderer.render( scene, camera, renderTarget, forceClear );
-
-		};
-
-		//
-
-		function fovToNDCScaleOffset( fov ) {
-
-			var pxscale = 2.0 / ( fov.leftTan + fov.rightTan );
-			var pxoffset = ( fov.leftTan - fov.rightTan ) * pxscale * 0.5;
-			var pyscale = 2.0 / ( fov.upTan + fov.downTan );
-			var pyoffset = ( fov.upTan - fov.downTan ) * pyscale * 0.5;
-			return { scale: [ pxscale, pyscale ], offset: [ pxoffset, pyoffset ] };
+			// Restore scene material override
+			this.scene.overrideMaterial = null;
 
 		}
 
-		function fovPortToProjection( fov, rightHanded, zNear, zFar ) {
+	});
 
-			rightHanded = rightHanded === undefined ? true : rightHanded;
-			zNear = zNear === undefined ? 0.01 : zNear;
-			zFar = zFar === undefined ? 10000.0 : zFar;
-
-			var handednessScale = rightHanded ? - 1.0 : 1.0;
-
-			// start with an identity matrix
-			var mobj = new THREE.Matrix4();
-			var m = mobj.elements;
-
-			// and with scale/offset info for normalized device coords
-			var scaleAndOffset = fovToNDCScaleOffset( fov );
-
-			// X result, map clip edges to [-w,+w]
-			m[ 0 * 4 + 0 ] = scaleAndOffset.scale[ 0 ];
-			m[ 0 * 4 + 1 ] = 0.0;
-			m[ 0 * 4 + 2 ] = scaleAndOffset.offset[ 0 ] * handednessScale;
-			m[ 0 * 4 + 3 ] = 0.0;
-
-			// Y result, map clip edges to [-w,+w]
-			// Y offset is negated because this proj matrix transforms from world coords with Y=up,
-			// but the NDC scaling has Y=down (thanks D3D?)
-			m[ 1 * 4 + 0 ] = 0.0;
-			m[ 1 * 4 + 1 ] = scaleAndOffset.scale[ 1 ];
-			m[ 1 * 4 + 2 ] = - scaleAndOffset.offset[ 1 ] * handednessScale;
-			m[ 1 * 4 + 3 ] = 0.0;
-
-			// Z result (up to the app)
-			m[ 2 * 4 + 0 ] = 0.0;
-			m[ 2 * 4 + 1 ] = 0.0;
-			m[ 2 * 4 + 2 ] = zFar / ( zNear - zFar ) * - handednessScale;
-			m[ 2 * 4 + 3 ] = ( zFar * zNear ) / ( zNear - zFar );
-
-			// W result (= Z in)
-			m[ 3 * 4 + 0 ] = 0.0;
-			m[ 3 * 4 + 1 ] = 0.0;
-			m[ 3 * 4 + 2 ] = handednessScale;
-			m[ 3 * 4 + 3 ] = 0.0;
-
-			mobj.transpose();
-
-			return mobj;
-
-		}
-
-		function fovToProjection( fov, rightHanded, zNear, zFar ) {
-
-			var DEG2RAD = Math.PI / 180.0;
-
-			var fovPort = {
-				upTan: Math.tan( fov.upDegrees * DEG2RAD ),
-				downTan: Math.tan( fov.downDegrees * DEG2RAD ),
-				leftTan: Math.tan( fov.leftDegrees * DEG2RAD ),
-				rightTan: Math.tan( fov.rightDegrees * DEG2RAD )
-			};
-
-			return fovPortToProjection( fovPort, rightHanded, zNear, zFar );
-
-		}
-
-	};
 
 
 /***/ },
-/* 18 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -45735,7 +46967,7 @@ var Iconeezin =
 
 		// Create a spinner sprite
 		var loader = new THREE.TextureLoader();
-		loader.load( __webpack_require__(19), (function( texture ) {
+		loader.load( __webpack_require__(31), (function( texture ) {
 
 			// Set material map
 			mat.map = texture;
@@ -45767,8 +46999,12 @@ var Iconeezin =
 		} else {
 			
 			// Calculate animation step
-			var i = parseInt( Math.floor( v * ANIMATION_STEPS ) );
-			if (i >= ANIMATION_STEPS) i=ANIMATION_STEPS-1;
+			var i = 0;
+			if (v) {
+				i = parseInt( Math.floor( v * ANIMATION_STEPS ) );
+				if (i >= ANIMATION_STEPS) i=ANIMATION_STEPS-1;
+				if (i < 0) i=0;
+			}
 
 			// Apply geometry
 			this.animCursor.visible = true;
@@ -45904,13 +47140,13 @@ var Iconeezin =
 
 
 /***/ },
-/* 19 */
+/* 31 */
 /***/ function(module, exports) {
 
 	module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA8pJREFUeNrsW8uR2kAQFS7fRQbLRoAyQI7AcgSwF67GEVhEYO11L8tGYIUgMoAILDJAEeCercY122795isKdZVKhWo0mn7T3fPeSEwul0twz/YpuHMbARgBGAEYAbhr+2yqo5eXlwhOCRziPLU45jMcBzjy9Xp90O1sossDwHHhbA7HwsME7gXoAMTZCwDofAHH3GMUH+GIVUHQrQG5Z+cDfH7mPAJg9mdw+jOgevYIUVC6jIBkYAVdaTw6q8CUycWzQ4enJP2mrgGgtoMQzFx5Dym4gtOrTyJUtkSEbZv5ZoKljQFppGDpG4DYMQD0eUqsUJcICRAepEtfoA4UNfkqrOiyVOES++4gtN91WIIraOelCAoi9F36vUFmSAf7Kv2+UtjrrJ0xnCO8tiD3c6ClzDi8qEE6O19hwDEjXipybYGHAO8nnheMnqjo0oqia9kyDjcAoBrb08GgRri2EQ6sFB+xkjk+9kud3XNp53I/YEN+i5pQEBBEiD737PcZ72vTHhuvchhnJsVQblRp0E4M9leHLn/IpKpBcm+hXeodABzkjsnNI4bxQWqXYBiHTDcVts9JEeVmXoS+9tJrbEsMBiPy/I2RqoVcGNG5CMGhYEXE+QhXijnT1ogYm5h+M1QTCcKe6JoObTNcAUS+bzpyfe1dIKsAtOT6E0dsegidN4w0Yzax9W6wIde/MdWd3vdbFbzBACDlcEFAEIVuxoUwVvuSaZ/orPVOimADUaKVOmwoYDETMdactw6ABMK2o3SOTLK8QQAg6QETkvv2AEAik3YEhDq8xPtvEwCJwoYd5WvOKMcci+ltASCtAHOGv5c19UJERlbDJq2AYIsIxTUz34nI9GGTQ6TCvVgcpsk75yfKMSO7TVbYoFEAGgbNyVuaHkdc80uXlNikHOb2BDh5y7FDuX1M5LNWOrnaEOH4O+dMk/Nt9+2YgqpdE0x9IMHxdxXnm+7n0qbCPQRlwmRiGcwMO3/VCx+WPiyQCeEJIUOy3EVAzTcCtOD1db4tErh0e1SNAt0IWDHihRIZVef/RQIhS3nw/1b8xlcKUFm7YwhRqPmMkHnZkraMwz4AWJQ+FCRakVHKbhl+38fE/Qem35N06UFVNOm8G4yYUOf4fapbqGqsIHQ5UpHPOilA38YeArdWtkyIdQCiwK8Z2RY3+Y3QDOmwK5sNDYDlLUaETgrkwbCscAoAsrPjQJzfq345boIJVp6dr7wxQenFx8mT8yeqFXztB0yRjiaBmw8mz1iDct23xJPxj5N3biMAIwAjACMAd21/BRgAk6Xp4c7+81UAAAAASUVORK5CYII="
 
 /***/ },
-/* 20 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -45935,19 +47171,25 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(13);
+	var VideoCore = __webpack_require__(14);
 
-	var SightInteraction = __webpack_require__(21);
+	var SightInteraction = __webpack_require__(33);
 
-	var PathFollowerControl = __webpack_require__(23);
-	var MouseControl = __webpack_require__(25);
-	var VRControl = __webpack_require__(26);
+	var PathFollowerControl = __webpack_require__(35);
+	var MouseControl = __webpack_require__(37);
+	var VRControl = __webpack_require__(38);
 
 	/**
 	 * The ControlsCore singleton contains the
 	 * global user input management API.
 	 */
 	var ControlsCore = {};
+
+	/**
+	 * Private properties
+	 */
+	var mouseControl, vrControl, activeControl,
+		pathFollower, scene, gimbal, zeroGimbal, interaction;
 
 	/**
 	 * Initialize the input core
@@ -45958,28 +47200,27 @@ var Iconeezin =
 		VideoCore.viewport.addRenderListener( this.onUpdate.bind(this) );
 
 		// Base controls 
-		this.mouseControl = new MouseControl();
-		this.vrControl = new VRControl();
+		mouseControl = new MouseControl();
+		vrControl = new VRControl();
 
 		// Position-only controls
-		this.pathFollower = new PathFollowerControl();
+		pathFollower = new PathFollowerControl();
 
 		// Default propeties
 		this.paused = true;
 		this.hmd = undefined;
 
 		// The currently active gimbal object
-		this.scene = VideoCore.viewport.scene;
-		this.gimbal = VideoCore.viewport.camera;
-		this.activeControl = null;
+		gimbal = VideoCore.viewport.camera;
+		activeControl = null;
 
 		// The zero gimbal that holds the reference position
-		this.zeroGimbal = new THREE.Object3D();
-		this.zeroGimbal.up.set( 0,0,1 );
-		VideoCore.viewport.scene.add( this.zeroGimbal );
+		zeroGimbal = new THREE.Object3D();
+		zeroGimbal.up.set( 0,0,1 );
+		VideoCore.viewport.scene.add( zeroGimbal );
 
 		// Create sight interaction
-		this.interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );
+		interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );
 
 		// Set defaults
 		this.setHMD( false );
@@ -45987,6 +47228,16 @@ var Iconeezin =
 			new THREE.Vector3(0,0,3), 
 			new THREE.Vector3(0,1,0)
 		);
+
+	}
+
+	/**
+	 * Initialize the input core
+	 */
+	ControlsCore.updateFullscreenState = function( isFullscreen ) {
+
+		// Handle full screen change
+		mouseControl.handleFullScreenChange( isFullscreen );
 
 	}
 
@@ -46007,7 +47258,7 @@ var Iconeezin =
 	 * Update interactions when something is changed on the viewport
 	 */
 	ControlsCore.updateInteractions = function() {
-		this.interaction.updateFromScene();
+		interaction.updateFromScene();
 	}
 
 	/**
@@ -46016,10 +47267,10 @@ var Iconeezin =
 	ControlsCore.setZero = function( position, direction ) {
 
 		// Set gimbal position
-		this.zeroGimbal.position.copy( position );
+		zeroGimbal.position.copy( position );
 
 		// Project direction to XY plane
-		this.zeroGimbal.rotation.z = Math.atan2( direction.x, direction.y );
+		zeroGimbal.rotation.z = Math.atan2( direction.x, direction.y );
 	}
 
 	/**
@@ -46033,47 +47284,47 @@ var Iconeezin =
 
 				// Disable VR Control
 				if (this.hmd === false) {
-					if (this.activeControl) {
-						this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+					if (activeControl) {
+						gimbal = activeControl.unchainGimbal( gimbal );
 					}
-					this.gimbal = this.mouseControl.unchainGimbal( this.gimbal );
-					this.mouseControl.disable();
+					gimbal = mouseControl.unchainGimbal( gimbal );
+					mouseControl.disable();
 				}
 
 				// Enable VR Control
-				this.gimbal = this.vrControl.chainGimbal( this.gimbal );
-				this.vrControl.enable();
+				gimbal = vrControl.chainGimbal( gimbal );
+				vrControl.enable();
 
 				// Re-chain base control
-				if (this.activeControl) {
-					this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+				if (activeControl) {
+					gimbal = activeControl.chainGimbal( gimbal );
 				}
 
 				// Add on scene on the correct order
-				this.zeroGimbal.add( this.gimbal );
+				zeroGimbal.add( gimbal );
 
 			} else {
 
 				// Disable VR Control
 				if (this.hmd === true) {
-					if (this.activeControl) {
-						this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+					if (activeControl) {
+						gimbal = activeControl.unchainGimbal( gimbal );
 					}
-					this.gimbal = this.vrControl.unchainGimbal( this.gimbal );
-					this.vrControl.disable();
+					gimbal = vrControl.unchainGimbal( gimbal );
+					vrControl.disable();
 				}
 
 				// Enable Mouse Control
-				this.gimbal = this.mouseControl.chainGimbal( this.gimbal );
-				this.mouseControl.enable();
+				gimbal = mouseControl.chainGimbal( gimbal );
+				mouseControl.enable();
 
 				// Re-chain base control
-				if (this.activeControl) {
-					this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+				if (activeControl) {
+					gimbal = activeControl.chainGimbal( gimbal );
 				}
 
 				// Add on scene on the correct order
-				this.zeroGimbal.add( this.gimbal );
+				zeroGimbal.add( gimbal );
 
 			}
 
@@ -46089,16 +47340,16 @@ var Iconeezin =
 	ControlsCore.activateControl = function( control ) {
 
 		// Deactivate previous control
-		if (this.activeControl)
+		if (activeControl)
 			this.deactivateLastControl();
 
 		// Activate
-		this.gimbal = control.chainGimbal( this.gimbal );
-		this.activeControl = control;
-		this.activeControl.enable();
+		gimbal = control.chainGimbal( gimbal );
+		activeControl = control;
+		activeControl.enable();
 
 		// Add on scene on the correct order
-		this.zeroGimbal.add( this.gimbal );
+		zeroGimbal.add( gimbal );
 
 	}
 
@@ -46106,15 +47357,15 @@ var Iconeezin =
 	 * Deactivate last control
 	 */
 	ControlsCore.deactivateLastControl = function() {
-		if (!this.activeControl) return;
+		if (!activeControl) return;
 
 		// Restore last control gimbal
-		this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
-		this.activeControl.disable();
-		this.activeControl = undefined;
+		gimbal = activeControl.unchainGimbal( gimbal );
+		activeControl.disable();
+		activeControl = undefined;
 
 		// Add on scene on the correct order
-		this.zeroGimbal.add( this.gimbal );
+		zeroGimbal.add( gimbal );
 
 	}
 
@@ -46126,26 +47377,26 @@ var Iconeezin =
 		if (this.paused = paused) {
 			
 			// Disable all controls
-			this.vrControl.disable();
-			this.mouseControl.disable();
+			vrControl.disable();
+			mouseControl.disable();
 
 			// Disable active control
-			if (this.activeControl)
-				this.activeControl.disable();
+			if (activeControl)
+				activeControl.disable();
 
 		// Enable appropriate component
 		} else {
 
 			// Enable appropriate camera control
 			if (this.hmd) {
-				this.vrControl.enable();
+				vrControl.enable();
 			} else {
-				this.mouseControl.enable();
+				mouseControl.enable();
 			}
 
 			// Enable active control
-			if (this.activeControl)
-				this.activeControl.enable();
+			if (activeControl)
+				activeControl.enable();
 
 		}
 	}
@@ -46156,8 +47407,8 @@ var Iconeezin =
 	ControlsCore.followPath = function( curve, options ) {
 
 		// Setup and enable path follower
-		this.pathFollower.followPath( curve, options );
-		this.activateControl( this.pathFollower );
+		pathFollower.followPath( curve, options );
+		this.activateControl( pathFollower );
 
 	}
 
@@ -46167,8 +47418,8 @@ var Iconeezin =
 	ControlsCore.replaceFollowPath = function( curve ) {
 
 		// Setup and enable path follower
-		if (this.activeControl === this.pathFollower) {
-			this.pathFollower.replacePath( curve );
+		if (activeControl === pathFollower) {
+			pathFollower.replacePath( curve );
 		} else {
 			console.error("Replacing path on a path follower, but path follower is not active!");
 		}
@@ -46179,7 +47430,7 @@ var Iconeezin =
 	 * Re-orient mouse view
 	 */
 	ControlsCore.reorientMouseView = function( animate ) {
-		this.mouseControl.resetView( animate );
+		mouseControl.resetView( animate );
 	}
 
 	/**
@@ -46188,10 +47439,10 @@ var Iconeezin =
 	ControlsCore.onUpdate = function( delta ) {
 
 		// Update everything
-		this.vrControl.triggerUpdate( delta );
-		this.mouseControl.triggerUpdate( delta );
-		if (this.activeControl)
-			this.activeControl.triggerUpdate( delta );
+		vrControl.triggerUpdate( delta );
+		mouseControl.triggerUpdate( delta );
+		if (activeControl)
+			activeControl.triggerUpdate( delta );
 
 	}
 
@@ -46199,7 +47450,7 @@ var Iconeezin =
 	module.exports = ControlsCore;
 
 /***/ },
-/* 21 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -46224,8 +47475,8 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(13);
-	var TrackingCore = __webpack_require__(22);
+	var VideoCore = __webpack_require__(14);
+	var TrackingCore = __webpack_require__(34);
 	var ThreeAPI = __webpack_require__(11);
 
 	const CENTER = new THREE.Vector2(0,0);
@@ -46278,8 +47529,6 @@ var Iconeezin =
 				this.interactiveObjects.push(e);
 			}
 		}).bind(this));
-
-		console.log("Updated interactive objects:", this.interactiveObjects);
 
 	};
 
@@ -46428,7 +47677,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 22 */
+/* 34 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -46475,6 +47724,7 @@ var Iconeezin =
 		}
 
 		// Active experiment metadata
+		this.activeExperimentName = null;
 		this.activeExperimentMeta = { };
 		this.activeTaskMeta = { };
 		this.activeTaskName = "";
@@ -46651,16 +47901,42 @@ var Iconeezin =
 	 * Start an experiment (called by core)
 	 */
 	TrackingCore.startExperiment = function( name, callback ) {
+
+		// Complete previous experiment
+		if (this.activeExperimentName) {
+			this.completeExperiment();
+		}
+
+		// Query experiment metadata
 		this.queryExperimentMeta(name, (function(meta) {
+
+			// Activate experiment
+			this.activeExperimentName = name;
+			this.restartTimer("internal.experiment");
 
 			// Set experiment tracking data
 			this.setGlobal("experiment", name);
-			this.trackEvent("experiment.started");
+			this.trackEvent("experiment.started", { 'experiment': name });
 
 			// Callback with experiment metadata
 			if (callback) callback(meta);
 
 		}).bind(this));
+	}
+
+	/**
+	 * Complete an experiment
+	 */
+	TrackingCore.completeExperiment = function() {
+		if (!this.activeExperimentName) return;
+
+		// Track event
+		this.trackEvent("experiment.completed", { 
+			'experiment': this.activeExperimentName, 'duration': this.stopTimer("internal.experiment") 
+		});
+
+		// Reset active experiment name
+		this.activeExperimentName = null;
 	}
 
 	/**
@@ -46684,7 +47960,7 @@ var Iconeezin =
 			this.trackEvent("experiment.task.started", { 'task': name });
 
 			// Start task timer
-			this.restartTimer("task");
+			this.restartTimer("internal.task");
 
 			// Callback with task metadata
 			if (callback) callback( meta );
@@ -46700,7 +47976,7 @@ var Iconeezin =
 
 		// Track event completion
 		this.trackEvent("experiment.task.completed", Object.assign({ 
-			'task': this.activeTaskName, 'duration': this.stopTimer("task") }, results
+			'task': this.activeTaskName, 'duration': this.stopTimer("internal.task") }, results
 		));
 
 		// Reset active task
@@ -46714,7 +47990,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 23 */
+/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -46740,7 +48016,7 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var BaseControl = __webpack_require__(24);
+	var BaseControl = __webpack_require__(36);
 
 	var zero = new THREE.Vector3(0,0,0);
 	var norm = new THREE.Vector3();
@@ -46859,7 +48135,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 24 */
+/* 36 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -46968,7 +48244,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 25 */
+/* 37 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -46993,8 +48269,8 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(13);
-	var BaseControl = __webpack_require__(24);
+	var VideoCore = __webpack_require__(14);
+	var BaseControl = __webpack_require__(36);
 
 	const PI_2 = Math.PI / 2;
 	const RESET_NORMAL_SPEED = 0.01;
@@ -47066,24 +48342,20 @@ var Iconeezin =
 	};
 
 	/**
-	 * 
+	 * Handle pointer lock change
 	 */
 	MouseControl.prototype.handlePointerLockChange = function( event ) {
 		if ( document.pointerLockElement === VideoCore.rootDOM 
 			|| document.mozPointerLockElement === VideoCore.rootDOM 
 			|| document.webkitPointerLockElement === VideoCore.rootDOM ) {
 
-			console.log("Grabbed!");
-
 		} else {
-
-			console.log("Released!");
 
 		}
 	}
 
 	/**
-	 * 
+	 * Handle pointer lock error
 	 */
 	MouseControl.prototype.handlePointerLockError = function( event ) {
 
@@ -47191,7 +48463,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 26 */
+/* 38 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -47216,9 +48488,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var BaseControl = __webpack_require__(24);
-
-	__webpack_require__(27);
+	var BaseControl = __webpack_require__(36);
+	var Browser = __webpack_require__(17);
+	__webpack_require__(39);
 
 	var vec = new THREE.Vector3();
 
@@ -47229,8 +48501,13 @@ var Iconeezin =
 		BaseControl.call( this );
 
 		// Control the gimbal with VR controls
-		this.controls = new THREE.VRControls( this.gimbal );
+		this.controls = new THREE.VRControls( this.gimbal, Browser.vrHMD );
 		this.controls.userHeight = 2;
+
+		// Receive VR updates from browser
+		Browser.onVRSupportChange( (function( isPlugged, vrHMD ) {
+			this.controls.setHMDDevice( isPlugged ? vrHMD : undefined );
+		}).bind(this) );
 
 	}
 
@@ -47260,54 +48537,21 @@ var Iconeezin =
 
 
 /***/ },
-/* 27 */
-/***/ function(module, exports) {
+/* 39 */
+/***/ function(module, exports, __webpack_require__) {
 
 	/**
 	 * @author dmarcos / https://github.com/dmarcos
 	 * @author mrdoob / http://mrdoob.com
 	 */
 
-	THREE.VRControls = function ( object, onError ) {
+	var THREE = __webpack_require__(1);
+
+	THREE.VRControls = function ( object, vrInput ) {
 
 		var scope = this;
 
-		var vrInput;
-
 		var standingMatrix = new THREE.Matrix4();
-
-		function gotVRDevices( devices ) {
-
-			for ( var i = 0; i < devices.length; i ++ ) {
-
-				if ( ( 'VRDisplay' in window && devices[ i ] instanceof VRDisplay ) ||
-					 ( 'PositionSensorVRDevice' in window && devices[ i ] instanceof PositionSensorVRDevice ) ) {
-
-					vrInput = devices[ i ];
-					break;  // We keep the first we encounter
-
-				}
-
-			}
-
-			if ( !vrInput ) {
-
-				if ( onError ) onError( 'VR input not available.' );
-
-			}
-
-		}
-
-		if ( navigator.getVRDisplays ) {
-
-			navigator.getVRDisplays().then( gotVRDevices );
-
-		} else if ( navigator.getVRDevices ) {
-
-			// Deprecated API.
-			navigator.getVRDevices().then( gotVRDevices );
-
-		}
 
 		// the Rift SDK returns the position in meters
 		// this scale factor allows the user to define how meters
@@ -47322,6 +48566,12 @@ var Iconeezin =
 		// Distance from the users eyes to the floor in meters. Used when
 		// standing=true but the VRDisplay doesn't provide stageParameters.
 		this.userHeight = 1.6;
+
+		this.setHMDDevice = function( vrDevice ) {
+
+			vrInput = vrDevice;
+			
+		};
 
 		this.getStandingMatrix = function () {
 
@@ -47447,7 +48697,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 28 */
+/* 40 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -47472,13 +48722,13 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(13);
+	var VideoCore = __webpack_require__(14);
 	var AudioCore = __webpack_require__(4);
-	var ControlsCore = __webpack_require__(20);
-	var TrackingCore = __webpack_require__(22);
+	var ControlsCore = __webpack_require__(32);
+	var TrackingCore = __webpack_require__(34);
 
-	var Experiments = __webpack_require__(29);
-	var Loaders = __webpack_require__(30);
+	var Experiments = __webpack_require__(41);
+	var Loaders = __webpack_require__(42);
 
 	/**
 	 * Kernel core is the main logic that steers the runtime 
@@ -47573,14 +48823,16 @@ var Iconeezin =
 		// Check if this is already loaded
 		if (this.loadedExperiments[experiment] !== undefined) {
 
+			// Reset other cores
+			AudioCore.reset();
+		
 			// Ask TrackingCore to prepare for the experiment
 			TrackingCore.startExperiment( experiment, (function() {
 
 				// Focus to the given experiment instance on the viewport
 				this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible, function() {
 
-					// Reset other cores
-					AudioCore.reset();
+					// Reset controls core only when it's not visible
 					ControlsCore.reset();
 
 				} );
@@ -47591,6 +48843,9 @@ var Iconeezin =
 
 			// Load experiment
 			Loaders.loadExperiment( experiment, (function ( err, inst ) {
+
+				// Reset other cores
+				AudioCore.reset();
 
 				// Handle errors
 				if (err) {
@@ -47607,8 +48862,7 @@ var Iconeezin =
 					TrackingCore.startExperiment( experiment, (function() {
 						this.experiments.focusExperiment( inst, handleExperimentVisible, function() {
 							
-							// Reset other cores
-							AudioCore.reset();
+							// Reset controls core only when it's not visible
 							ControlsCore.reset();
 
 						});
@@ -47630,12 +48884,23 @@ var Iconeezin =
 
 	}
 
+	/**
+	 * Mark current experiment as completed
+	 *
+	 * This should automatically forward to next experiment and/or show
+	 * the appropriate completion screen.
+	 *
+	 */
+	ExperimentsCore.experimentCompleted = function() {
+
+	}
+
 	// Export regitry
 	module.exports = ExperimentsCore;
 
 
 /***/ },
-/* 29 */
+/* 41 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -47847,7 +49112,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 30 */
+/* 42 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -47872,11 +49137,11 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var Config = __webpack_require__(31);
+	var Config = __webpack_require__(13);
 
-	var JBBLoader = __webpack_require__(32);
-	var JBBProfileThreeLoader = __webpack_require__(39);
-	var JBBProfileIconeezinLoader = __webpack_require__(41);
+	var JBBLoader = __webpack_require__(43);
+	var JBBProfileThreeLoader = __webpack_require__(50);
+	var JBBProfileIconeezinLoader = __webpack_require__(52);
 
 	/**
 	 * Loaders namespace contains all the different loading
@@ -47894,7 +49159,7 @@ var Iconeezin =
 
 		// Create jbb singleton to the shared database in order
 		// to shared graphics and other shared resources
-		this.jbbLoader = new JBBLoader( Config.experiments_dir, this.database );
+		this.jbbLoader = new JBBLoader( Config.path.experiments, this.database );
 
 		// Add jbb profiles 
 		this.jbbLoader.addProfile( JBBProfileThreeLoader );
@@ -47986,45 +49251,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 31 */
-/***/ function(module, exports) {
-
-	"use strict";
-	/**
-	 * Iconeez.in - A Web VR Platform for social experiments
-	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
-	 * This program is free software; you can redistribute it and/or modify
-	 * it under the terms of the GNU General Public License as published by
-	 * the Free Software Foundation; either version 2 of the License, or
-	 * (at your option) any later version.
-	 * 
-	 * This program is distributed in the hope that it will be useful,
-	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
-	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	 * GNU General Public License for more details.
-	 * 
-	 * You should have received a copy of the GNU General Public License along
-	 * with this program; if not, write to the Free Software Foundation, Inc.,
-	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-	 *
-	 * @author Ioannis Charalampidis / https://github.com/wavesoft
-	 */
-
-	/**
-	 * Expose global configuration
-	 */
-	module.exports = {
-
-		/**
-		 * Were experiment bundles are found
-		 */
-		'experiments_dir': 'experiments'
-
-	};
-
-/***/ },
-/* 32 */
+/* 43 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {"use strict";
@@ -48048,10 +49275,10 @@ var Iconeezin =
 	 */
 
 	/* Imports */
-	var BinaryBundle = __webpack_require__(34);
-	var DecodeProfile = __webpack_require__(35);
-	var ProgressManager = __webpack_require__(36);
-	var Errors = __webpack_require__(37);
+	var BinaryBundle = __webpack_require__(45);
+	var DecodeProfile = __webpack_require__(46);
+	var ProgressManager = __webpack_require__(47);
+	var Errors = __webpack_require__(48);
 
 	/* Production optimisations and debug metadata flags */
 	if (typeof GULP_BUILD === "undefined") var GULP_BUILD = false;
@@ -48061,7 +49288,7 @@ var Iconeezin =
 
 	/* Additional includes on node builds */
 	if (IS_NODE) {
-		var fs = __webpack_require__(38);
+		var fs = __webpack_require__(49);
 	}
 
 	/* Size constants */
@@ -49018,7 +50245,19 @@ var Iconeezin =
 		urls.forEach(function(url, index) {
 			// Request binary bundle
 			var req = new XMLHttpRequest(),
+				headReq = new XMLHttpRequest(),
+				contentLength = null,
 				scope = this;
+
+			// First place a HEAD request to get content length
+			headReq.open('HEAD', urls[index]);
+			headReq.send();
+			headReq.addEventListener('readystatechange', function() {
+				if (req.readyState !== 4) return;
+				if (req.status === 200) {
+					contentLength = headReq.getResponseHeader("X-Content-Length");
+				}
+			});
 
 			// Place request
 			req.open('GET', urls[index]);
@@ -49028,7 +50267,9 @@ var Iconeezin =
 			// Listen for progress events & end updates
 			req.addEventListener('progress', function(e) {
 				if (e.lengthComputable) {
-					progressPart.update( req, e.loaded, e.total );
+					progressPart.update( req, e.position, e.total );
+				} else if (contentLength !== null) {
+					progressPart.update( req, e.position, contentLength );
 				}
 			});
 
@@ -49350,10 +50591,10 @@ var Iconeezin =
 	// Export the binary loader
 	module.exports = BinaryLoader;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(33)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(44)))
 
 /***/ },
-/* 33 */
+/* 44 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -49453,7 +50694,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 34 */
+/* 45 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -49813,7 +51054,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 35 */
+/* 46 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -49930,7 +51171,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 36 */
+/* 47 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -50105,7 +51346,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 37 */
+/* 48 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -50204,13 +51445,13 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 38 */
+/* 49 */
 /***/ function(module, exports) {
 
 	
 
 /***/ },
-/* 39 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -50237,7 +51478,7 @@ var Iconeezin =
 	/* Generated source follows */
 
 	var THREE = __webpack_require__(1);
-	var MD2Character = __webpack_require__(40);
+	var MD2Character = __webpack_require__(51);
 
 	/**
 	 * Factory & Initializer of THREE.CubeTexture
@@ -52009,7 +53250,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 40 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -52273,7 +53514,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 41 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Iconeezin = Iconeezin || {}; Iconeezin["API"] = __webpack_require__(2);

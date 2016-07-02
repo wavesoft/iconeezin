@@ -22,9 +22,14 @@
 
 // Load libraries as soon as possible
 var libTHREE = require("three");
+global.THREE = libTHREE;
 
 // Iconeezin API
 var IconeezinAPI = require('./api');
+
+// Load default configuration
+var DefaultConfig = require("./src/config");
+DefaultConfig.up = new libTHREE.Vector3( 0,0,1 );
 
 // Load components afterwards
 var AudioCore = require("./src/runtime/core/AudioCore");
@@ -33,6 +38,7 @@ var ControlsCore = require("./src/runtime/core/ControlsCore");
 var TrackingCore = require("./src/runtime/core/TrackingCore");
 var ExperimentsCore = require("./src/runtime/core/ExperimentsCore");
 var InteractionCore = require("./src/runtime/core/InteractionCore");
+var BrowserUtil = require("./src/runtime/util/Browser");
 
 /**
  * Expose useful parts of the runtime API
@@ -40,9 +46,7 @@ var InteractionCore = require("./src/runtime/core/InteractionCore");
 module.exports = {
 
 	// Iconeezin Configuration
-	'Config': {
-		'up': new libTHREE.Vector3( 0,0,1 )
-	},
+	'Config': DefaultConfig,
 
 	// Iconeezin API
 	'API': IconeezinAPI,
@@ -56,6 +60,7 @@ module.exports = {
 		'Tracking': TrackingCore,
 		'Experiments': ExperimentsCore,
 		'Interaction': InteractionCore,
+		'Browser': BrowserUtil,
 
 		// Initialize helper
 		'initialize': function( viewportDOM, canvasDOM ) {
@@ -77,7 +82,7 @@ module.exports = {
 					document.msFullscreenElement;
 
 				// Forward this events to important components
-				ControlsCore.mouseControl.handleFullScreenChange(is_fullscreen);
+				ControlsCore.updateFullscreenState( is_fullscreen );
 
 			};
 
@@ -98,9 +103,9 @@ module.exports = {
 		// Enable/Disable paused state
 		'setPaused': function( enabled ) {
 			VideoCore.setPaused( enabled );
+			AudioCore.setPaused( enabled );
 			ControlsCore.setPaused( enabled );
 			TrackingCore.setPaused( enabled );
-			AudioCore.setGlobalMute( enabled );
 			ExperimentsCore.setPaused( enabled );
 		},
 

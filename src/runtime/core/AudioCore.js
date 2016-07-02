@@ -149,7 +149,6 @@ AudioCore.setGlobalMute = function( muted ) {
 		// Fade out
 		this._volumeTween = new Tween(250, 25)
 			.step((function(v) {
-				console.log("Fadeout",v);
 				this.listener.setMasterVolume( 1.0 - v );
 			}).bind(this))
 			.completed((function() {
@@ -176,7 +175,6 @@ AudioCore.setGlobalMute = function( muted ) {
 		// Fade in
 		this._volumeTween = new Tween(250, 25)
 			.step((function(v) {
-				console.log("Fadein",v);
 				this.listener.setMasterVolume( v );
 			}).bind(this))
 			.start();

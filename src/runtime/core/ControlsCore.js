@@ -35,6 +35,12 @@ var VRControl = require("../controls/VRControl");
 var ControlsCore = {};
 
 /**
+ * Private properties
+ */
+var mouseControl, vrControl, activeControl,
+	pathFollower, scene, gimbal, zeroGimbal, interaction;
+
+/**
  * Initialize the input core
  */
 ControlsCore.initialize = function() {
@@ -43,28 +49,27 @@ ControlsCore.initialize = function() {
 	VideoCore.viewport.addRenderListener( this.onUpdate.bind(this) );
 
 	// Base controls 
-	this.mouseControl = new MouseControl();
-	this.vrControl = new VRControl();
+	mouseControl = new MouseControl();
+	vrControl = new VRControl();
 
 	// Position-only controls
-	this.pathFollower = new PathFollowerControl();
+	pathFollower = new PathFollowerControl();
 
 	// Default propeties
 	this.paused = true;
 	this.hmd = undefined;
 
 	// The currently active gimbal object
-	this.scene = VideoCore.viewport.scene;
-	this.gimbal = VideoCore.viewport.camera;
-	this.activeControl = null;
+	gimbal = VideoCore.viewport.camera;
+	activeControl = null;
 
 	// The zero gimbal that holds the reference position
-	this.zeroGimbal = new THREE.Object3D();
-	this.zeroGimbal.up.set( 0,0,1 );
-	VideoCore.viewport.scene.add( this.zeroGimbal );
+	zeroGimbal = new THREE.Object3D();
+	zeroGimbal.up.set( 0,0,1 );
+	VideoCore.viewport.scene.add( zeroGimbal );
 
 	// Create sight interaction
-	this.interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );
+	interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );
 
 	// Set defaults
 	this.setHMD( false );
@@ -72,6 +77,16 @@ ControlsCore.initialize = function() {
 		new THREE.Vector3(0,0,3), 
 		new THREE.Vector3(0,1,0)
 	);
+
+}
+
+/**
+ * Initialize the input core
+ */
+ControlsCore.updateFullscreenState = function( isFullscreen ) {
+
+	// Handle full screen change
+	mouseControl.handleFullScreenChange( isFullscreen );
 
 }
 
@@ -92,7 +107,7 @@ ControlsCore.reset = function() {
  * Update interactions when something is changed on the viewport
  */
 ControlsCore.updateInteractions = function() {
-	this.interaction.updateFromScene();
+	interaction.updateFromScene();
 }
 
 /**
@@ -101,10 +116,10 @@ ControlsCore.updateInteractions = function() {
 ControlsCore.setZero = function( position, direction ) {
 
 	// Set gimbal position
-	this.zeroGimbal.position.copy( position );
+	zeroGimbal.position.copy( position );
 
 	// Project direction to XY plane
-	this.zeroGimbal.rotation.z = Math.atan2( direction.x, direction.y );
+	zeroGimbal.rotation.z = Math.atan2( direction.x, direction.y );
 }
 
 /**
@@ -118,47 +133,47 @@ ControlsCore.setHMD = function( hmd ) {
 
 			// Disable VR Control
 			if (this.hmd === false) {
-				if (this.activeControl) {
-					this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+				if (activeControl) {
+					gimbal = activeControl.unchainGimbal( gimbal );
 				}
-				this.gimbal = this.mouseControl.unchainGimbal( this.gimbal );
-				this.mouseControl.disable();
+				gimbal = mouseControl.unchainGimbal( gimbal );
+				mouseControl.disable();
 			}
 
 			// Enable VR Control
-			this.gimbal = this.vrControl.chainGimbal( this.gimbal );
-			this.vrControl.enable();
+			gimbal = vrControl.chainGimbal( gimbal );
+			vrControl.enable();
 
 			// Re-chain base control
-			if (this.activeControl) {
-				this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+			if (activeControl) {
+				gimbal = activeControl.chainGimbal( gimbal );
 			}
 
 			// Add on scene on the correct order
-			this.zeroGimbal.add( this.gimbal );
+			zeroGimbal.add( gimbal );
 
 		} else {
 
 			// Disable VR Control
 			if (this.hmd === true) {
-				if (this.activeControl) {
-					this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
+				if (activeControl) {
+					gimbal = activeControl.unchainGimbal( gimbal );
 				}
-				this.gimbal = this.vrControl.unchainGimbal( this.gimbal );
-				this.vrControl.disable();
+				gimbal = vrControl.unchainGimbal( gimbal );
+				vrControl.disable();
 			}
 
 			// Enable Mouse Control
-			this.gimbal = this.mouseControl.chainGimbal( this.gimbal );
-			this.mouseControl.enable();
+			gimbal = mouseControl.chainGimbal( gimbal );
+			mouseControl.enable();
 
 			// Re-chain base control
-			if (this.activeControl) {
-				this.gimbal = this.activeControl.chainGimbal( this.gimbal );
+			if (activeControl) {
+				gimbal = activeControl.chainGimbal( gimbal );
 			}
 
 			// Add on scene on the correct order
-			this.zeroGimbal.add( this.gimbal );
+			zeroGimbal.add( gimbal );
 
 		}
 
@@ -174,16 +189,16 @@ ControlsCore.setHMD = function( hmd ) {
 ControlsCore.activateControl = function( control ) {
 
 	// Deactivate previous control
-	if (this.activeControl)
+	if (activeControl)
 		this.deactivateLastControl();
 
 	// Activate
-	this.gimbal = control.chainGimbal( this.gimbal );
-	this.activeControl = control;
-	this.activeControl.enable();
+	gimbal = control.chainGimbal( gimbal );
+	activeControl = control;
+	activeControl.enable();
 
 	// Add on scene on the correct order
-	this.zeroGimbal.add( this.gimbal );
+	zeroGimbal.add( gimbal );
 
 }
 
@@ -191,15 +206,15 @@ ControlsCore.activateControl = function( control ) {
  * Deactivate last control
  */
 ControlsCore.deactivateLastControl = function() {
-	if (!this.activeControl) return;
+	if (!activeControl) return;
 
 	// Restore last control gimbal
-	this.gimbal = this.activeControl.unchainGimbal( this.gimbal );
-	this.activeControl.disable();
-	this.activeControl = undefined;
+	gimbal = activeControl.unchainGimbal( gimbal );
+	activeControl.disable();
+	activeControl = undefined;
 
 	// Add on scene on the correct order
-	this.zeroGimbal.add( this.gimbal );
+	zeroGimbal.add( gimbal );
 
 }
 
@@ -211,26 +226,26 @@ ControlsCore.setPaused = function( paused ) {
 	if (this.paused = paused) {
 		
 		// Disable all controls
-		this.vrControl.disable();
-		this.mouseControl.disable();
+		vrControl.disable();
+		mouseControl.disable();
 
 		// Disable active control
-		if (this.activeControl)
-			this.activeControl.disable();
+		if (activeControl)
+			activeControl.disable();
 
 	// Enable appropriate component
 	} else {
 
 		// Enable appropriate camera control
 		if (this.hmd) {
-			this.vrControl.enable();
+			vrControl.enable();
 		} else {
-			this.mouseControl.enable();
+			mouseControl.enable();
 		}
 
 		// Enable active control
-		if (this.activeControl)
-			this.activeControl.enable();
+		if (activeControl)
+			activeControl.enable();
 
 	}
 }
@@ -241,8 +256,8 @@ ControlsCore.setPaused = function( paused ) {
 ControlsCore.followPath = function( curve, options ) {
 
 	// Setup and enable path follower
-	this.pathFollower.followPath( curve, options );
-	this.activateControl( this.pathFollower );
+	pathFollower.followPath( curve, options );
+	this.activateControl( pathFollower );
 
 }
 
@@ -252,8 +267,8 @@ ControlsCore.followPath = function( curve, options ) {
 ControlsCore.replaceFollowPath = function( curve ) {
 
 	// Setup and enable path follower
-	if (this.activeControl === this.pathFollower) {
-		this.pathFollower.replacePath( curve );
+	if (activeControl === pathFollower) {
+		pathFollower.replacePath( curve );
 	} else {
 		console.error("Replacing path on a path follower, but path follower is not active!");
 	}
@@ -264,7 +279,7 @@ ControlsCore.replaceFollowPath = function( curve ) {
  * Re-orient mouse view
  */
 ControlsCore.reorientMouseView = function( animate ) {
-	this.mouseControl.resetView( animate );
+	mouseControl.resetView( animate );
 }
 
 /**
@@ -273,10 +288,10 @@ ControlsCore.reorientMouseView = function( animate ) {
 ControlsCore.onUpdate = function( delta ) {
 
 	// Update everything
-	this.vrControl.triggerUpdate( delta );
-	this.mouseControl.triggerUpdate( delta );
-	if (this.activeControl)
-		this.activeControl.triggerUpdate( delta );
+	vrControl.triggerUpdate( delta );
+	mouseControl.triggerUpdate( delta );
+	if (activeControl)
+		activeControl.triggerUpdate( delta );
 
 }
 

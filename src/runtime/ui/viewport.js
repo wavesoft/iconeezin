@@ -22,16 +22,31 @@
 
 var THREE = require("three");
 var Label = require("./Label");
+var Browser = require("../util/Browser");
 
 // Modified version of example scripts
 // in order to work with Z-Up orientation
 require("./custom/shaders/SkyShader");
-require("./custom/effects/VREffect");
+// require("./custom/effects/VRComposerEffect");
+
+// Effect composer complex
+require("three/examples/js/shaders/CopyShader");
+require("three/examples/js/shaders/DotScreenShader");
+require("three/examples/js/shaders/RGBShiftShader");
+require("three/examples/js/shaders/DigitalGlitch");
+require("three/examples/js/shaders/FXAAShader");
+
+require("three/examples/js/postprocessing/EffectComposer");
+require("three/examples/js/postprocessing/RenderPass");
+require("three/examples/js/postprocessing/MaskPass");
+require("three/examples/js/postprocessing/ShaderPass");
+require("three/examples/js/postprocessing/GlitchPass");
+require("./custom/postprocessing/VRPass");
 
 /**
  * Our viewport is where everything gets rendered
  */
-var Viewport = function( viewportDOM, config ) {
+var Viewport = function( viewportDOM, vrHMD ) {
 
 	/////////////////////////////////////////////////////////////
 	// Properties
@@ -53,6 +68,10 @@ var Viewport = function( viewportDOM, config ) {
 	this.useHMD = false;
 	this.experiments = [];
 	this.activeExperiment = null;
+
+	// DOM Size
+	this.width = 0;
+	this.height = 0;
 
 	/////////////////////////////////////////////////////////////
 	// Scene & Camera
@@ -78,9 +97,6 @@ var Viewport = function( viewportDOM, config ) {
 	this.renderer.setPixelRatio( window.devicePixelRatio );
 	this.viewportDOM.appendChild( this.renderer.domElement );
 
-	// Initialize HMD effect and controls
-	this.hmdEffect = new THREE.VREffect( this.renderer );
-
 	// Camera opacity
 	var black = new THREE.MeshBasicMaterial({
 		color: 0x00,
@@ -92,8 +108,36 @@ var Viewport = function( viewportDOM, config ) {
 	this.opacityQuad.visible = false;
 	this.camera.add( this.opacityQuad );
 
+	// Effect composer
+	this.effectComposer = new THREE.EffectComposer( this.renderer );
+
+	// Render pass
+	this.renderPass = new THREE.VRPass( this.scene, this.camera, vrHMD );
+	this.renderPass.renderToScreen = false;
+	this.effectComposer.addPass( this.renderPass );
+
+	// FXAA anti-alias pass
+	this.fxaaPass = new THREE.ShaderPass( THREE.FXAAShader );
+	this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / window.innerWidth, 1 / window.innerHeight );
+	this.fxaaPass.renderToScreen = true;
+	this.effectComposer.addPass( this.fxaaPass );
+
+	// var effect = new THREE.ShaderPass( THREE.CopyShader );
+	// effect.uniforms[ 'scale' ].value = 4;
+	// effect.renderToScreen = true;
+	// this.effectComposer.addPass( effect );
+
+	// Glitch pass
+	// this.glitchPass = new THREE.GlitchPass();
+	// this.glitchPass.renderToScreen = true;
+	// this.effectComposer.addPass( this.glitchPass );
+
+
+	// Initialize HMD effect
+	// this.vrComposerEffect = new THREE.VRComposerEffect( this.effectComposer, this.renderPass );
+
 	// Initialize the sizes (apply actual size)
-	this.resize();
+	this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
 
 	/////////////////////////////////////////////////////////////
 	// Environment
@@ -165,24 +209,29 @@ Viewport.prototype.setSunPosition = function( inclination, azimuth ) {
 /**
  * Resize viewport to fit new size
  */
-Viewport.prototype.resize = function() {
+Viewport.prototype.setSize = function( width, height, pixelRatio ) {
 
 	// Get size of the viewport
-	var width = this.viewportDOM.offsetWidth,
-		height = this.viewportDOM.offsetHeight;
+	this.width = width;
+	this.height = height;
 
 	// Update camera
 	this.camera.aspect = width / height;
 	this.camera.updateProjectionMatrix();
 
-	// Update effect
-	this.hmdEffect.setSize( width, height );
-
 	// Update renderer
+	this.renderer.setPixelRatio( pixelRatio || window.devicePixelRatio );
 	this.renderer.setSize( width, height );
 
+	// Update VR Composer size
+	this.effectComposer.setSize( width, height );
+
+	// Update antialias
+	this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / width, 1 / height );
+
 	// Re-render if paused
-	if (this.paused) this.render();
+	if (this.paused)
+		this.render();
 
 }
 
@@ -239,15 +288,27 @@ Viewport.prototype.render = function() {
 
 	}
 		
-	// Render scene
-	if (this.useHMD) {
-		// Use HMD Effect for rendering the sterep image
-		this.hmdEffect.render( this.scene, this.camera );
-	} else {
-		// Otherwise use classic renderer
-		this.renderer.render( this.scene, this.camera );
-	}
+	// // Render scene
+	// if (this.useHMD) {
+	// 	// Use HMD Effect for rendering the sterep image
+	// 	this.hmdEffect.render( this.scene, this.camera );
+	// } else {
+	// 	// Otherwise use classic renderer
+	// 	this.renderer.render( this.scene, this.camera );
+	// }
 
+	// Render composer
+	this.effectComposer.render( d );
+	// this.hmdEffect.vrHMD.submitFrame();
+	// this.vrComposerEffect.render( d );
+
+}
+
+/**
+ * Define the HMD Device to use
+ */
+Viewport.prototype.setHMDDevice = function( device ) {
+	this.renderPass.vrHMD = device;
 }
 
 /**
@@ -256,8 +317,6 @@ Viewport.prototype.render = function() {
 Viewport.prototype.setHMD = function( enabled ) {
 	// Set the HMD flag
 	this.useHMD = enabled;
-	// Resize
-	this.resize();
 }
 
 /**
