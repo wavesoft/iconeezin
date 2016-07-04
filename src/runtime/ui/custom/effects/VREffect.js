@@ -9,229 +9,26 @@
  *
  */
 
-THREE.VREffect = function ( renderer, onError ) {
+var THREE = require('three');
 
-	var vrHMD;
+THREE.VREffect = function ( renderer, vrHMD, onError ) {
+
 	var isDeprecatedAPI = false;
 	var eyeTranslationL = new THREE.Vector3();
 	var eyeTranslationR = new THREE.Vector3();
 	var renderRectL, renderRectR;
 	var eyeFOVL, eyeFOVR;
 
-	function gotVRDevices( devices ) {
-
-		for ( var i = 0; i < devices.length; i ++ ) {
-
-			if ( 'VRDisplay' in window && devices[ i ] instanceof VRDisplay ) {
-
-				vrHMD = devices[ i ];
-				isDeprecatedAPI = false;
-				break; // We keep the first we encounter
-
-			} else if ( 'HMDVRDevice' in window && devices[ i ] instanceof HMDVRDevice ) {
-
-				vrHMD = devices[ i ];
-				isDeprecatedAPI = true;
-				break; // We keep the first we encounter
-
-			}
-
-		}
-
-		if ( vrHMD === undefined ) {
-
-			if ( onError ) onError( 'HMD not available' );
-
-		}
-
-	}
-
-	if ( navigator.getVRDisplays ) {
-
-		navigator.getVRDisplays().then( gotVRDevices );
-
-	} else if ( navigator.getVRDevices ) {
-
-		// Deprecated API.
-		navigator.getVRDevices().then( gotVRDevices );
-
-	}
-
+	var scope = this;
+	scope.vrHMD = vrHMD;
+	
 	//
 
 	this.isPresenting = false;
 	this.scale = 1;
 
-	var scope = this;
-
 	var rendererSize = renderer.getSize();
 	var rendererPixelRatio = renderer.getPixelRatio();
-
-	this.setSize = function ( width, height ) {
-
-		rendererSize = { width: width, height: height };
-
-		if ( scope.isPresenting ) {
-
-			var eyeParamsL = vrHMD.getEyeParameters( 'left' );
-			renderer.setPixelRatio( 1 );
-
-			if ( isDeprecatedAPI ) {
-
-				renderer.setSize( eyeParamsL.renderRect.width * 2, eyeParamsL.renderRect.height, false );
-
-			} else {
-
-				renderer.setSize( eyeParamsL.renderWidth * 2, eyeParamsL.renderHeight, false );
-
-			}
-
-
-		} else {
-
-			renderer.setPixelRatio( rendererPixelRatio );
-			renderer.setSize( width, height );
-
-		}
-
-	};
-
-	// fullscreen
-
-	var canvas = renderer.domElement;
-	var requestFullscreen;
-	var exitFullscreen;
-	var fullscreenElement;
-
-	function onFullscreenChange () {
-
-		var wasPresenting = scope.isPresenting;
-		scope.isPresenting = vrHMD !== undefined && ( vrHMD.isPresenting || ( isDeprecatedAPI && document[ fullscreenElement ] instanceof window.HTMLElement ) );
-
-		if ( wasPresenting === scope.isPresenting ) {
-
-			return;
-
-		}
-
-		if ( scope.isPresenting ) {
-
-			rendererPixelRatio = renderer.getPixelRatio();
-			rendererSize = renderer.getSize();
-
-			var eyeParamsL = vrHMD.getEyeParameters( 'left' );
-			var eyeWidth, eyeHeight;
-
-			if ( isDeprecatedAPI ) {
-
-				eyeWidth = eyeParamsL.renderRect.width;
-				eyeHeight = eyeParamsL.renderRect.height;
-
-			} else {
-
-				eyeWidth = eyeParamsL.renderWidth;
-				eyeHeight = eyeParamsL.renderHeight;
-
-			}
-
-			renderer.setPixelRatio( 1 );
-			renderer.setSize( eyeWidth * 2, eyeHeight, false );
-
-		} else {
-
-			renderer.setPixelRatio( rendererPixelRatio );
-			renderer.setSize( rendererSize.width, rendererSize.height );
-
-		}
-
-	}
-
-	if ( canvas.requestFullscreen ) {
-
-		requestFullscreen = 'requestFullscreen';
-		fullscreenElement = 'fullscreenElement';
-		exitFullscreen = 'exitFullscreen';
-		document.addEventListener( 'fullscreenchange', onFullscreenChange, false );
-
-	} else if ( canvas.mozRequestFullScreen ) {
-
-		requestFullscreen = 'mozRequestFullScreen';
-		fullscreenElement = 'mozFullScreenElement';
-		exitFullscreen = 'mozCancelFullScreen';
-		document.addEventListener( 'mozfullscreenchange', onFullscreenChange, false );
-
-	} else {
-
-		requestFullscreen = 'webkitRequestFullscreen';
-		fullscreenElement = 'webkitFullscreenElement';
-		exitFullscreen = 'webkitExitFullscreen';
-		document.addEventListener( 'webkitfullscreenchange', onFullscreenChange, false );
-
-	}
-
-	window.addEventListener( 'vrdisplaypresentchange', onFullscreenChange, false );
-
-	this.setFullScreen = function ( boolean ) {
-
-		return new Promise( function ( resolve, reject ) {
-
-			if ( vrHMD === undefined ) {
-
-				reject( new Error( 'No VR hardware found.' ) );
-				return;
-
-			}
-
-			if ( scope.isPresenting === boolean ) {
-
-				resolve();
-				return;
-
-			}
-
-			if ( ! isDeprecatedAPI ) {
-
-				if ( boolean ) {
-
-					resolve( vrHMD.requestPresent( [ { source: canvas } ] ) );
-
-				} else {
-
-					resolve( vrHMD.exitPresent() );
-
-				}
-
-			} else {
-
-				if ( canvas[ requestFullscreen ] ) {
-
-					canvas[ boolean ? requestFullscreen : exitFullscreen ]( { vrDisplay: vrHMD } );
-					resolve();
-
-				} else {
-
-					console.error( 'No compatible requestFullscreen method found.' );
-					reject( new Error( 'No compatible requestFullscreen method found.' ) );
-
-				}
-
-			}
-
-		} );
-
-	};
-
-	this.requestPresent = function () {
-
-		return this.setFullScreen( true );
-
-	};
-
-	this.exitPresent = function () {
-
-		return this.setFullScreen( false );
-
-	};
 
 	// render
 
@@ -243,7 +40,7 @@ THREE.VREffect = function ( renderer, onError ) {
 
 	this.render = function ( scene, camera, renderTarget, forceClear ) {
 
-		if ( vrHMD && scope.isPresenting ) {
+		if ( scope.vrHMD && scope.vrHMD.isPresenting ) {
 
 			var autoUpdate = scene.autoUpdate;
 
@@ -254,8 +51,8 @@ THREE.VREffect = function ( renderer, onError ) {
 
 			}
 
-			var eyeParamsL = vrHMD.getEyeParameters( 'left' );
-			var eyeParamsR = vrHMD.getEyeParameters( 'right' );
+			var eyeParamsL = scope.vrHMD.getEyeParameters( 'left' );
+			var eyeParamsR = scope.vrHMD.getEyeParameters( 'right' );
 
 			if ( ! isDeprecatedAPI ) {
 
@@ -322,7 +119,7 @@ THREE.VREffect = function ( renderer, onError ) {
 
 			if ( ! isDeprecatedAPI ) {
 
-				vrHMD.submitFrame();
+				scope.vrHMD.submitFrame();
 
 			}
 

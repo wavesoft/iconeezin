@@ -224,7 +224,7 @@ THREE.VRPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
 			if (this.renderToScreen) {
 
 				renderer.setScissorTest( true );
-				renderer.clear();
+				if (this.clear) renderer.clear();
 
 				// render left eye
 				renderer.setViewport( this.renderRectL.x, this.renderRectL.y, this.renderRectL.width, this.renderRectL.height );

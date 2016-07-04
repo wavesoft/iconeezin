@@ -27,21 +27,33 @@ var Browser = require("../util/Browser");
 // Modified version of example scripts
 // in order to work with Z-Up orientation
 require("./custom/shaders/SkyShader");
-// require("./custom/effects/VRComposerEffect");
 
 // Effect composer complex
 require("three/examples/js/shaders/CopyShader");
-require("three/examples/js/shaders/DotScreenShader");
-require("three/examples/js/shaders/RGBShiftShader");
-require("three/examples/js/shaders/DigitalGlitch");
 require("three/examples/js/shaders/FXAAShader");
 
 require("three/examples/js/postprocessing/EffectComposer");
 require("three/examples/js/postprocessing/RenderPass");
 require("three/examples/js/postprocessing/MaskPass");
 require("three/examples/js/postprocessing/ShaderPass");
+
+require("three/examples/js/shaders/DigitalGlitch");
 require("three/examples/js/postprocessing/GlitchPass");
+
+require("three/examples/js/shaders/BokehShader");
+require("three/examples/js/postprocessing/BokehPass");
+
+require("three/examples/js/shaders/SMAAShader");
+require("three/examples/js/postprocessing/SMAAPass");
+
+require("three/examples/js/shaders/HueSaturationShader");
+
+// Custom pass for rendering the HMD display in a texture
+// for possible post-processing.
 require("./custom/postprocessing/VRPass");
+
+require("./custom/shaders/OverlayShader");
+require("./custom/postprocessing/GUIPass");
 
 /**
  * Our viewport is where everything gets rendered
@@ -70,8 +82,8 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.activeExperiment = null;
 
 	// DOM Size
-	this.width = 0;
-	this.height = 0;
+	this.width = viewportDOM.offsetWidth;
+	this.height = viewportDOM.offsetHeight;
 
 	/////////////////////////////////////////////////////////////
 	// Scene & Camera
@@ -113,31 +125,50 @@ var Viewport = function( viewportDOM, vrHMD ) {
 
 	// Render pass
 	this.renderPass = new THREE.VRPass( this.scene, this.camera, vrHMD );
-	this.renderPass.renderToScreen = false;
+	this.renderPass.renderToScreen = true;
 	this.effectComposer.addPass( this.renderPass );
 
-	// FXAA anti-alias pass
-	this.fxaaPass = new THREE.ShaderPass( THREE.FXAAShader );
-	this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / window.innerWidth, 1 / window.innerHeight );
-	this.fxaaPass.renderToScreen = true;
-	this.effectComposer.addPass( this.fxaaPass );
+	// // Antialias pass
+	// this.antialiasPass = new THREE.SMAAPass( this.width, this.height );
+	// this.antialiasPass.renderToScreen = false;
+	// this.effectComposer.addPass( this.antialiasPass );
 
-	// var effect = new THREE.ShaderPass( THREE.CopyShader );
-	// effect.uniforms[ 'scale' ].value = 4;
+	// FXAA anti-alias pass
+	// this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
+	// this.antialiasPass.setSize = (function(w,h) {
+	// 	this.uniforms[ 'resolution' ].value.set( 1 / w, 1 / h );
+	// }).bind(this.antialiasPass);
+	// this.antialiasPass.renderToScreen = false;
+	// this.effectComposer.addPass( this.antialiasPass );
+
+	// var effect = new THREE.BokehPass( this.scene, this.camera, {} );
 	// effect.renderToScreen = true;
 	// this.effectComposer.addPass( effect );
 
-	// Glitch pass
+	// // Glitch pass
 	// this.glitchPass = new THREE.GlitchPass();
 	// this.glitchPass.renderToScreen = true;
+	// this.glitchPass.goWild = false;
 	// this.effectComposer.addPass( this.glitchPass );
 
+	// FXAA anti-alias pass
+	// var shader = new THREE.ShaderPass( THREE.HueSaturationShader );
+	// shader.renderToScreen = true;
+	// shader.uniforms['saturation'].value = -1.0;
+	// this.effectComposer.addPass( shader );
+
+	// // Add GUI
+	// this.guiPass = new THREE.GUIPass( this.width, this.height, function(ctx, width, height) {
+
+	// 	ctx.fillStyle = "green";
+	// 	ctx.fillRect( 50,60,100,100);
+
+	// });
+	// this.guiPass.renderToScreen = true;
+	// this.effectComposer.addPass( this.guiPass );
 
 	// Initialize HMD effect
 	// this.vrComposerEffect = new THREE.VRComposerEffect( this.effectComposer, this.renderPass );
-
-	// Initialize the sizes (apply actual size)
-	this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
 
 	/////////////////////////////////////////////////////////////
 	// Environment
@@ -170,6 +201,9 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.label.position.set( 0, 0.3, -3.5 );
 	this.label.scale.set( 4, 4, 1 );
 	this.camera.add( this.label );
+
+	// Initialize the sizes (apply actual size)
+	this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
 
 }
 
@@ -209,7 +243,7 @@ Viewport.prototype.setSunPosition = function( inclination, azimuth ) {
 /**
  * Resize viewport to fit new size
  */
-Viewport.prototype.setSize = function( width, height, pixelRatio ) {
+Viewport.prototype.setSize = function( width, height, pixelRatio, skipStyleUpdate ) {
 
 	// Get size of the viewport
 	this.width = width;
@@ -221,13 +255,17 @@ Viewport.prototype.setSize = function( width, height, pixelRatio ) {
 
 	// Update renderer
 	this.renderer.setPixelRatio( pixelRatio || window.devicePixelRatio );
-	this.renderer.setSize( width, height );
+	this.renderer.setSize( width, height, !skipStyleUpdate );
 
 	// Update VR Composer size
 	this.effectComposer.setSize( width, height );
 
+	// Update effects
+	// this.guiPass.setSize( width, height );
+
 	// Update antialias
-	this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / width, 1 / height );
+	// this.antialiasPass.setSize( width, height );
+	// this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / width, 1 / height );
 
 	// Re-render if paused
 	if (this.paused)

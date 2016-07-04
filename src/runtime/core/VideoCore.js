@@ -55,6 +55,7 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 		canvasDOM = document.createElement('canvas');
 		rootDOM.appendChild( canvasDOM );
 	}
+	this.canvasDOM = canvasDOM;
 
 	// Create a new viewport instance
 	this.viewport = new Viewport( canvasDOM, Browser.vrHMD );
@@ -72,17 +73,15 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 
 	// Bind on document events
 	Browser.onVRDisplayPresentChange(function( presenting, width, height, pixelAspectRatio ) {
-		alert("VR RESIZE: w="+width+", h="+height);
 		if (isPresenting = presenting) {
-			VideoCore.viewport.setSize( width, height, pixelAspectRatio );
+			VideoCore.viewport.setSize( width, height, pixelAspectRatio, true );
 		} else {
 			VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
 		}
 	});
 	window.addEventListener( 'resize', function() {
-		viewportWidth = canvasDOM.offsetWidth;
-		viewportHeight =  canvasDOM.offsetHeight;
-		alert("RESIZE: w="+viewportWidth+", h="+viewportHeight);
+		viewportWidth = window.innerWidth;
+		viewportHeight =  window.innerHeight;
 
 		// When presenting in VR mode the size is defined by
 		// the HMD display. So any resize event just updates the
@@ -113,9 +112,9 @@ VideoCore.setPaused = function( isPaused ) {
 
 		// Request HMD present or fullscreen
 		if (this.hmd) {
-			Browser.requestHMDPresent();
+			Browser.requestHMDPresent( VideoCore.viewport.renderer.domElement );
 		} else {
-			Browser.requestFullscreen( VideoCore.rootDOM );
+			Browser.requestFullscreen( VideoCore.viewport.renderer.domElement );
 		}
 
 	} else {

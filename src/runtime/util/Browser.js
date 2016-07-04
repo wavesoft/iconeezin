@@ -92,6 +92,7 @@ Browser.vrPresenting = false;
  */
 var onVRSupportChange_Callbacks = [];
 var onVRDisplayPresentChange_Callbacks = [];
+var vrBugfixAttempt = false;
 
 /**
  * VR Support change listeners
@@ -130,17 +131,19 @@ var vrDisplayPresentChangeHandler = function() {
 		Browser.vrPresenting = true;
 
 		// Check according to old/new API
-		if (typeof eyeParamsL.renderRect === 'undefined') {
+		if (Browser.vrAPIVersion === VR_LATEST) {
 			eyeWidth = eyeParamsL.renderWidth;
 			eyeHeight = eyeParamsL.renderHeight;
-		} else {
+
+		} else if (Browser.vrAPIVersion === VR_DEPRECATED) {
 			eyeWidth = eyeParamsL.renderRect.width;
 			eyeHeight = eyeParamsL.renderRect.height;
+
 		}
 
 		// Callback with enabled VR + custom render size
 		for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
-			onVRDisplayPresentChange_Callbacks[i]( false, eyeWidth*2, eyeHeight, 1 );		
+			onVRDisplayPresentChange_Callbacks[i]( true, eyeWidth*2, eyeHeight, 1 );		
 
 	} else {
 
@@ -157,13 +160,13 @@ var vrDisplayPresentChangeHandler = function() {
 var vrOldAPIPresentChangeHandler = function() {
 
 	// Skip if this full-screen event does not originate from a VR event
-	if (!Browser.vrHMD || (Browser.vrAPIVersion == VR_LATEST)) return;
+	if (!Browser.vrHMD || ((Browser.vrAPIVersion == VR_LATEST) && !vrBugfixAttempt)) return;
 
 	// Get fullscreen element
 	var elm = Browser.getFullscreenElement();
 
 	// Trigger accordingly
-	if (elm) {
+	if (elm || vrBugfixAttempt) {
 
 		// We are presenting
 		Browser.vrPresenting = true;
@@ -171,7 +174,7 @@ var vrOldAPIPresentChangeHandler = function() {
 		// Callback with enabled VR
 		for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
 			onVRDisplayPresentChange_Callbacks[i]( true, 
-				elm.offsetWidth, elm.offsetHeight, window.devicePixelRatio );		
+				window.screen.width, window.screen.height, window.devicePixelRatio );		
 
 	} else {
 
@@ -183,6 +186,9 @@ var vrOldAPIPresentChangeHandler = function() {
 			onVRDisplayPresentChange_Callbacks[i]( false, 0, 0, 0 );		
 
 	}
+
+	// Reset bugfix flag
+	vrBugfixAttempt = false;
 
 }
 
@@ -251,8 +257,10 @@ Browser.detectVR = function( callback ) {
 
 			// Then trigger 'plugged' on the new device
 			Browser.vrHMD = pickDevice;
-			for (var i=0, l=onVRSupportChange_Callbacks.length; i<l; ++i) {
-				onVRSupportChange_Callbacks[i]( true, Browser.vrHMD );
+			if (pickDevice) {
+				for (var i=0, l=onVRSupportChange_Callbacks.length; i<l; ++i) {
+					onVRSupportChange_Callbacks[i]( true, Browser.vrHMD );
+				}
 			}
 
 		}
@@ -288,7 +296,16 @@ Browser.requestHMDPresent = function( canvas, callback ) {
 
 		// Handle request according to API version
 		if (Browser.vrAPIVersion == VR_LATEST) {
-			resolve( Browser.vrHMD.requestPresent( [ { source: canvas } ] ) );
+			Browser.vrHMD.requestPresent( [ { source: canvas } ] ).then(function() {
+
+				// BOG: Browser did not grab the vr HMD device
+				if (!Browser.vrHMD.isPresenting) {
+					vrBugfixAttempt = true;
+					Browser.requestFullscreen( canvas );	
+				}
+
+				resolve();
+			});
 
 		} else if (Browser.vrAPIVersion == VR_DEPRECATED) {
 			Browser.requestFullscreen( canvas, { vrDisplay: Browser.vrHMD } );
@@ -311,7 +328,6 @@ Browser.exitHMDPresent = function( callback ) {
 			return;
 		}
 
-
 		// Handle request according to API version
 		if (Browser.vrAPIVersion == VR_LATEST) {
 			resolve( Browser.vrHMD.exitPresent() );
@@ -326,7 +342,9 @@ Browser.exitHMDPresent = function( callback ) {
 };
 
 // Detect VR
-Browser.detectVR();
+document.addEventListener('DOMContentLoaded', function() {
+	Browser.detectVR();
+});
 
 // Export Browser
 module.exports = Browser;
