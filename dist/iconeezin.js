@@ -44174,6 +44174,13 @@ var Iconeezin =
 		// Keep a reference to the root DOM
 		this.rootDOM = rootDOM;
 
+		// Quality flags
+		// (0=!hires, !antialias, 1=!hires,antialias, 2=hires,!antialias, 3=hires,antialias)
+		this.qualityFlags = {
+			'antialias': true,
+			'hires': false,
+		};
+
 		// Create a canvas DOM if missing
 		if (!canvasDOM) {
 			canvasDOM = document.createElement('canvas');
@@ -44183,6 +44190,7 @@ var Iconeezin =
 
 		// Create a new viewport instance
 		this.viewport = new Viewport( canvasDOM, Browser.vrHMD );
+		this.viewport.setAntialias( this.qualityFlags.antialias );
 		Browser.onVRSupportChange(function( isPlugged, vrHMD ) {
 			VideoCore.viewport.setHMDDevice( isPlugged ? vrHMD : undefined );
 		});
@@ -44198,9 +44206,15 @@ var Iconeezin =
 		// Bind on document events
 		Browser.onVRDisplayPresentChange(function( presenting, width, height, pixelAspectRatio ) {
 			if (isPresenting = presenting) {
-				VideoCore.viewport.setSize( width, height, pixelAspectRatio, true );
+				if (VideoCore.qualityFlags.hires) {
+					VideoCore.viewport.setSize( width, height, pixelAspectRatio, true );
+				} else {
+					VideoCore.viewport.setSize( viewportWidth, viewportHeight, 
+						VideoCore.qualityFlags.hires ? window.devicePixelRatio : 1 );
+				}
 			} else {
-				VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
+				VideoCore.viewport.setSize( viewportWidth, viewportHeight, 
+					VideoCore.qualityFlags.hires ? window.devicePixelRatio : 1 );
 			}
 		});
 		window.addEventListener( 'resize', function() {
@@ -44211,7 +44225,8 @@ var Iconeezin =
 			// the HMD display. So any resize event just updates the
 			// DOM element (the viewport) and not the canvas
 			if (!isPresenting) {
-				VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
+				VideoCore.viewport.setSize( viewportWidth, viewportHeight, 
+					VideoCore.qualityFlags.hires ? window.devicePixelRatio : 1 );
 			}
 
 		}, false );
@@ -44455,7 +44470,7 @@ var Iconeezin =
 
 		// Initialize the renderer
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
-		this.renderer.setPixelRatio( window.devicePixelRatio );
+		this.renderer.setPixelRatio( 1 );
 		this.viewportDOM.appendChild( this.renderer.domElement );
 
 		// Camera opacity
@@ -44472,52 +44487,32 @@ var Iconeezin =
 		// Effect composer
 		this.effectComposer = new THREE.EffectComposer( this.renderer );
 
-		// Render pass
+		// Render pass in VR
 		this.renderPass = new THREE.VRPass( this.scene, this.camera, vrHMD );
 		this.renderPass.renderToScreen = true;
 		this.effectComposer.addPass( this.renderPass );
 
-		// // Antialias pass
-		// this.antialiasPass = new THREE.SMAAPass( this.width, this.height );
-		// this.antialiasPass.renderToScreen = false;
-		// this.effectComposer.addPass( this.antialiasPass );
-
 		// FXAA anti-alias pass
-		// this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
-		// this.antialiasPass.setSize = (function(w,h) {
-		// 	this.uniforms[ 'resolution' ].value.set( 1 / w, 1 / h );
-		// }).bind(this.antialiasPass);
-		// this.antialiasPass.renderToScreen = false;
+		this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
+		this.antialiasPass.setSize = (function( w, h ) {
+			this.uniforms['resolution'].value.set( 1/w, 1/h );
+		}).bind(this.antialiasPass)
 		// this.effectComposer.addPass( this.antialiasPass );
 
-		// var effect = new THREE.BokehPass( this.scene, this.camera, {} );
-		// effect.renderToScreen = true;
-		// this.effectComposer.addPass( effect );
-
-		// // Glitch pass
-		// this.glitchPass = new THREE.GlitchPass();
-		// this.glitchPass.renderToScreen = true;
-		// this.glitchPass.goWild = false;
+		// Glitch pass
+		this.glitchPass = new THREE.GlitchPass();
+		this.glitchPass.goWild = true;
+		this.glitchPass.enabled = false;
 		// this.effectComposer.addPass( this.glitchPass );
 
-		// FXAA anti-alias pass
-		// var shader = new THREE.ShaderPass( THREE.HueSaturationShader );
-		// shader.renderToScreen = true;
-		// shader.uniforms['saturation'].value = -1.0;
-		// this.effectComposer.addPass( shader );
+		// Add GUI
+		this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
+		this.hudPass.renderToScreen = true;
+		// this.effectComposer.addPass( this.hudPass );
 
-		// // Add GUI
-		// this.guiPass = new THREE.GUIPass( this.width, this.height, function(ctx, width, height) {
-
-		// 	ctx.fillStyle = "green";
-		// 	ctx.fillRect( 50,60,100,100);
-
-		// });
-		// this.guiPass.renderToScreen = true;
-		// this.effectComposer.addPass( this.guiPass );
-
-		// Initialize HMD effect
-		// this.vrComposerEffect = new THREE.VRComposerEffect( this.effectComposer, this.renderPass );
+		// var cp = new THREE.ShaderPass( THREE.CopyShader );
+		// cp.renderToScreen = true;
+		// this.effectComposer.addPass( cp );
 
 		/////////////////////////////////////////////////////////////
 		// Environment
@@ -44554,6 +44549,41 @@ var Iconeezin =
 		// Initialize the sizes (apply actual size)
 		this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
 
+	}
+
+	/**
+	 * Render the HUD canvas
+	 */
+	Viewport.prototype.renderHUD = function( ctx, width, height ) {
+		
+		// ctx.fillStyle = "green";
+		// ctx.fillRect( 0,0,128,128);
+
+		// ctx.fillStyle = "red";
+		// ctx.fillRect( 128,128,128,128);
+
+		ctx.fillStyle = "#000000";
+		ctx.fillRect( 64,110,128,28);
+
+		ctx.fillStyle = "white";
+		ctx.textAlign = 'center';
+		ctx.font = '12px Tahoma';
+		ctx.fillText( "Flat HUD", 128, 128 );
+
+	}
+
+	/**
+	 * Redraw hud
+	 */
+	Viewport.prototype.redrawHUD = function() {
+		this.hudPass.needsUpdate = true;
+	}
+
+	/**
+	 * Enable or diable antialias pass
+	 */
+	Viewport.prototype.setAntialias = function( enabled ) {
+		this.antialiasPass.enabled = enabled;
 	}
 
 	/**
@@ -44603,18 +44633,11 @@ var Iconeezin =
 		this.camera.updateProjectionMatrix();
 
 		// Update renderer
-		this.renderer.setPixelRatio( pixelRatio || window.devicePixelRatio );
+		this.renderer.setPixelRatio( pixelRatio || 1 );
 		this.renderer.setSize( width, height, !skipStyleUpdate );
 
 		// Update VR Composer size
 		this.effectComposer.setSize( width, height );
-
-		// Update effects
-		// this.guiPass.setSize( width, height );
-
-		// Update antialias
-		// this.antialiasPass.setSize( width, height );
-		// this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / width, 1 / height );
 
 		// Re-render if paused
 		if (this.paused)
@@ -44686,6 +44709,7 @@ var Iconeezin =
 
 		// Render composer
 		this.effectComposer.render( d );
+
 		// this.hmdEffect.vrHMD.submitFrame();
 		// this.vrComposerEffect.render( d );
 
@@ -44704,6 +44728,10 @@ var Iconeezin =
 	Viewport.prototype.setHMD = function( enabled ) {
 		// Set the HMD flag
 		this.useHMD = enabled;
+
+		// Enable HMD GUI Effect
+		this.hudPass.setHMD( enabled );
+
 	}
 
 	/**
@@ -44802,6 +44830,7 @@ var Iconeezin =
 
 	// Export viewport
 	module.exports = Viewport;
+
 
 
 /***/ },
@@ -47664,7 +47693,8 @@ var Iconeezin =
 					// renderer.setScissorTest( false );
 					renderer.setViewport( 0, 0, size.width, size.height );
 					renderer.setScissor( 0, 0, size.width, size.height );
-
+					readBuffer.viewport.set( 0, 0, size.width, size.height );
+					readBuffer.scissor.set( 0, 0, size.width, size.height );
 
 				}
 
@@ -47713,13 +47743,25 @@ var Iconeezin =
 
 	var THREE = __webpack_require__(1);
 
-	THREE.OverlayShader = {
+	THREE.HUDShader = {
 
 		uniforms: {
 
+			// Front and back buffers
 			"tBack": { value: null },
 			"tFront": { value: null },
-			"opacity":  { value: 1.0 }
+
+			// Normalized size of the centered block
+			"size":  { value: new THREE.Vector2(1,1) },
+
+			// Left eye matrix
+			"eyeL_offset" : { value: new THREE.Vector2(-0.225,0) },
+			"eyeR_offset" : { value: new THREE.Vector2(0.225,0) },
+			"eyeL_scale"  : { value: new THREE.Vector2(1,1) },
+			"eyeR_scale"  : { value: new THREE.Vector2(1,1) },
+
+			// Enable or disable HMD
+			"hmd": { value: false },
 
 		},
 
@@ -47738,18 +47780,40 @@ var Iconeezin =
 
 		fragmentShader: [
 
-			"uniform float opacity;",
-
 			"uniform sampler2D tBack;",
 			"uniform sampler2D tFront;",
+			"uniform vec2 size;",
+			"uniform vec2 eyeL_offset;",
+			"uniform vec2 eyeR_offset;",
+			"uniform vec2 eyeL_scale;",
+			"uniform vec2 eyeR_scale;",
+			"uniform bool hmd;",
 
 			"varying vec2 vUv;",
 
+			"const vec2 CENTER = vec2(0.5, 0.5);",
+			"const vec2 ZERO = vec2(0.0, 0.0);",
+			"const vec2 ONE = vec2(1.0, 1.0);",
+
+			"void renderAt( vec2 center, vec2 scale ) {",
+				"vec2 lUv = vUv - center + (size * scale / 2.0);",
+				"if ( all(greaterThan(lUv, ZERO)) && all(lessThan(lUv, size * scale)) ) {",
+					"lUv /= size * scale;",
+					"vec4 c_front = texture2D(tFront, lUv);",
+					"gl_FragColor = mix(gl_FragColor, c_front, c_front.a);",
+				"}",
+			"}",
+
 			"void main() {",
 
-				"vec4 c_front = texture2D(tFront, vUv);",
-				"vec4 c_back = texture2D(tBack, vUv);",
-				"gl_FragColor = mix(c_back, c_front, c_front.a);",
+				"gl_FragColor = texture2D(tBack, vUv);",
+
+				"if (hmd) {",
+					"renderAt( CENTER + eyeL_offset, eyeL_scale );",
+					"renderAt( CENTER + eyeR_offset, eyeR_scale );",
+				"} else {",
+					"renderAt( CENTER, ONE );",
+				"}",
 
 			"}"
 
@@ -47786,33 +47850,41 @@ var Iconeezin =
 
 	var THREE = __webpack_require__(1);
 
-	THREE.GUIPass = function ( width, height, onUpdate ) {
+	THREE.HUDPass = function ( width, height, onUpdate ) {
 
 		THREE.Pass.call( this );
 
 		// Clone uniforms
-		this.uniforms = THREE.UniformsUtils.clone( THREE.OverlayShader.uniforms );
+		this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShader.uniforms );
 		this.material = new THREE.ShaderMaterial( {
 
-			defines: THREE.OverlayShader.defines || {},
+			defines: THREE.HUDShader.defines || {},
 			uniforms: this.uniforms,
-			vertexShader: THREE.OverlayShader.vertexShader,
-			fragmentShader: THREE.OverlayShader.fragmentShader
+			vertexShader: THREE.HUDShader.vertexShader,
+			fragmentShader: THREE.HUDShader.fragmentShader
 
 		} );
 
+		// Global properties
+		this.needsUpdate = true;
+		this.autoUpdate = false;
+
 		// Create a canvas for overlaying GUI
-		this.canvasOffset = new THREE.Vector2(0,0);
-		this.canvasSize = new THREE.Vector2(0,0);
 		this.canvas = document.createElement('canvas');
-		this.setSize( width, height );
+
+		// Snap canvas size to powers of 2
+		this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width)));
+		this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height)));
+		this.size = new THREE.Vector2(0,0);
+		this.setSize( this.width, this.height );
 
 		// Create a canvas texture
+		this.uniforms['hmd'].value = false;
+		this.uniforms['tBack'].value = null;
 		this.uniforms['tFront'].value = this.canvasTexture = new THREE.Texture( this.canvas );
 
 		// Get context
 		this.context = this.canvas.getContext('2d');
-		this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 		this.canvasTexture.needsUpdate = true;
 
 		// Update callback
@@ -47826,25 +47898,25 @@ var Iconeezin =
 
 	};
 
-	THREE.GUIPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+	THREE.HUDPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
 
-		constructor: THREE.GUIPass,
+		constructor: THREE.HUDPass,
 
 		setSize: function( width, height ) {
 
-			// Snap to powers of 2
-			this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width)));;
-			this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height)));;
+			// Keep track of size
+			this.size.set( width, height );
 
-			// Calculate offset
-			this.canvasOffset.set( 
-				(this.canvas.width - width)/2, 
-				(this.canvas.height - height)/2 
+			// Apply hmd effect scale
+			this.uniforms['size'].value.set(
+				this.canvas.width / width,
+				this.canvas.height / height
 			);
 
-			// Save actual size
-			this.canvasSize.set( width, height );
+		},
 
+		setHMD: function( enabled ) {
+			this.uniforms['hmd'].value = enabled;
 		},
 
 		render: function( renderer, writeBuffer, readBuffer, delta, maskActive ) {
@@ -47856,23 +47928,20 @@ var Iconeezin =
 			}
 
 			// Call update function
-			if (this.onUpdate) {
+			if (this.onUpdate && (this.autoUpdate || this.needsUpdate)) {
 
-				this.context.clearRect(0, 0, this.canvasSize.x, this.canvasSize.y );
-
-				// Apply transformation and render
-				this.context.save();
-				this.context.translate(this.canvasOffset.x, this.canvasOffset.y);
+				// Render update
+				this.context.clearRect(0, 0, this.canvas.width, this.canvas.height );
 				this.onUpdate( this.context, this.canvas.width, this.canvas.height );
-				this.context.restore();
 
 				// Update texture
 				this.canvasTexture.needsUpdate = true;
+				this.needsUpdate = false;
 
 			}
 
 			// Update read buffer
-			this.uniforms['tBack'].value = readBuffer;
+			this.uniforms['tBack'].value = readBuffer.texture;
 			this.quad.material = this.material;
 
 			if ( this.renderToScreen ) {

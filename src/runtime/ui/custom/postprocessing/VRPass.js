@@ -258,7 +258,8 @@ THREE.VRPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
 				// renderer.setScissorTest( false );
 				renderer.setViewport( 0, 0, size.width, size.height );
 				renderer.setScissor( 0, 0, size.width, size.height );
-
+				readBuffer.viewport.set( 0, 0, size.width, size.height );
+				readBuffer.scissor.set( 0, 0, size.width, size.height );
 
 			}
 

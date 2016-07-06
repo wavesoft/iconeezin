@@ -52,8 +52,8 @@ require("three/examples/js/shaders/HueSaturationShader");
 // for possible post-processing.
 require("./custom/postprocessing/VRPass");
 
-require("./custom/shaders/OverlayShader");
-require("./custom/postprocessing/GUIPass");
+require("./custom/shaders/HUDShader");
+require("./custom/postprocessing/HUDPass");
 
 /**
  * Our viewport is where everything gets rendered
@@ -106,7 +106,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 
 	// Initialize the renderer
 	this.renderer = new THREE.WebGLRenderer({ antialias: true });
-	this.renderer.setPixelRatio( window.devicePixelRatio );
+	this.renderer.setPixelRatio( 1 );
 	this.viewportDOM.appendChild( this.renderer.domElement );
 
 	// Camera opacity
@@ -123,52 +123,32 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	// Effect composer
 	this.effectComposer = new THREE.EffectComposer( this.renderer );
 
-	// Render pass
+	// Render pass in VR
 	this.renderPass = new THREE.VRPass( this.scene, this.camera, vrHMD );
 	this.renderPass.renderToScreen = true;
 	this.effectComposer.addPass( this.renderPass );
 
-	// // Antialias pass
-	// this.antialiasPass = new THREE.SMAAPass( this.width, this.height );
-	// this.antialiasPass.renderToScreen = false;
-	// this.effectComposer.addPass( this.antialiasPass );
-
 	// FXAA anti-alias pass
-	// this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
-	// this.antialiasPass.setSize = (function(w,h) {
-	// 	this.uniforms[ 'resolution' ].value.set( 1 / w, 1 / h );
-	// }).bind(this.antialiasPass);
-	// this.antialiasPass.renderToScreen = false;
+	this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
+	this.antialiasPass.setSize = (function( w, h ) {
+		this.uniforms['resolution'].value.set( 1/w, 1/h );
+	}).bind(this.antialiasPass)
 	// this.effectComposer.addPass( this.antialiasPass );
 
-	// var effect = new THREE.BokehPass( this.scene, this.camera, {} );
-	// effect.renderToScreen = true;
-	// this.effectComposer.addPass( effect );
-
-	// // Glitch pass
-	// this.glitchPass = new THREE.GlitchPass();
-	// this.glitchPass.renderToScreen = true;
-	// this.glitchPass.goWild = false;
+	// Glitch pass
+	this.glitchPass = new THREE.GlitchPass();
+	this.glitchPass.goWild = true;
+	this.glitchPass.enabled = false;
 	// this.effectComposer.addPass( this.glitchPass );
 
-	// FXAA anti-alias pass
-	// var shader = new THREE.ShaderPass( THREE.HueSaturationShader );
-	// shader.renderToScreen = true;
-	// shader.uniforms['saturation'].value = -1.0;
-	// this.effectComposer.addPass( shader );
+	// Add GUI
+	this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
+	this.hudPass.renderToScreen = true;
+	// this.effectComposer.addPass( this.hudPass );
 
-	// // Add GUI
-	// this.guiPass = new THREE.GUIPass( this.width, this.height, function(ctx, width, height) {
-
-	// 	ctx.fillStyle = "green";
-	// 	ctx.fillRect( 50,60,100,100);
-
-	// });
-	// this.guiPass.renderToScreen = true;
-	// this.effectComposer.addPass( this.guiPass );
-
-	// Initialize HMD effect
-	// this.vrComposerEffect = new THREE.VRComposerEffect( this.effectComposer, this.renderPass );
+	// var cp = new THREE.ShaderPass( THREE.CopyShader );
+	// cp.renderToScreen = true;
+	// this.effectComposer.addPass( cp );
 
 	/////////////////////////////////////////////////////////////
 	// Environment
@@ -205,6 +185,41 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	// Initialize the sizes (apply actual size)
 	this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
 
+}
+
+/**
+ * Render the HUD canvas
+ */
+Viewport.prototype.renderHUD = function( ctx, width, height ) {
+	
+	// ctx.fillStyle = "green";
+	// ctx.fillRect( 0,0,128,128);
+
+	// ctx.fillStyle = "red";
+	// ctx.fillRect( 128,128,128,128);
+
+	ctx.fillStyle = "#000000";
+	ctx.fillRect( 64,110,128,28);
+
+	ctx.fillStyle = "white";
+	ctx.textAlign = 'center';
+	ctx.font = '12px Tahoma';
+	ctx.fillText( "Flat HUD", 128, 128 );
+
+}
+
+/**
+ * Redraw hud
+ */
+Viewport.prototype.redrawHUD = function() {
+	this.hudPass.needsUpdate = true;
+}
+
+/**
+ * Enable or diable antialias pass
+ */
+Viewport.prototype.setAntialias = function( enabled ) {
+	this.antialiasPass.enabled = enabled;
 }
 
 /**
@@ -254,18 +269,11 @@ Viewport.prototype.setSize = function( width, height, pixelRatio, skipStyleUpdat
 	this.camera.updateProjectionMatrix();
 
 	// Update renderer
-	this.renderer.setPixelRatio( pixelRatio || window.devicePixelRatio );
+	this.renderer.setPixelRatio( pixelRatio || 1 );
 	this.renderer.setSize( width, height, !skipStyleUpdate );
 
 	// Update VR Composer size
 	this.effectComposer.setSize( width, height );
-
-	// Update effects
-	// this.guiPass.setSize( width, height );
-
-	// Update antialias
-	// this.antialiasPass.setSize( width, height );
-	// this.fxaaPass.uniforms[ 'resolution' ].value.set( 1 / width, 1 / height );
 
 	// Re-render if paused
 	if (this.paused)
@@ -337,6 +345,7 @@ Viewport.prototype.render = function() {
 
 	// Render composer
 	this.effectComposer.render( d );
+
 	// this.hmdEffect.vrHMD.submitFrame();
 	// this.vrComposerEffect.render( d );
 
@@ -355,6 +364,10 @@ Viewport.prototype.setHMDDevice = function( device ) {
 Viewport.prototype.setHMD = function( enabled ) {
 	// Set the HMD flag
 	this.useHMD = enabled;
+
+	// Enable HMD GUI Effect
+	this.hudPass.setHMD( enabled );
+
 }
 
 /**
@@ -453,3 +466,4 @@ Viewport.prototype.runTween = function( duration, fn, cb ) {
 
 // Export viewport
 module.exports = Viewport;
+

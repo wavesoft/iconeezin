@@ -22,33 +22,41 @@
 
 var THREE = require("three");
 
-THREE.GUIPass = function ( width, height, onUpdate ) {
+THREE.HUDPass = function ( width, height, onUpdate ) {
 
 	THREE.Pass.call( this );
 
 	// Clone uniforms
-	this.uniforms = THREE.UniformsUtils.clone( THREE.OverlayShader.uniforms );
+	this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShader.uniforms );
 	this.material = new THREE.ShaderMaterial( {
 
-		defines: THREE.OverlayShader.defines || {},
+		defines: THREE.HUDShader.defines || {},
 		uniforms: this.uniforms,
-		vertexShader: THREE.OverlayShader.vertexShader,
-		fragmentShader: THREE.OverlayShader.fragmentShader
+		vertexShader: THREE.HUDShader.vertexShader,
+		fragmentShader: THREE.HUDShader.fragmentShader
 
 	} );
 
+	// Global properties
+	this.needsUpdate = true;
+	this.autoUpdate = false;
+
 	// Create a canvas for overlaying GUI
-	this.canvasOffset = new THREE.Vector2(0,0);
-	this.canvasSize = new THREE.Vector2(0,0);
 	this.canvas = document.createElement('canvas');
-	this.setSize( width, height );
+
+	// Snap canvas size to powers of 2
+	this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width)));
+	this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height)));
+	this.size = new THREE.Vector2(0,0);
+	this.setSize( this.width, this.height );
 
 	// Create a canvas texture
+	this.uniforms['hmd'].value = false;
+	this.uniforms['tBack'].value = null;
 	this.uniforms['tFront'].value = this.canvasTexture = new THREE.Texture( this.canvas );
 
 	// Get context
 	this.context = this.canvas.getContext('2d');
-	this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 	this.canvasTexture.needsUpdate = true;
 
 	// Update callback
@@ -62,25 +70,25 @@ THREE.GUIPass = function ( width, height, onUpdate ) {
 
 };
 
-THREE.GUIPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+THREE.HUDPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
 
-	constructor: THREE.GUIPass,
+	constructor: THREE.HUDPass,
 
 	setSize: function( width, height ) {
 
-		// Snap to powers of 2
-		this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width)));;
-		this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height)));;
+		// Keep track of size
+		this.size.set( width, height );
 
-		// Calculate offset
-		this.canvasOffset.set( 
-			(this.canvas.width - width)/2, 
-			(this.canvas.height - height)/2 
+		// Apply hmd effect scale
+		this.uniforms['size'].value.set(
+			this.canvas.width / width,
+			this.canvas.height / height
 		);
 
-		// Save actual size
-		this.canvasSize.set( width, height );
+	},
 
+	setHMD: function( enabled ) {
+		this.uniforms['hmd'].value = enabled;
 	},
 
 	render: function( renderer, writeBuffer, readBuffer, delta, maskActive ) {
@@ -92,23 +100,20 @@ THREE.GUIPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), 
 		}
 
 		// Call update function
-		if (this.onUpdate) {
+		if (this.onUpdate && (this.autoUpdate || this.needsUpdate)) {
 
-			this.context.clearRect(0, 0, this.canvasSize.x, this.canvasSize.y );
-
-			// Apply transformation and render
-			this.context.save();
-			this.context.translate(this.canvasOffset.x, this.canvasOffset.y);
+			// Render update
+			this.context.clearRect(0, 0, this.canvas.width, this.canvas.height );
 			this.onUpdate( this.context, this.canvas.width, this.canvas.height );
-			this.context.restore();
 
 			// Update texture
 			this.canvasTexture.needsUpdate = true;
+			this.needsUpdate = false;
 
 		}
 
 		// Update read buffer
-		this.uniforms['tBack'].value = readBuffer;
+		this.uniforms['tBack'].value = readBuffer.texture;
 		this.quad.material = this.material;
 
 		if ( this.renderToScreen ) {

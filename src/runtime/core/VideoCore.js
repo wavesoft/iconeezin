@@ -50,6 +50,13 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 	// Keep a reference to the root DOM
 	this.rootDOM = rootDOM;
 
+	// Quality flags
+	// (0=!hires, !antialias, 1=!hires,antialias, 2=hires,!antialias, 3=hires,antialias)
+	this.qualityFlags = {
+		'antialias': true,
+		'hires': false,
+	};
+
 	// Create a canvas DOM if missing
 	if (!canvasDOM) {
 		canvasDOM = document.createElement('canvas');
@@ -59,6 +66,7 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 
 	// Create a new viewport instance
 	this.viewport = new Viewport( canvasDOM, Browser.vrHMD );
+	this.viewport.setAntialias( this.qualityFlags.antialias );
 	Browser.onVRSupportChange(function( isPlugged, vrHMD ) {
 		VideoCore.viewport.setHMDDevice( isPlugged ? vrHMD : undefined );
 	});
@@ -74,9 +82,15 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 	// Bind on document events
 	Browser.onVRDisplayPresentChange(function( presenting, width, height, pixelAspectRatio ) {
 		if (isPresenting = presenting) {
-			VideoCore.viewport.setSize( width, height, pixelAspectRatio, true );
+			if (VideoCore.qualityFlags.hires) {
+				VideoCore.viewport.setSize( width, height, pixelAspectRatio, true );
+			} else {
+				VideoCore.viewport.setSize( viewportWidth, viewportHeight, 
+					VideoCore.qualityFlags.hires ? window.devicePixelRatio : 1 );
+			}
 		} else {
-			VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
+			VideoCore.viewport.setSize( viewportWidth, viewportHeight, 
+				VideoCore.qualityFlags.hires ? window.devicePixelRatio : 1 );
 		}
 	});
 	window.addEventListener( 'resize', function() {
@@ -87,7 +101,8 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 		// the HMD display. So any resize event just updates the
 		// DOM element (the viewport) and not the canvas
 		if (!isPresenting) {
-			VideoCore.viewport.setSize( viewportWidth, viewportHeight, window.devicePixelRatio );
+			VideoCore.viewport.setSize( viewportWidth, viewportHeight, 
+				VideoCore.qualityFlags.hires ? window.devicePixelRatio : 1 );
 		}
 
 	}, false );
