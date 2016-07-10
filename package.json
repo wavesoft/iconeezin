@@ -24,6 +24,7 @@
   "homepage": "https://github.com/wavesoft/iconeezin#readme",
   "dependencies": {
     "annyang": "^2.4.0",
+    "diff": "^2.2.3",
     "jbb": "^1.3.6",
     "jbb-profile-iconeezin": "^0.1.0",
     "jbb-profile-three": "^1.0.2",

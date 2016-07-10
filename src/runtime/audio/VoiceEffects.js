@@ -22,6 +22,7 @@
 
 var THREE = require("three");
 require("./custom/UserAudio");
+require("./custom/AudioRecorder");
 
 /**
  * Voice Commands API
@@ -29,10 +30,21 @@ require("./custom/UserAudio");
 var VoiceEffects = function( listener ) {
 
 	/**
+	 * The listener object
+	 */
+	this.listener = listener;
+
+	/**
 	 * The line in from the user's microphone
 	 * @property
 	 */
 	this.lineIn = new THREE.UserAudio( listener );
+
+	/**
+	 * The audio recorder
+	 * @property
+	 */
+	this.recorder = new THREE.AudioRecorder( listener );
 
 	/**
 	 * Line in delay effect
@@ -98,9 +110,17 @@ VoiceEffects.prototype.setEnabled = function( enabled ) {
 }
 
 /**
- * Receive global pause events
+ * Start recording and return the recorder instance
+ * the user must call .stop() and receive the THREE.Audio
+ * object when needs to complete the object.
  */
-VoiceEffects.prototype.setPaused = function( isPaused ) {
+VoiceEffects.prototype.record = function( callback ) {
+
+	// Start recording line in, bypassing any audio effects that it might exists
+	this.recorder.record( this.lineIn.source );
+
+	// Return recorder
+	return this.recorder;
 
 }
 

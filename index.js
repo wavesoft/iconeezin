@@ -113,7 +113,7 @@ module.exports = {
 
 	// Exposing libraries for re-using
 	'Libraries': {
-		'three': libTHREE
+		'three': libTHREE,
 	}
 
 };

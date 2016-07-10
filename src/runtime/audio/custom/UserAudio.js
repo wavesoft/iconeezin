@@ -8,8 +8,9 @@ THREE.UserAudio = function ( listener ) {
 
 	THREE.Audio.call( this, listener );
 
-	// Source is oppened with setActive(true)
+	// Source is oppened with play()
 	this.source = null;
+	this.stream = null;
 
 	// Local properties
 	this.isPlaying = false;
@@ -30,6 +31,7 @@ THREE.UserAudio.prototype = Object.assign( Object.create( THREE.Audio.prototype 
 
 			// Create an AudioNode from the stream and plug it to gain
 			this.source = this.context.createMediaStreamSource( stream );
+			this.stream = stream;
 
 			// Connect
 			this.isPlaying = true;
@@ -43,8 +45,8 @@ THREE.UserAudio.prototype = Object.assign( Object.create( THREE.Audio.prototype 
 		}).bind(this);
 
 		// Find the appropriate function to use
-		var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia 
-							|| navigator.msGetUserMedia|| navigator.oGetUserMedia
+		var getUserMedia = navigator.getUserMedia   || navigator.webkitGetUserMedia || navigator.mozGetUserMedia 
+						|| navigator.msGetUserMedia || navigator.oGetUserMedia;
 
 		// Request to get user media
 		getUserMedia.call( navigator, { audio:true }, handleStream, handleError );
@@ -55,8 +57,13 @@ THREE.UserAudio.prototype = Object.assign( Object.create( THREE.Audio.prototype 
 	stop: function() {
 		if (!this.isPlaying) return;
 
+		// Stop media track
+		var track = this.stream.getTracks()[0];
+		track.stop();
+
 		// Deactivate
 		this.disconnect();
+		this.stream = null;
 		this.source = null;
 		this.isPlaying = false;
 
