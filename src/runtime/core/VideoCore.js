@@ -115,6 +115,37 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
  */
 VideoCore.hasVR = Browser.hasVR;
 
+
+/**
+ * Fade-in from black
+ */
+VideoCore.fadeIn = function( cb ) {
+
+	// Run tween
+	this.viewport.runTween( 1000, (function(tweenProgress) {
+
+		// Fade out
+		this.viewport.setOpacity( tweenProgress );
+
+	}).bind(this), cb);
+
+}
+
+/**
+ * Fade-out to black
+ */
+VideoCore.fadeOut = function( cb ) {
+
+	// Run tween
+	this.viewport.runTween( 1000, (function(tweenProgress) {
+
+		// Fade out
+		this.viewport.setOpacity( 1.0 - tweenProgress );
+
+	}).bind(this), cb)
+
+}
+
 /**
  * Start/Stop video animation
  */
@@ -221,14 +252,14 @@ VideoCore.hideMessage = function() {
  * Show an interaction label
  */
 VideoCore.showInteractionLabel = function( label ) {
-	VideoCore.viewport.label.text = label;
+	VideoCore.viewport.hudStatus.setLabel( label );
 }
 
 /**
  * Hide an interaction label
  */
 VideoCore.hideInteractionLabel = function() {
-	VideoCore.viewport.label.text = "";
+	VideoCore.viewport.hudStatus.setLabel( null );
 }
 
 // Export

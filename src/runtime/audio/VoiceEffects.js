@@ -110,6 +110,14 @@ VoiceEffects.prototype.setEnabled = function( enabled ) {
 }
 
 /**
+ * Pause or unpause the voice effects
+ * @param {bool} enabled - Set to true to pause the effect
+ */
+VoiceEffects.prototype.setPaused = function( enabled ) {
+
+}
+
+/**
  * Start recording and return the recorder instance
  * the user must call .stop() and receive the THREE.Audio
  * object when needs to complete the object.

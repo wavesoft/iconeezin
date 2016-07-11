@@ -75,17 +75,17 @@ var Iconeezin =
 	var IconeezinAPI = __webpack_require__(2);
 
 	// Load default configuration
-	var DefaultConfig = __webpack_require__(13);
+	var DefaultConfig = __webpack_require__(28);
 	DefaultConfig.up = new libTHREE.Vector3( 0,0,1 );
 
 	// Load components afterwards
 	var AudioCore = __webpack_require__(4);
-	var VideoCore = __webpack_require__(14);
-	var ControlsCore = __webpack_require__(37);
-	var TrackingCore = __webpack_require__(39);
-	var ExperimentsCore = __webpack_require__(45);
-	var InteractionCore = __webpack_require__(12);
-	var BrowserUtil = __webpack_require__(17);
+	var VideoCore = __webpack_require__(29);
+	var ControlsCore = __webpack_require__(53);
+	var TrackingCore = __webpack_require__(55);
+	var ExperimentsCore = __webpack_require__(61);
+	var InteractionCore = __webpack_require__(27);
+	var BrowserUtil = __webpack_require__(32);
 
 	/**
 	 * Expose useful parts of the runtime API
@@ -160,7 +160,7 @@ var Iconeezin =
 
 		// Exposing libraries for re-using
 		'Libraries': {
-			'three': libTHREE
+			'three': libTHREE,
 		}
 
 	};
@@ -42072,8 +42072,8 @@ var Iconeezin =
 	 */
 
 	var AudioAPI = __webpack_require__(3);
-	var ExperimentAPI = __webpack_require__(10);
-	var ThreeAPI = __webpack_require__(11);
+	var ExperimentAPI = __webpack_require__(25);
+	var ThreeAPI = __webpack_require__(26);
 
 	/**
 	 * Expose useful APIs
@@ -42275,7 +42275,7 @@ var Iconeezin =
 
 	var Tween = __webpack_require__(5);
 	var VoiceEffects = __webpack_require__(6);
-	var VoiceCommands = __webpack_require__(8);
+	var VoiceCommands = __webpack_require__(9);
 
 	/**
 	 * The AudioCore singleton contains the
@@ -42625,6 +42625,7 @@ var Iconeezin =
 
 	var THREE = __webpack_require__(1);
 	__webpack_require__(7);
+	__webpack_require__(8);
 
 	/**
 	 * Voice Commands API
@@ -42632,10 +42633,21 @@ var Iconeezin =
 	var VoiceEffects = function( listener ) {
 
 		/**
+		 * The listener object
+		 */
+		this.listener = listener;
+
+		/**
 		 * The line in from the user's microphone
 		 * @property
 		 */
 		this.lineIn = new THREE.UserAudio( listener );
+
+		/**
+		 * The audio recorder
+		 * @property
+		 */
+		this.recorder = new THREE.AudioRecorder( listener );
 
 		/**
 		 * Line in delay effect
@@ -42701,9 +42713,25 @@ var Iconeezin =
 	}
 
 	/**
-	 * Receive global pause events
+	 * Pause or unpause the voice effects
+	 * @param {bool} enabled - Set to true to pause the effect
 	 */
-	VoiceEffects.prototype.setPaused = function( isPaused ) {
+	VoiceEffects.prototype.setPaused = function( enabled ) {
+
+	}
+
+	/**
+	 * Start recording and return the recorder instance
+	 * the user must call .stop() and receive the THREE.Audio
+	 * object when needs to complete the object.
+	 */
+	VoiceEffects.prototype.record = function( callback ) {
+
+		// Start recording line in, bypassing any audio effects that it might exists
+		this.recorder.record( this.lineIn.source );
+
+		// Return recorder
+		return this.recorder;
 
 	}
 
@@ -42725,8 +42753,9 @@ var Iconeezin =
 
 		THREE.Audio.call( this, listener );
 
-		// Source is oppened with setActive(true)
+		// Source is oppened with play()
 		this.source = null;
+		this.stream = null;
 
 		// Local properties
 		this.isPlaying = false;
@@ -42747,6 +42776,7 @@ var Iconeezin =
 
 				// Create an AudioNode from the stream and plug it to gain
 				this.source = this.context.createMediaStreamSource( stream );
+				this.stream = stream;
 
 				// Connect
 				this.isPlaying = true;
@@ -42760,8 +42790,8 @@ var Iconeezin =
 			}).bind(this);
 
 			// Find the appropriate function to use
-			var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia 
-								|| navigator.msGetUserMedia|| navigator.oGetUserMedia
+			var getUserMedia = navigator.getUserMedia   || navigator.webkitGetUserMedia || navigator.mozGetUserMedia 
+							|| navigator.msGetUserMedia || navigator.oGetUserMedia;
 
 			// Request to get user media
 			getUserMedia.call( navigator, { audio:true }, handleStream, handleError );
@@ -42772,8 +42802,13 @@ var Iconeezin =
 		stop: function() {
 			if (!this.isPlaying) return;
 
+			// Stop media track
+			var track = this.stream.getTracks()[0];
+			track.stop();
+
 			// Deactivate
 			this.disconnect();
+			this.stream = null;
 			this.source = null;
 			this.isPlaying = false;
 
@@ -42785,6 +42820,136 @@ var Iconeezin =
 
 /***/ },
 /* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * @author wavesoft / http://wavesoft.github.io/
+	 */
+
+	var THREE = __webpack_require__(1);
+
+	THREE.AudioRecorder = function ( listener, bufferLen ) {
+
+		// Keep reference to listener, used for creating audio objects
+		this.listener = listener;
+		this.context = listener.context;
+
+		// Create a script node
+	    var bufferLen = bufferLen || 4096;
+	    if(!this.context.createScriptProcessor){
+	       this.node = this.context.createJavaScriptNode(bufferLen, 2, 2);
+	    } else {
+	       this.node = this.context.createScriptProcessor(bufferLen, 2, 2);
+	    }
+
+	    // Register audio process function to record
+	    // the samples into the buffer chunks
+	    this.node.onaudioprocess = (function(e) {
+	    	if (this.isRecording) {
+
+	    		// Copy buffers and stack them to chunks
+	    		var in0;
+			    this.chunksL.push( Array.prototype.slice.call(in0 = e.inputBuffer.getChannelData(0), 0) );
+			    this.chunksR.push( Array.prototype.slice.call(e.inputBuffer.getChannelData(1), 0) );
+
+	    		// Calculate offset
+	    		this.recOffset += in0.length;
+
+	    	}
+	    }).bind(this);
+
+		// Local properties
+		this.onRecordCompleted = null;
+	    this.isRecording = false;
+	    this.chunksL = []; this.chunksR = [];
+	    this.recOffset = 0;
+
+	};
+
+	THREE.AudioRecorder.prototype = Object.assign( Object.create( THREE.Audio.prototype ), {
+
+		constructor: THREE.AudioRecorder,
+
+		record: function( input, completed_cb ) {
+
+			// stop playback if any
+			if (this.playing) this.stop();
+
+			// Reset
+			this.recOffset = 0;
+			this.chunksR = [];
+			this.chunksL = [];
+			this.isRecording = true;
+			this.onRecordCompleted = completed_cb;
+
+			// Plug to correct audio node
+			if (input instanceof AudioNode) {
+				input.connect( this.node );
+				this.node.connect( this.listener.getInput() );
+
+			} else if (input instanceof THREE.Audio) {
+				input.getOutput().connect( this.node );
+				this.node.connect( this.listener.getInput() );
+
+			} else {
+
+				console.warn( 'THREE.AudioRecorder: unknown input passed to the record function.' );
+				return;
+
+			}
+
+			return this;
+		},
+
+		stop: function() {
+
+			// Stop recording or playing
+			if (!this.isRecording) {
+
+				console.warn( 'THREE.AudioRecorder: called stop() without calling record() first.' );
+				return;
+
+			}
+
+			// Disconnect node
+			this.node.disconnect();
+			this.isRecording = false;
+
+			// Create audio buffer
+			var audioBuffer = this.context.createBuffer( 2, this.recOffset, this.context.sampleRate );
+
+			// Merge chunks and fill buffer channels
+			var offset = 0;
+			var bufferL = audioBuffer.getChannelData(0);
+			var bufferR = audioBuffer.getChannelData(1);
+			for (var i = 0; i < this.chunksL.length; ++i){
+				bufferL.set(this.chunksL[i], offset);
+				bufferR.set(this.chunksR[i], offset);
+				offset += this.chunksL[i].length;
+			}
+
+			// Reset chunks
+			this.chunksL = [];
+			this.chunksR = [];
+
+			// Reset audio source
+			this.source = this.context.createBufferSource();
+			this.source.onended = this.onEnded.bind( this );
+
+			// Create a THREE.Audio object with this recording
+			var audio = new THREE.Audio( this.listener );
+			audio.setBuffer( audioBuffer );
+
+			// Return audio object
+			return audio;
+
+		}
+
+	} );
+
+
+/***/ },
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -42809,19 +42974,167 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var THREE = __webpack_require__(1);
-	var Annyang = __webpack_require__(9);
+	var jsDiff = __webpack_require__(10);
+
+	/**
+	 * Unify a word by removing accents and capitalizations
+	 */
+	function unify( word ) {
+		return word.toLowerCase()
+			.replace(/[ά]/g,"α")
+			.replace(/[έ]/g,"ε")
+			.replace(/ο[ύυ]/g,"u")
+			.replace(/(ο[ιί]|υ[ιί]|)/g,"ι")
+			.replace(/α[ίι]/g,"ε")
+			.replace(/[όώω]/g,"ο")
+			.replace(/[ίύήϊϋΐΰυη]/g,"ι");
+	}
+
+	/**
+	 * Get matching information between the given two words
+	 * A is the 'reference' word and B is the 'spoken' word.
+	 *
+	 * Returns an array with the following fields:
+	 * [
+	 *    speaking progress,
+	 *    correctly matched percentage,
+	 * ]
+	 *
+	 */
+	function getProgressScore( a, b ) {
+
+		// Calculate the diff between the two phrases
+		var src = unify(a), src_c = src.trim().split(/\s+/g).length;
+		var cmp = unify(b);
+		var diff = jsDiff.diffWords( src, cmp );
+		var good_c = 0, progress_c = 0, c = 0, anchored = false, removed_c = 0;
+
+		// Process 
+		for (var i=0, l=diff.length; i<l; i++) {
+			var change = diff[i];
+
+			// Count words in this change
+			c = change.value.trim().split(/\s+/g).length;
+			if (!change.value.trim()) c=0;
+
+			// Handle according to type
+			if (change.added || change.removed) {
+
+				// When we have an anchored result, account the
+				// removed words from the sentence.
+				if (anchored) {
+					if (change.removed) {
+						removed_c += c
+					}
+				}
+
+			} else {
+
+				// To calculate the progress we anchor to the
+				// first matched part
+				anchored = true;
+
+				// Account good word count
+				good_c += c;
+
+				// Account for cases were a match was predecessed
+				// with a couple of removed cords
+				progress_c += c + removed_c; removed_c = 0;
+
+			}
+
+		}
+
+		// Return progress and goodness ratio
+		return [ progress_c / src_c, good_c / src_c ];
+	}
+
+	// Get the SpeechRecognition object, while handling browser prefixes
+	var SpeechRecognition = window.SpeechRecognition ||
+	                      window.webkitSpeechRecognition ||
+	                      window.mozSpeechRecognition ||
+	                      window.msSpeechRecognition ||
+	                      window.oSpeechRecognition;
 
 	/**
 	 * Voice Commands API
 	 */
 	var VoiceCommands = function() {
 
-		// Flag if annyang is active
-		this.annyangActive = false;
-		this.annyangPaused = false;
+		// Check if speech recognition is available
+		this.available = !!SpeechRecognition;
+		if (!this.available) return;
+
+		// Create an instance
+		this.recognition = new SpeechRecognition();
+
+		// Local properties
+		this.active = false;
+		this.resultsCallbacks = [];
+
+		// Bind events
+		this.recognition.onend = (function(e) {
+			this.active = false;
+			this.resultsCallbacks = [];
+		}).bind(this);
+		this.recognition.onstart = (function(e) {
+			this.active = true;
+		}).bind(this);
+		this.recognition.onerror = (function(e) {
+			console.error("Speech recognition error:",e);
+			if (this.active) {
+				this.active = false;
+			}
+			for (var i=0, l=this.resultsCallbacks.length; i<l; ++i)
+				this.resultsCallbacks[i](null, e);
+		}).bind(this);
+		this.recognition.onresult = (function(e) {
+			// console.log("Heard: '" + e.results[0][0].transcript + "' (confidence="+ e.results[0][0].confidence + ")")
+			for (var i=0, l=this.resultsCallbacks.length; i<l; ++i)
+				this.resultsCallbacks[i](e.results, null);
+		}).bind(this);
+
+		// // Debug events
+		// this.recognition.onaudiostart = (function(e) {
+		// 	console.debug("Audio Start",e);
+		// }).bind(this);
+		// this.recognition.onaudioend = (function(e) {
+		// 	console.debug("Audio End",e);
+		// }).bind(this);
+		// this.recognition.onsoundstart = (function(e) {
+		// 	console.debug("Sound Start",e);
+		// }).bind(this);
+		// this.recognition.onsoundend = (function(e) {
+		// 	console.debug("Sound End",e);
+		// }).bind(this);
+		// this.recognition.onspeechstart = (function(e) {
+		// 	console.debug("Speech Start",e);
+		// }).bind(this);
+		// this.recognition.onspeechend = (function(e) {
+		// 	console.debug("Speech End",e);
+		// }).bind(this);
+
+		// Configure
+		this.recognition.lang = 'el-GR';
+		this.recognition.continuous = false;
+		this.recognition.interimResults = true;
 
 	}
+
+	/**
+	 * Change audio language
+	 */
+	VoiceCommands.prototype.setLanguage = function( lang ) {
+		this.recognition.lang = lang;
+	}
+
+	/**
+	 * Start audio dictation
+	 */
+	VoiceCommands.prototype.startDictation = function() {
+		if (this.active) return;
+		this.recognition.start();
+	};
 
 	/**
 	 * Reset state of voice commands API
@@ -42829,64 +43142,63 @@ var Iconeezin =
 	VoiceCommands.prototype.reset = function() {
 
 		// Stop if active
-		if (this.annyangActive) {
-			this.annyangActive = false;
-			Annyang.stop();
+		if (this.active) {
+			this.active = false;
+			this.recognition.abort();
 		}
+
+	};
+
+	/**
+	 * Expect a phrase to be spoken. 
+	 *
+	 * The progress callback will be fired with interim results and other metadata
+	 * regarding the speaking progress.
+	 */
+	VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
+
+		// Create a callback delegate to receive speech events
+		var last_confidence = 0;
+		var cb = function( results, error ) {
+			if (error) {
+				return;
+			}
+
+			// Get match score
+			var transcript = results[0][0].transcript,
+				confidence = results[0][0].confidence,
+				score = getProgressScore( phrase, transcript );
+
+			// Keep track of last confidence (Because it bets 0 when completed)
+			if (confidence === 0)
+				confidence = last_confidence;
+			last_confidence = confidence;
+
+			// Prepare callback metadata
+			var meta = {
+				'completed': results[0].isFinal,
+				'confidence': confidence,
+				'progress': score[0],
+				'score': score[1],
+				'transcript': transcript
+			};
+
+			// Callback with progress
+			if (progress) progress( meta );
+			console.log(meta);
+
+		};
+
+		// Start dictation
+		this.resultsCallbacks.push(cb);
+		this.startDictation();
 
 	};
 
 	/**
 	 * Enable voice commands
 	 */
-	VoiceCommands.prototype.setCommands = function( commands ) {
-
-		// Remove all commands
-		Annyang.removeCommands();
-
-		// Add voice commands
-
-		// Activate annyang
-		if (!this.annyangActive) {
-			Annyang.start();
-		}
-	}
-
-	/**
-	 * Disable voice commands
-	 */
-	VoiceCommands.prototype.setEnabled = function( isEnabled ) {
-		if (this.annyangActive === isEnabled) return;
-
-		// Keep track of enabled state
-		this.annyangActive = isEnabled;
-
-		// Enable or disable
-		if (isEnabled) {
-			Annyang.start();
-			if (isPaused) Annyang.pause();
-		} else {
-			Annyang.stop();
-		}
-	}
-
-	/**
-	 * Enable voice commands
-	 */
 	VoiceCommands.prototype.setPaused = function( isPaused ) {
-		if (isPaused === this.annyangPaused) return;
-
-		// Keep track of paused state
-		this.annyangPaused = isPaused;
-
-		// Update annyang state only if active
-		if (this.annyangActive) {
-			if (isPaused) {
-				Annyang.pause();
-			} else {
-				Annyang.resume();
-			}
-		}
 
 	}
 
@@ -42895,780 +43207,1255 @@ var Iconeezin =
 
 
 /***/ },
-/* 9 */
+/* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;//! annyang
-	//! version : 2.4.0
-	//! author  : Tal Ater @TalAter
-	//! license : MIT
-	//! https://www.TalAter.com/annyang/
-	(function (root, factory) {
-	  "use strict";
-	  if (true) { // AMD + global
-	    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_RESULT__ = function () {
-	      return (root.annyang = factory(root));
-	    }.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-	  } else if (typeof module === 'object' && module.exports) { // CommonJS
-	    module.exports = factory(root);
-	  } else { // Browser globals
-	    root.annyang = factory(root);
-	  }
-	}(typeof window !== 'undefined' ? window : this, function (root, undefined) {
-	  "use strict";
+	/*istanbul ignore start*/'use strict';
 
-	  /**
-	   * # Quick Tutorial, Intro and Demos
-	   *
-	   * The quickest way to get started is to visit the [annyang homepage](https://www.talater.com/annyang/).
-	   *
-	   * For a more in-depth look at annyang, read on.
-	   *
-	   * # API Reference
-	   */
+	exports.__esModule = true;
+	exports.canonicalize = exports.convertChangesToXML = exports.convertChangesToDMP = exports.parsePatch = exports.applyPatches = exports.applyPatch = exports.createPatch = exports.createTwoFilesPatch = exports.structuredPatch = exports.diffJson = exports.diffCss = exports.diffSentences = exports.diffTrimmedLines = exports.diffLines = exports.diffWordsWithSpace = exports.diffWords = exports.diffChars = exports.Diff = undefined;
+	/*istanbul ignore end*/
+	var /*istanbul ignore start*/_base = __webpack_require__(11) /*istanbul ignore end*/;
 
-	  var annyang;
+	/*istanbul ignore start*/
+	var _base2 = _interopRequireDefault(_base);
 
-	  // Get the SpeechRecognition object, while handling browser prefixes
-	  var SpeechRecognition = root.SpeechRecognition ||
-	                          root.webkitSpeechRecognition ||
-	                          root.mozSpeechRecognition ||
-	                          root.msSpeechRecognition ||
-	                          root.oSpeechRecognition;
+	/*istanbul ignore end*/
+	var /*istanbul ignore start*/_character = __webpack_require__(12) /*istanbul ignore end*/;
 
-	  // Check browser support
-	  // This is done as early as possible, to make it as fast as possible for unsupported browsers
-	  if (!SpeechRecognition) {
-	    return null;
-	  }
+	var /*istanbul ignore start*/_word = __webpack_require__(13) /*istanbul ignore end*/;
 
-	  var commandsList = [];
-	  var recognition;
-	  var callbacks = { start: [], error: [], end: [], result: [], resultMatch: [], resultNoMatch: [], errorNetwork: [], errorPermissionBlocked: [], errorPermissionDenied: [] };
-	  var autoRestart;
-	  var lastStartedAt = 0;
-	  var debugState = false;
-	  var debugStyle = 'font-weight: bold; color: #00f;';
-	  var pauseListening = false;
-	  var isListening = false;
+	var /*istanbul ignore start*/_line = __webpack_require__(15) /*istanbul ignore end*/;
 
-	  // The command matching code is a modified version of Backbone.Router by Jeremy Ashkenas, under the MIT license.
-	  var optionalParam = /\s*\((.*?)\)\s*/g;
-	  var optionalRegex = /(\(\?:[^)]+\))\?/g;
-	  var namedParam    = /(\(\?)?:\w+/g;
-	  var splatParam    = /\*\w+/g;
-	  var escapeRegExp  = /[\-{}\[\]+?.,\\\^$|#]/g;
-	  var commandToRegExp = function(command) {
-	    command = command.replace(escapeRegExp, '\\$&')
-	                  .replace(optionalParam, '(?:$1)?')
-	                  .replace(namedParam, function(match, optional) {
-	                    return optional ? match : '([^\\s]+)';
-	                  })
-	                  .replace(splatParam, '(.*?)')
-	                  .replace(optionalRegex, '\\s*$1?\\s*');
-	    return new RegExp('^' + command + '$', 'i');
-	  };
+	var /*istanbul ignore start*/_sentence = __webpack_require__(16) /*istanbul ignore end*/;
 
-	  // This method receives an array of callbacks to iterate over, and invokes each of them
-	  var invokeCallbacks = function(callbacks) {
-	    var args = Array.prototype.slice.call(arguments, 1);
-	    callbacks.forEach(function(callback) {
-	      callback.callback.apply(callback.context, args);
-	    });
-	  };
+	var /*istanbul ignore start*/_css = __webpack_require__(17) /*istanbul ignore end*/;
 
-	  var isInitialized = function() {
-	    return recognition !== undefined;
-	  };
+	var /*istanbul ignore start*/_json = __webpack_require__(18) /*istanbul ignore end*/;
 
-	  var initIfNeeded = function() {
-	    if (!isInitialized()) {
-	      annyang.init({}, false);
-	    }
-	  };
+	var /*istanbul ignore start*/_apply = __webpack_require__(19) /*istanbul ignore end*/;
 
-	  var registerCommand = function(command, cb, phrase) {
-	    commandsList.push({ command: command, callback: cb, originalPhrase: phrase });
-	    if (debugState) {
-	      console.log('Command successfully loaded: %c'+phrase, debugStyle);
-	    }
-	  };
+	var /*istanbul ignore start*/_parse = __webpack_require__(20) /*istanbul ignore end*/;
 
-	  var parseResults = function(results) {
-	    invokeCallbacks(callbacks.result, results);
-	    var commandText;
-	    // go over each of the 5 results and alternative results received (we've set maxAlternatives to 5 above)
-	    for (var i = 0; i<results.length; i++) {
-	      // the text recognized
-	      commandText = results[i].trim();
-	      if (debugState) {
-	        console.log('Speech recognized: %c'+commandText, debugStyle);
-	      }
+	var /*istanbul ignore start*/_create = __webpack_require__(22) /*istanbul ignore end*/;
 
-	      // try and match recognized text to one of the commands on the list
-	      for (var j = 0, l = commandsList.length; j < l; j++) {
-	        var currentCommand = commandsList[j];
-	        var result = currentCommand.command.exec(commandText);
-	        if (result) {
-	          var parameters = result.slice(1);
-	          if (debugState) {
-	            console.log('command matched: %c'+currentCommand.originalPhrase, debugStyle);
-	            if (parameters.length) {
-	              console.log('with parameters', parameters);
-	            }
-	          }
-	          // execute the matched command
-	          currentCommand.callback.apply(this, parameters);
-	          invokeCallbacks(callbacks.resultMatch, commandText, currentCommand.originalPhrase, results);
-	          return;
-	        }
-	      }
-	    }
-	    invokeCallbacks(callbacks.resultNoMatch, results);
-	  };
+	var /*istanbul ignore start*/_dmp = __webpack_require__(23) /*istanbul ignore end*/;
 
-	  annyang = {
+	var /*istanbul ignore start*/_xml = __webpack_require__(24) /*istanbul ignore end*/;
 
-	    /**
-	     * Initialize annyang with a list of commands to recognize.
-	     *
-	     * #### Examples:
-	     * ````javascript
-	     * var commands = {'hello :name': helloFunction};
-	     * var commands2 = {'hi': helloFunction};
-	     *
-	     * // initialize annyang, overwriting any previously added commands
-	     * annyang.init(commands, true);
-	     * // adds an additional command without removing the previous commands
-	     * annyang.init(commands2, false);
-	     * ````
-	     * As of v1.1.0 it is no longer required to call init(). Just start() listening whenever you want, and addCommands() whenever, and as often as you like.
-	     *
-	     * @param {Object} commands - Commands that annyang should listen to
-	     * @param {boolean} [resetCommands=true] - Remove all commands before initializing?
-	     * @method init
-	     * @deprecated
-	     * @see [Commands Object](#commands-object)
-	     */
-	    init: function(commands, resetCommands) {
+	/*istanbul ignore start*/
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	      // resetCommands defaults to true
-	      if (resetCommands === undefined) {
-	        resetCommands = true;
-	      } else {
-	        resetCommands = !!resetCommands;
-	      }
+	/* See LICENSE file for terms of use */
 
-	      // Abort previous instances of recognition already running
-	      if (recognition && recognition.abort) {
-	        recognition.abort();
-	      }
-
-	      // initiate SpeechRecognition
-	      recognition = new SpeechRecognition();
-
-	      // Set the max number of alternative transcripts to try and match with a command
-	      recognition.maxAlternatives = 5;
-
-	      // In HTTPS, turn off continuous mode for faster results.
-	      // In HTTP,  turn on  continuous mode for much slower results, but no repeating security notices
-	      recognition.continuous = root.location.protocol === 'http:';
-
-	      // Sets the language to the default 'en-US'. This can be changed with annyang.setLanguage()
-	      recognition.lang = 'en-US';
-
-	      recognition.onstart   = function() {
-	        isListening = true;
-	        invokeCallbacks(callbacks.start);
-	      };
-
-	      recognition.onerror   = function(event) {
-	        invokeCallbacks(callbacks.error);
-	        switch (event.error) {
-	        case 'network':
-	          invokeCallbacks(callbacks.errorNetwork);
-	          break;
-	        case 'not-allowed':
-	        case 'service-not-allowed':
-	          // if permission to use the mic is denied, turn off auto-restart
-	          autoRestart = false;
-	          // determine if permission was denied by user or automatically.
-	          if (new Date().getTime()-lastStartedAt < 200) {
-	            invokeCallbacks(callbacks.errorPermissionBlocked);
-	          } else {
-	            invokeCallbacks(callbacks.errorPermissionDenied);
-	          }
-	          break;
-	        }
-	      };
-
-	      recognition.onend     = function() {
-	        isListening = false;
-	        invokeCallbacks(callbacks.end);
-	        // annyang will auto restart if it is closed automatically and not by user action.
-	        if (autoRestart) {
-	          // play nicely with the browser, and never restart annyang automatically more than once per second
-	          var timeSinceLastStart = new Date().getTime()-lastStartedAt;
-	          if (timeSinceLastStart < 1000) {
-	            setTimeout(annyang.start, 1000-timeSinceLastStart);
-	          } else {
-	            annyang.start();
-	          }
-	        }
-	      };
-
-	      recognition.onresult  = function(event) {
-	        if(pauseListening) {
-	          if (debugState) {
-	            console.log('Speech heard, but annyang is paused');
-	          }
-	          return false;
-	        }
-
-	        // Map the results to an array
-	        var SpeechRecognitionResult = event.results[event.resultIndex];
-	        var results = [];
-	        for (var k = 0; k<SpeechRecognitionResult.length; k++) {
-	          results[k] = SpeechRecognitionResult[k].transcript;
-	        }
-
-	        parseResults(results);
-	      };
-
-	      // build commands list
-	      if (resetCommands) {
-	        commandsList = [];
-	      }
-	      if (commands.length) {
-	        this.addCommands(commands);
-	      }
-	    },
-
-	    /**
-	     * Start listening.
-	     * It's a good idea to call this after adding some commands first, but not mandatory.
-	     *
-	     * Receives an optional options object which supports the following options:
-	     *
-	     * - `autoRestart` (boolean, default: true) Should annyang restart itself if it is closed indirectly, because of silence or window conflicts?
-	     * - `continuous`  (boolean, default: undefined) Allow forcing continuous mode on or off. Annyang is pretty smart about this, so only set this if you know what you're doing.
-	     *
-	     * #### Examples:
-	     * ````javascript
-	     * // Start listening, don't restart automatically
-	     * annyang.start({ autoRestart: false });
-	     * // Start listening, don't restart automatically, stop recognition after first phrase recognized
-	     * annyang.start({ autoRestart: false, continuous: false });
-	     * ````
-	     * @param {Object} [options] - Optional options.
-	     * @method start
-	     */
-	    start: function(options) {
-	      pauseListening = false;
-	      initIfNeeded();
-	      options = options || {};
-	      if (options.autoRestart !== undefined) {
-	        autoRestart = !!options.autoRestart;
-	      } else {
-	        autoRestart = true;
-	      }
-	      if (options.continuous !== undefined) {
-	        recognition.continuous = !!options.continuous;
-	      }
-
-	      lastStartedAt = new Date().getTime();
-	      try {
-	        recognition.start();
-	      } catch(e) {
-	        if (debugState) {
-	          console.log(e.message);
-	        }
-	      }
-	    },
-
-	    /**
-	     * Stop listening, and turn off mic.
-	     *
-	     * Alternatively, to only temporarily pause annyang responding to commands without stopping the SpeechRecognition engine or closing the mic, use pause() instead.
-	     * @see [pause()](#pause)
-	     *
-	     * @method abort
-	     */
-	    abort: function() {
-	      autoRestart = false;
-	      if (isInitialized()) {
-	        recognition.abort();
-	      }
-	    },
-
-	    /**
-	     * Pause listening. annyang will stop responding to commands (until the resume or start methods are called), without turning off the browser's SpeechRecognition engine or the mic.
-	     *
-	     * Alternatively, to stop the SpeechRecognition engine and close the mic, use abort() instead.
-	     * @see [abort()](#abort)
-	     *
-	     * @method pause
-	     */
-	    pause: function() {
-	      pauseListening = true;
-	    },
-
-	    /**
-	     * Resumes listening and restores command callback execution when a result matches.
-	     * If SpeechRecognition was aborted (stopped), start it.
-	     *
-	     * @method resume
-	     */
-	    resume: function() {
-	      annyang.start();
-	    },
-
-	    /**
-	     * Turn on output of debug messages to the console. Ugly, but super-handy!
-	     *
-	     * @param {boolean} [newState=true] - Turn on/off debug messages
-	     * @method debug
-	     */
-	    debug: function(newState) {
-	      if (arguments.length > 0) {
-	        debugState = !!newState;
-	      } else {
-	        debugState = true;
-	      }
-	    },
-
-	    /**
-	     * Set the language the user will speak in. If this method is not called, defaults to 'en-US'.
-	     *
-	     * @param {String} language - The language (locale)
-	     * @method setLanguage
-	     * @see [Languages](#languages)
-	     */
-	    setLanguage: function(language) {
-	      initIfNeeded();
-	      recognition.lang = language;
-	    },
-
-	    /**
-	     * Add commands that annyang will respond to. Similar in syntax to init(), but doesn't remove existing commands.
-	     *
-	     * #### Examples:
-	     * ````javascript
-	     * var commands = {'hello :name': helloFunction, 'howdy': helloFunction};
-	     * var commands2 = {'hi': helloFunction};
-	     *
-	     * annyang.addCommands(commands);
-	     * annyang.addCommands(commands2);
-	     * // annyang will now listen to all three commands
-	     * ````
-	     *
-	     * @param {Object} commands - Commands that annyang should listen to
-	     * @method addCommands
-	     * @see [Commands Object](#commands-object)
-	     */
-	    addCommands: function(commands) {
-	      var cb;
-
-	      initIfNeeded();
-
-	      for (var phrase in commands) {
-	        if (commands.hasOwnProperty(phrase)) {
-	          cb = root[commands[phrase]] || commands[phrase];
-	          if (typeof cb === 'function') {
-	            // convert command to regex then register the command
-	            registerCommand(commandToRegExp(phrase), cb, phrase);
-	          } else if (typeof cb === 'object' && cb.regexp instanceof RegExp) {
-	            // register the command
-	            registerCommand(new RegExp(cb.regexp.source, 'i'), cb.callback, phrase);
-	          } else {
-	            if (debugState) {
-	              console.log('Can not register command: %c'+phrase, debugStyle);
-	            }
-	            continue;
-	          }
-	        }
-	      }
-	    },
-
-	    /**
-	     * Remove existing commands. Called with a single phrase, array of phrases, or methodically. Pass no params to remove all commands.
-	     *
-	     * #### Examples:
-	     * ````javascript
-	     * var commands = {'hello': helloFunction, 'howdy': helloFunction, 'hi': helloFunction};
-	     *
-	     * // Remove all existing commands
-	     * annyang.removeCommands();
-	     *
-	     * // Add some commands
-	     * annyang.addCommands(commands);
-	     *
-	     * // Don't respond to hello
-	     * annyang.removeCommands('hello');
-	     *
-	     * // Don't respond to howdy or hi
-	     * annyang.removeCommands(['howdy', 'hi']);
-	     * ````
-	     * @param {String|Array|Undefined} [commandsToRemove] - Commands to remove
-	     * @method removeCommands
-	     */
-	    removeCommands: function(commandsToRemove) {
-	      if (commandsToRemove === undefined) {
-	        commandsList = [];
-	        return;
-	      }
-	      commandsToRemove = Array.isArray(commandsToRemove) ? commandsToRemove : [commandsToRemove];
-	      commandsList = commandsList.filter(function(command) {
-	        for (var i = 0; i<commandsToRemove.length; i++) {
-	          if (commandsToRemove[i] === command.originalPhrase) {
-	            return false;
-	          }
-	        }
-	        return true;
-	      });
-	    },
-
-	    /**
-	     * Add a callback function to be called in case one of the following events happens:
-	     *
-	     * * `start` - Fired as soon as the browser's Speech Recognition engine starts listening
-	     * * `error` - Fired when the browser's Speech Recogntion engine returns an error, this generic error callback will be followed by more accurate error callbacks (both will fire if both are defined)
-	     * * `errorNetwork` - Fired when Speech Recognition fails because of a network error
-	     * * `errorPermissionBlocked` - Fired when the browser blocks the permission request to use Speech Recognition.
-	     * * `errorPermissionDenied` - Fired when the user blocks the permission request to use Speech Recognition.
-	     * * `end` - Fired when the browser's Speech Recognition engine stops
-	     * * `result` - Fired as soon as some speech was identified. This generic callback will be followed by either the `resultMatch` or `resultNoMatch` callbacks.
-	     *     Callback functions registered to this event will include an array of possible phrases the user said as the first argument
-	     * * `resultMatch` - Fired when annyang was able to match between what the user said and a registered command
-	     *     Callback functions registered to this event will include three arguments in the following order:
-	     *       * The phrase the user said that matched a command
-	     *       * The command that was matched
-	     *       * An array of possible alternative phrases the user might've said
-	     * * `resultNoMatch` - Fired when what the user said didn't match any of the registered commands.
-	     *     Callback functions registered to this event will include an array of possible phrases the user might've said as the first argument
-	     *
-	     * #### Examples:
-	     * ````javascript
-	     * annyang.addCallback('error', function() {
-	     *   $('.myErrorText').text('There was an error!');
-	     * });
-	     *
-	     * annyang.addCallback('resultMatch', function(userSaid, commandText, phrases) {
-	     *   console.log(userSaid); // sample output: 'hello'
-	     *   console.log(commandText); // sample output: 'hello (there)'
-	     *   console.log(phrases); // sample output: ['hello', 'halo', 'yellow', 'polo', 'hello kitty']
-	     * });
-	     *
-	     * // pass local context to a global function called notConnected
-	     * annyang.addCallback('errorNetwork', notConnected, this);
-	     * ````
-	     * @param {String} type - Name of event that will trigger this callback
-	     * @param {Function} callback - The function to call when event is triggered
-	     * @param {Object} [context] - Optional context for the callback function
-	     * @method addCallback
-	     */
-	    addCallback: function(type, callback, context) {
-	      if (callbacks[type]  === undefined) {
-	        return;
-	      }
-	      var cb = root[callback] || callback;
-	      if (typeof cb !== 'function') {
-	        return;
-	      }
-	      callbacks[type].push({callback: cb, context: context || this});
-	    },
-
-	    /**
-	     * Remove callbacks from events.
-	     *
-	     * - Pass an event name and a callback command to remove that callback command from that event type.
-	     * - Pass just an event name to remove all callback commands from that event type.
-	     * - Pass undefined as event name and a callback command to remove that callback command from all event types.
-	     * - Pass no params to remove all callback commands from all event types.
-	     *
-	     * #### Examples:
-	     * ````javascript
-	     * annyang.addCallback('start', myFunction1);
-	     * annyang.addCallback('start', myFunction2);
-	     * annyang.addCallback('end', myFunction1);
-	     * annyang.addCallback('end', myFunction2);
-	     *
-	     * // Remove all callbacks from all events:
-	     * annyang.removeCallback();
-	     *
-	     * // Remove all callbacks attached to end event:
-	     * annyang.removeCallback('end');
-	     *
-	     * // Remove myFunction2 from being called on start:
-	     * annyang.removeCallback('start', myFunction2);
-	     *
-	     * // Remove myFunction1 from being called on all events:
-	     * annyang.removeCallback(undefined, myFunction1);
-	     * ````
-	     *
-	     * @param type Name of event type to remove callback from
-	     * @param callback The callback function to remove
-	     * @returns undefined
-	     * @method removeCallback
-	     */
-	    removeCallback: function(type, callback) {
-	      var compareWithCallbackParameter = function(cb) {
-	        return cb.callback !== callback;
-	      };
-	      // Go over each callback type in callbacks store object
-	      for (var callbackType in callbacks) {
-	        if (callbacks.hasOwnProperty(callbackType)) {
-	          // if this is the type user asked to delete, or he asked to delete all, go ahead.
-	          if (type === undefined || type === callbackType) {
-	            // If user asked to delete all callbacks in this type or all types
-	            if (callback === undefined) {
-	                callbacks[callbackType] = [];
-	              } else {
-	                // Remove all matching callbacks
-	                callbacks[callbackType] = callbacks[callbackType].filter(compareWithCallbackParameter);
-	            }
-	          }
-	        }
-	      }
-	    },
-
-	    /**
-	     * Returns true if speech recognition is currently on.
-	     * Returns false if speech recognition is off or annyang is paused.
-	     *
-	     * @return boolean true = SpeechRecognition is on and annyang is listening
-	     * @method isListening
-	     */
-	    isListening: function() {
-	      return isListening && !pauseListening;
-	    },
-
-	    /**
-	     * Returns the instance of the browser's SpeechRecognition object used by annyang.
-	     * Useful in case you want direct access to the browser's Speech Recognition engine.
-	     *
-	     * @returns SpeechRecognition The browser's Speech Recognizer currently used by annyang
-	     * @method getSpeechRecognizer
-	     */
-	    getSpeechRecognizer: function() {
-	      return recognition;
-	    },
-
-	    /**
-	     * Simulate speech being recognized. This will trigger the same events and behavior as when the Speech Recognition
-	     * detects speech.
-	     *
-	     * Can accept either a string containing a single sentence, or an array containing multiple sentences to be checked
-	     * in order until one of them matches a command (similar to the way Speech Recognition Alternatives are parsed)
-	     *
-	     * #### Examples:
-	     * ````javascript
-	     * annyang.trigger('Time for some thrilling heroics');
-	     * annyang.trigger(
-	     *     ['Time for some thrilling heroics', 'Time for some thrilling aerobics']
-	     *   );
-	     * ````
-	     *
-	     * @param string|array sentences A sentence as a string or an array of strings of possible sentences
-	     * @returns undefined
-	     * @method trigger
-	     */
-	    trigger: function(sentences) {
-	      if(!annyang.isListening()) {
-	        if (debugState) {
-	          if (!isListening) {
-	            console.log('Cannot trigger while annyang is aborted');
-	          } else {
-	            console.log('Speech heard, but annyang is paused');
-	          }
-	        }
-	        return;
-	      }
-
-	      if (!Array.isArray(sentences)) {
-	        sentences = [sentences];
-	      }
-
-	      parseResults(sentences);
-	    }
-	  };
-
-	  return annyang;
-
-	}));
-
-	/**
-	 * # Good to Know
+	/*
+	 * Text diff implementation.
 	 *
-	 * ## Commands Object
+	 * This library supports the following APIS:
+	 * JsDiff.diffChars: Character by character diff
+	 * JsDiff.diffWords: Word (as defined by \b regex) diff which ignores whitespace
+	 * JsDiff.diffLines: Line based diff
 	 *
-	 * Both the [init()]() and addCommands() methods receive a `commands` object.
+	 * JsDiff.diffCss: Diff targeted at CSS content
 	 *
-	 * annyang understands commands with `named variables`, `splats`, and `optional words`.
-	 *
-	 * * Use `named variables` for one word arguments in your command.
-	 * * Use `splats` to capture multi-word text at the end of your command (greedy).
-	 * * Use `optional words` or phrases to define a part of the command as optional.
-	 *
-	 * #### Examples:
-	 * ````html
-	 * <script>
-	 * var commands = {
-	 *   // annyang will capture anything after a splat (*) and pass it to the function.
-	 *   // e.g. saying "Show me Batman and Robin" will call showFlickr('Batman and Robin');
-	 *   'show me *tag': showFlickr,
-	 *
-	 *   // A named variable is a one word variable, that can fit anywhere in your command.
-	 *   // e.g. saying "calculate October stats" will call calculateStats('October');
-	 *   'calculate :month stats': calculateStats,
-	 *
-	 *   // By defining a part of the following command as optional, annyang will respond
-	 *   // to both: "say hello to my little friend" as well as "say hello friend"
-	 *   'say hello (to my little) friend': greeting
-	 * };
-	 *
-	 * var showFlickr = function(tag) {
-	 *   var url = 'http://api.flickr.com/services/rest/?tags='+tag;
-	 *   $.getJSON(url);
-	 * }
-	 *
-	 * var calculateStats = function(month) {
-	 *   $('#stats').text('Statistics for '+month);
-	 * }
-	 *
-	 * var greeting = function() {
-	 *   $('#greeting').text('Hello!');
-	 * }
-	 * </script>
-	 * ````
-	 *
-	 * ### Using Regular Expressions in commands
-	 * For advanced commands, you can pass a regular expression object, instead of
-	 * a simple string command.
-	 *
-	 * This is done by passing an object containing two properties: `regexp`, and
-	 * `callback` instead of the function.
-	 *
-	 * #### Examples:
-	 * ````javascript
-	 * var calculateFunction = function(month) { console.log(month); }
-	 * var commands = {
-	 *   // This example will accept any word as the "month"
-	 *   'calculate :month stats': calculateFunction,
-	 *   // This example will only accept months which are at the start of a quarter
-	 *   'calculate :quarter stats': {'regexp': /^calculate (January|April|July|October) stats$/, 'callback': calculateFunction}
-	 * }
-	 ````
-	 *
-	 * ## Languages
-	 *
-	 * While there isn't an official list of supported languages (cultures? locales?), here is a list based on [anecdotal evidence](http://stackoverflow.com/a/14302134/338039).
-	 *
-	 * * Afrikaans `af`
-	 * * Basque `eu`
-	 * * Bulgarian `bg`
-	 * * Catalan `ca`
-	 * * Arabic (Egypt) `ar-EG`
-	 * * Arabic (Jordan) `ar-JO`
-	 * * Arabic (Kuwait) `ar-KW`
-	 * * Arabic (Lebanon) `ar-LB`
-	 * * Arabic (Qatar) `ar-QA`
-	 * * Arabic (UAE) `ar-AE`
-	 * * Arabic (Morocco) `ar-MA`
-	 * * Arabic (Iraq) `ar-IQ`
-	 * * Arabic (Algeria) `ar-DZ`
-	 * * Arabic (Bahrain) `ar-BH`
-	 * * Arabic (Lybia) `ar-LY`
-	 * * Arabic (Oman) `ar-OM`
-	 * * Arabic (Saudi Arabia) `ar-SA`
-	 * * Arabic (Tunisia) `ar-TN`
-	 * * Arabic (Yemen) `ar-YE`
-	 * * Czech `cs`
-	 * * Dutch `nl-NL`
-	 * * English (Australia) `en-AU`
-	 * * English (Canada) `en-CA`
-	 * * English (India) `en-IN`
-	 * * English (New Zealand) `en-NZ`
-	 * * English (South Africa) `en-ZA`
-	 * * English(UK) `en-GB`
-	 * * English(US) `en-US`
-	 * * Finnish `fi`
-	 * * French `fr-FR`
-	 * * Galician `gl`
-	 * * German `de-DE`
-	 * * Hebrew `he`
-	 * * Hungarian `hu`
-	 * * Icelandic `is`
-	 * * Italian `it-IT`
-	 * * Indonesian `id`
-	 * * Japanese `ja`
-	 * * Korean `ko`
-	 * * Latin `la`
-	 * * Mandarin Chinese `zh-CN`
-	 * * Traditional Taiwan `zh-TW`
-	 * * Simplified China zh-CN `?`
-	 * * Simplified Hong Kong `zh-HK`
-	 * * Yue Chinese (Traditional Hong Kong) `zh-yue`
-	 * * Malaysian `ms-MY`
-	 * * Norwegian `no-NO`
-	 * * Polish `pl`
-	 * * Pig Latin `xx-piglatin`
-	 * * Portuguese `pt-PT`
-	 * * Portuguese (Brasil) `pt-BR`
-	 * * Romanian `ro-RO`
-	 * * Russian `ru`
-	 * * Serbian `sr-SP`
-	 * * Slovak `sk`
-	 * * Spanish (Argentina) `es-AR`
-	 * * Spanish (Bolivia) `es-BO`
-	 * * Spanish (Chile) `es-CL`
-	 * * Spanish (Colombia) `es-CO`
-	 * * Spanish (Costa Rica) `es-CR`
-	 * * Spanish (Dominican Republic) `es-DO`
-	 * * Spanish (Ecuador) `es-EC`
-	 * * Spanish (El Salvador) `es-SV`
-	 * * Spanish (Guatemala) `es-GT`
-	 * * Spanish (Honduras) `es-HN`
-	 * * Spanish (Mexico) `es-MX`
-	 * * Spanish (Nicaragua) `es-NI`
-	 * * Spanish (Panama) `es-PA`
-	 * * Spanish (Paraguay) `es-PY`
-	 * * Spanish (Peru) `es-PE`
-	 * * Spanish (Puerto Rico) `es-PR`
-	 * * Spanish (Spain) `es-ES`
-	 * * Spanish (US) `es-US`
-	 * * Spanish (Uruguay) `es-UY`
-	 * * Spanish (Venezuela) `es-VE`
-	 * * Swedish `sv-SE`
-	 * * Turkish `tr`
-	 * * Zulu `zu`
-	 *
-	 * ## Developing
-	 *
-	 * Prerequisities: node.js
-	 *
-	 * First, install dependencies in your local annyang copy:
-	 *
-	 *     npm install
-	 *
-	 * Make sure to run the default grunt task after each change to annyang.js. This can also be done automatically by running:
-	 *
-	 *     grunt watch
-	 *
-	 * You can also run a local server for testing your work with:
-	 *
-	 *     grunt dev
-	 *
-	 * Point your browser to `https://localhost:8443/demo/` to see the demo page.
-	 * Since it's using self-signed certificate, you might need to click *"Proceed Anyway"*.
-	 *
-	 * For more info, check out the [CONTRIBUTING](https://github.com/TalAter/annyang/blob/master/CONTRIBUTING.md) file
-	 *
+	 * These methods are based on the implementation proposed in
+	 * "An O(ND) Difference Algorithm and its Variations" (Myers, 1986).
+	 * http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.4.6927
 	 */
+	exports. /*istanbul ignore end*/Diff = _base2.default;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffChars = _character.diffChars;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffWords = _word.diffWords;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffWordsWithSpace = _word.diffWordsWithSpace;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffLines = _line.diffLines;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffTrimmedLines = _line.diffTrimmedLines;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffSentences = _sentence.diffSentences;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffCss = _css.diffCss;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffJson = _json.diffJson;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/structuredPatch = _create.structuredPatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/createTwoFilesPatch = _create.createTwoFilesPatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/createPatch = _create.createPatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/applyPatch = _apply.applyPatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/applyPatches = _apply.applyPatches;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/parsePatch = _parse.parsePatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/convertChangesToDMP = _dmp.convertChangesToDMP;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/convertChangesToXML = _xml.convertChangesToXML;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/canonicalize = _json.canonicalize;
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uL3NyYy9pbmRleC5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7OztBQWdCQTs7Ozs7O0FBQ0E7O0FBQ0E7O0FBQ0E7O0FBQ0E7O0FBRUE7O0FBQ0E7O0FBRUE7O0FBQ0E7O0FBQ0E7O0FBRUE7O0FBQ0E7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7OztnQ0FHRTt5REFFQTt5REFDQTt5REFDQTt5REFDQTt5REFDQTt5REFDQTt5REFFQTt5REFDQTt5REFFQTt5REFDQTt5REFDQTt5REFDQTt5REFDQTt5REFDQTt5REFDQTt5REFDQTt5REFDQSIsImZpbGUiOiJpbmRleC5qcyIsInNvdXJjZXNDb250ZW50IjpbIi8qIFNlZSBMSUNFTlNFIGZpbGUgZm9yIHRlcm1zIG9mIHVzZSAqL1xuXG4vKlxuICogVGV4dCBkaWZmIGltcGxlbWVudGF0aW9uLlxuICpcbiAqIFRoaXMgbGlicmFyeSBzdXBwb3J0cyB0aGUgZm9sbG93aW5nIEFQSVM6XG4gKiBKc0RpZmYuZGlmZkNoYXJzOiBDaGFyYWN0ZXIgYnkgY2hhcmFjdGVyIGRpZmZcbiAqIEpzRGlmZi5kaWZmV29yZHM6IFdvcmQgKGFzIGRlZmluZWQgYnkgXFxiIHJlZ2V4KSBkaWZmIHdoaWNoIGlnbm9yZXMgd2hpdGVzcGFjZVxuICogSnNEaWZmLmRpZmZMaW5lczogTGluZSBiYXNlZCBkaWZmXG4gKlxuICogSnNEaWZmLmRpZmZDc3M6IERpZmYgdGFyZ2V0ZWQgYXQgQ1NTIGNvbnRlbnRcbiAqXG4gKiBUaGVzZSBtZXRob2RzIGFyZSBiYXNlZCBvbiB0aGUgaW1wbGVtZW50YXRpb24gcHJvcG9zZWQgaW5cbiAqIFwiQW4gTyhORCkgRGlmZmVyZW5jZSBBbGdvcml0aG0gYW5kIGl0cyBWYXJpYXRpb25zXCIgKE15ZXJzLCAxOTg2KS5cbiAqIGh0dHA6Ly9jaXRlc2VlcnguaXN0LnBzdS5lZHUvdmlld2RvYy9zdW1tYXJ5P2RvaT0xMC4xLjEuNC42OTI3XG4gKi9cbmltcG9ydCBEaWZmIGZyb20gJy4vZGlmZi9iYXNlJztcbmltcG9ydCB7ZGlmZkNoYXJzfSBmcm9tICcuL2RpZmYvY2hhcmFjdGVyJztcbmltcG9ydCB7ZGlmZldvcmRzLCBkaWZmV29yZHNXaXRoU3BhY2V9IGZyb20gJy4vZGlmZi93b3JkJztcbmltcG9ydCB7ZGlmZkxpbmVzLCBkaWZmVHJpbW1lZExpbmVzfSBmcm9tICcuL2RpZmYvbGluZSc7XG5pbXBvcnQge2RpZmZTZW50ZW5jZXN9IGZyb20gJy4vZGlmZi9zZW50ZW5jZSc7XG5cbmltcG9ydCB7ZGlmZkNzc30gZnJvbSAnLi9kaWZmL2Nzcyc7XG5pbXBvcnQge2RpZmZKc29uLCBjYW5vbmljYWxpemV9IGZyb20gJy4vZGlmZi9qc29uJztcblxuaW1wb3J0IHthcHBseVBhdGNoLCBhcHBseVBhdGNoZXN9IGZyb20gJy4vcGF0Y2gvYXBwbHknO1xuaW1wb3J0IHtwYXJzZVBhdGNofSBmcm9tICcuL3BhdGNoL3BhcnNlJztcbmltcG9ydCB7c3RydWN0dXJlZFBhdGNoLCBjcmVhdGVUd29GaWxlc1BhdGNoLCBjcmVhdGVQYXRjaH0gZnJvbSAnLi9wYXRjaC9jcmVhdGUnO1xuXG5pbXBvcnQge2NvbnZlcnRDaGFuZ2VzVG9ETVB9IGZyb20gJy4vY29udmVydC9kbXAnO1xuaW1wb3J0IHtjb252ZXJ0Q2hhbmdlc1RvWE1MfSBmcm9tICcuL2NvbnZlcnQveG1sJztcblxuZXhwb3J0IHtcbiAgRGlmZixcblxuICBkaWZmQ2hhcnMsXG4gIGRpZmZXb3JkcyxcbiAgZGlmZldvcmRzV2l0aFNwYWNlLFxuICBkaWZmTGluZXMsXG4gIGRpZmZUcmltbWVkTGluZXMsXG4gIGRpZmZTZW50ZW5jZXMsXG5cbiAgZGlmZkNzcyxcbiAgZGlmZkpzb24sXG5cbiAgc3RydWN0dXJlZFBhdGNoLFxuICBjcmVhdGVUd29GaWxlc1BhdGNoLFxuICBjcmVhdGVQYXRjaCxcbiAgYXBwbHlQYXRjaCxcbiAgYXBwbHlQYXRjaGVzLFxuICBwYXJzZVBhdGNoLFxuICBjb252ZXJ0Q2hhbmdlc1RvRE1QLFxuICBjb252ZXJ0Q2hhbmdlc1RvWE1MLFxuICBjYW5vbmljYWxpemVcbn07XG4iXX0=
 
 
 /***/ },
-/* 10 */
+/* 11 */
+/***/ function(module, exports) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports.default = /*istanbul ignore end*/Diff;
+	function Diff() {}
+
+	Diff.prototype = { /*istanbul ignore start*/
+	  /*istanbul ignore end*/diff: function diff(oldString, newString) {
+	    /*istanbul ignore start*/var /*istanbul ignore end*/options = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
+
+	    var callback = options.callback;
+	    if (typeof options === 'function') {
+	      callback = options;
+	      options = {};
+	    }
+	    this.options = options;
+
+	    var self = this;
+
+	    function done(value) {
+	      if (callback) {
+	        setTimeout(function () {
+	          callback(undefined, value);
+	        }, 0);
+	        return true;
+	      } else {
+	        return value;
+	      }
+	    }
+
+	    // Allow subclasses to massage the input prior to running
+	    oldString = this.castInput(oldString);
+	    newString = this.castInput(newString);
+
+	    oldString = this.removeEmpty(this.tokenize(oldString));
+	    newString = this.removeEmpty(this.tokenize(newString));
+
+	    var newLen = newString.length,
+	        oldLen = oldString.length;
+	    var editLength = 1;
+	    var maxEditLength = newLen + oldLen;
+	    var bestPath = [{ newPos: -1, components: [] }];
+
+	    // Seed editLength = 0, i.e. the content starts with the same values
+	    var oldPos = this.extractCommon(bestPath[0], newString, oldString, 0);
+	    if (bestPath[0].newPos + 1 >= newLen && oldPos + 1 >= oldLen) {
+	      // Identity per the equality and tokenizer
+	      return done([{ value: newString.join(''), count: newString.length }]);
+	    }
+
+	    // Main worker method. checks all permutations of a given edit length for acceptance.
+	    function execEditLength() {
+	      for (var diagonalPath = -1 * editLength; diagonalPath <= editLength; diagonalPath += 2) {
+	        var basePath = /*istanbul ignore start*/void 0 /*istanbul ignore end*/;
+	        var addPath = bestPath[diagonalPath - 1],
+	            removePath = bestPath[diagonalPath + 1],
+	            _oldPos = (removePath ? removePath.newPos : 0) - diagonalPath;
+	        if (addPath) {
+	          // No one else is going to attempt to use this value, clear it
+	          bestPath[diagonalPath - 1] = undefined;
+	        }
+
+	        var canAdd = addPath && addPath.newPos + 1 < newLen,
+	            canRemove = removePath && 0 <= _oldPos && _oldPos < oldLen;
+	        if (!canAdd && !canRemove) {
+	          // If this path is a terminal then prune
+	          bestPath[diagonalPath] = undefined;
+	          continue;
+	        }
+
+	        // Select the diagonal that we want to branch from. We select the prior
+	        // path whose position in the new string is the farthest from the origin
+	        // and does not pass the bounds of the diff graph
+	        if (!canAdd || canRemove && addPath.newPos < removePath.newPos) {
+	          basePath = clonePath(removePath);
+	          self.pushComponent(basePath.components, undefined, true);
+	        } else {
+	          basePath = addPath; // No need to clone, we've pulled it from the list
+	          basePath.newPos++;
+	          self.pushComponent(basePath.components, true, undefined);
+	        }
+
+	        _oldPos = self.extractCommon(basePath, newString, oldString, diagonalPath);
+
+	        // If we have hit the end of both strings, then we are done
+	        if (basePath.newPos + 1 >= newLen && _oldPos + 1 >= oldLen) {
+	          return done(buildValues(self, basePath.components, newString, oldString, self.useLongestToken));
+	        } else {
+	          // Otherwise track this path as a potential candidate and continue.
+	          bestPath[diagonalPath] = basePath;
+	        }
+	      }
+
+	      editLength++;
+	    }
+
+	    // Performs the length of edit iteration. Is a bit fugly as this has to support the
+	    // sync and async mode which is never fun. Loops over execEditLength until a value
+	    // is produced.
+	    if (callback) {
+	      (function exec() {
+	        setTimeout(function () {
+	          // This should not happen, but we want to be safe.
+	          /* istanbul ignore next */
+	          if (editLength > maxEditLength) {
+	            return callback();
+	          }
+
+	          if (!execEditLength()) {
+	            exec();
+	          }
+	        }, 0);
+	      })();
+	    } else {
+	      while (editLength <= maxEditLength) {
+	        var ret = execEditLength();
+	        if (ret) {
+	          return ret;
+	        }
+	      }
+	    }
+	  },
+	  /*istanbul ignore start*/ /*istanbul ignore end*/pushComponent: function pushComponent(components, added, removed) {
+	    var last = components[components.length - 1];
+	    if (last && last.added === added && last.removed === removed) {
+	      // We need to clone here as the component clone operation is just
+	      // as shallow array clone
+	      components[components.length - 1] = { count: last.count + 1, added: added, removed: removed };
+	    } else {
+	      components.push({ count: 1, added: added, removed: removed });
+	    }
+	  },
+	  /*istanbul ignore start*/ /*istanbul ignore end*/extractCommon: function extractCommon(basePath, newString, oldString, diagonalPath) {
+	    var newLen = newString.length,
+	        oldLen = oldString.length,
+	        newPos = basePath.newPos,
+	        oldPos = newPos - diagonalPath,
+	        commonCount = 0;
+	    while (newPos + 1 < newLen && oldPos + 1 < oldLen && this.equals(newString[newPos + 1], oldString[oldPos + 1])) {
+	      newPos++;
+	      oldPos++;
+	      commonCount++;
+	    }
+
+	    if (commonCount) {
+	      basePath.components.push({ count: commonCount });
+	    }
+
+	    basePath.newPos = newPos;
+	    return oldPos;
+	  },
+	  /*istanbul ignore start*/ /*istanbul ignore end*/equals: function equals(left, right) {
+	    return left === right;
+	  },
+	  /*istanbul ignore start*/ /*istanbul ignore end*/removeEmpty: function removeEmpty(array) {
+	    var ret = [];
+	    for (var i = 0; i < array.length; i++) {
+	      if (array[i]) {
+	        ret.push(array[i]);
+	      }
+	    }
+	    return ret;
+	  },
+	  /*istanbul ignore start*/ /*istanbul ignore end*/castInput: function castInput(value) {
+	    return value;
+	  },
+	  /*istanbul ignore start*/ /*istanbul ignore end*/tokenize: function tokenize(value) {
+	    return value.split('');
+	  }
+	};
+
+	function buildValues(diff, components, newString, oldString, useLongestToken) {
+	  var componentPos = 0,
+	      componentLen = components.length,
+	      newPos = 0,
+	      oldPos = 0;
+
+	  for (; componentPos < componentLen; componentPos++) {
+	    var component = components[componentPos];
+	    if (!component.removed) {
+	      if (!component.added && useLongestToken) {
+	        var value = newString.slice(newPos, newPos + component.count);
+	        value = value.map(function (value, i) {
+	          var oldValue = oldString[oldPos + i];
+	          return oldValue.length > value.length ? oldValue : value;
+	        });
+
+	        component.value = value.join('');
+	      } else {
+	        component.value = newString.slice(newPos, newPos + component.count).join('');
+	      }
+	      newPos += component.count;
+
+	      // Common case
+	      if (!component.added) {
+	        oldPos += component.count;
+	      }
+	    } else {
+	      component.value = oldString.slice(oldPos, oldPos + component.count).join('');
+	      oldPos += component.count;
+
+	      // Reverse add and remove so removes are output first to match common convention
+	      // The diffing algorithm is tied to add then remove output and this is the simplest
+	      // route to get the desired output with minimal overhead.
+	      if (componentPos && components[componentPos - 1].added) {
+	        var tmp = components[componentPos - 1];
+	        components[componentPos - 1] = components[componentPos];
+	        components[componentPos] = tmp;
+	      }
+	    }
+	  }
+
+	  // Special case handle for when one terminal is ignored. For this case we merge the
+	  // terminal into the prior string and drop the change.
+	  var lastComponent = components[componentLen - 1];
+	  if (componentLen > 1 && (lastComponent.added || lastComponent.removed) && diff.equals('', lastComponent.value)) {
+	    components[componentLen - 2].value += lastComponent.value;
+	    components.pop();
+	  }
+
+	  return components;
+	}
+
+	function clonePath(path) {
+	  return { newPos: path.newPos, components: path.components.slice(0) };
+	}
+	//# sourceMappingURL=data:application/json;base64,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R0FGN0M7O0FBT0EsU0FBTyxVQUFQLENBbkQ0RTtDQUE5RTs7QUFzREEsU0FBUyxTQUFULENBQW1CLElBQW5CLEVBQXlCO0FBQ3ZCLFNBQU8sRUFBRSxRQUFRLEtBQUssTUFBTCxFQUFhLFlBQVksS0FBSyxVQUFMLENBQWdCLEtBQWhCLENBQXNCLENBQXRCLENBQVosRUFBOUIsQ0FEdUI7Q0FBekIiLCJmaWxlIjoiYmFzZS5qcyIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBkZWZhdWx0IGZ1bmN0aW9uIERpZmYoKSB7fVxuXG5EaWZmLnByb3RvdHlwZSA9IHtcbiAgZGlmZihvbGRTdHJpbmcsIG5ld1N0cmluZywgb3B0aW9ucyA9IHt9KSB7XG4gICAgbGV0IGNhbGxiYWNrID0gb3B0aW9ucy5jYWxsYmFjaztcbiAgICBpZiAodHlwZW9mIG9wdGlvbnMgPT09ICdmdW5jdGlvbicpIHtcbiAgICAgIGNhbGxiYWNrID0gb3B0aW9ucztcbiAgICAgIG9wdGlvbnMgPSB7fTtcbiAgICB9XG4gICAgdGhpcy5vcHRpb25zID0gb3B0aW9ucztcblxuICAgIGxldCBzZWxmID0gdGhpcztcblxuICAgIGZ1bmN0aW9uIGRvbmUodmFsdWUpIHtcbiAgICAgIGlmIChjYWxsYmFjaykge1xuICAgICAgICBzZXRUaW1lb3V0KGZ1bmN0aW9uKCkgeyBjYWxsYmFjayh1bmRlZmluZWQsIHZhbHVlKTsgfSwgMCk7XG4gICAgICAgIHJldHVybiB0cnVlO1xuICAgICAgfSBlbHNlIHtcbiAgICAgICAgcmV0dXJuIHZhbHVlO1xuICAgICAgfVxuICAgIH1cblxuICAgIC8vIEFsbG93IHN1YmNsYXNzZXMgdG8gbWFzc2FnZSB0aGUgaW5wdXQgcHJpb3IgdG8gcnVubmluZ1xuICAgIG9sZFN0cmluZyA9IHRoaXMuY2FzdElucHV0KG9sZFN0cmluZyk7XG4gICAgbmV3U3RyaW5nID0gdGhpcy5jYXN0SW5wdXQobmV3U3RyaW5nKTtcblxuICAgIG9sZFN0cmluZyA9IHRoaXMucmVtb3ZlRW1wdHkodGhpcy50b2tlbml6ZShvbGRTdHJpbmcpKTtcbiAgICBuZXdTdHJpbmcgPSB0aGlzLnJlbW92ZUVtcHR5KHRoaXMudG9rZW5pemUobmV3U3RyaW5nKSk7XG5cbiAgICBsZXQgbmV3TGVuID0gbmV3U3RyaW5nLmxlbmd0aCwgb2xkTGVuID0gb2xkU3RyaW5nLmxlbmd0aDtcbiAgICBsZXQgZWRpdExlbmd0aCA9IDE7XG4gICAgbGV0IG1heEVkaXRMZW5ndGggPSBuZXdMZW4gKyBvbGRMZW47XG4gICAgbGV0IGJlc3RQYXRoID0gW3sgbmV3UG9zOiAtMSwgY29tcG9uZW50czogW10gfV07XG5cbiAgICAvLyBTZWVkIGVkaXRMZW5ndGggPSAwLCBpLmUuIHRoZSBjb250ZW50IHN0YXJ0cyB3aXRoIHRoZSBzYW1lIHZhbHVlc1xuICAgIGxldCBvbGRQb3MgPSB0aGlzLmV4dHJhY3RDb21tb24oYmVzdFBhdGhbMF0sIG5ld1N0cmluZywgb2xkU3RyaW5nLCAwKTtcbiAgICBpZiAoYmVzdFBhdGhbMF0ubmV3UG9zICsgMSA+PSBuZXdMZW4gJiYgb2xkUG9zICsgMSA+PSBvbGRMZW4pIHtcbiAgICAgIC8vIElkZW50aXR5IHBlciB0aGUgZXF1YWxpdHkgYW5kIHRva2VuaXplclxuICAgICAgcmV0dXJuIGRvbmUoW3t2YWx1ZTogbmV3U3RyaW5nLmpvaW4oJycpLCBjb3VudDogbmV3U3RyaW5nLmxlbmd0aH1dKTtcbiAgICB9XG5cbiAgICAvLyBNYWluIHdvcmtlciBtZXRob2QuIGNoZWNrcyBhbGwgcGVybXV0YXRpb25zIG9mIGEgZ2l2ZW4gZWRpdCBsZW5ndGggZm9yIGFjY2VwdGFuY2UuXG4gICAgZnVuY3Rpb24gZXhlY0VkaXRMZW5ndGgoKSB7XG4gICAgICBmb3IgKGxldCBkaWFnb25hbFBhdGggPSAtMSAqIGVkaXRMZW5ndGg7IGRpYWdvbmFsUGF0aCA8PSBlZGl0TGVuZ3RoOyBkaWFnb25hbFBhdGggKz0gMikge1xuICAgICAgICBsZXQgYmFzZVBhdGg7XG4gICAgICAgIGxldCBhZGRQYXRoID0gYmVzdFBhdGhbZGlhZ29uYWxQYXRoIC0gMV0sXG4gICAgICAgICAgICByZW1vdmVQYXRoID0gYmVzdFBhdGhbZGlhZ29uYWxQYXRoICsgMV0sXG4gICAgICAgICAgICBvbGRQb3MgPSAocmVtb3ZlUGF0aCA/IHJlbW92ZVBhdGgubmV3UG9zIDogMCkgLSBkaWFnb25hbFBhdGg7XG4gICAgICAgIGlmIChhZGRQYXRoKSB7XG4gICAgICAgICAgLy8gTm8gb25lIGVsc2UgaXMgZ29pbmcgdG8gYXR0ZW1wdCB0byB1c2UgdGhpcyB2YWx1ZSwgY2xlYXIgaXRcbiAgICAgICAgICBiZXN0UGF0aFtkaWFnb25hbFBhdGggLSAxXSA9IHVuZGVmaW5lZDtcbiAgICAgICAgfVxuXG4gICAgICAgIGxldCBjYW5BZGQgPSBhZGRQYXRoICYmIGFkZFBhdGgubmV3UG9zICsgMSA8IG5ld0xlbixcbiAgICAgICAgICAgIGNhblJlbW92ZSA9IHJlbW92ZVBhdGggJiYgMCA8PSBvbGRQb3MgJiYgb2xkUG9zIDwgb2xkTGVuO1xuICAgICAgICBpZiAoIWNhbkFkZCAmJiAhY2FuUmVtb3ZlKSB7XG4gICAgICAgICAgLy8gSWYgdGhpcyBwYXRoIGlzIGEgdGVybWluYWwgdGhlbiBwcnVuZVxuICAgICAgICAgIGJlc3RQYXRoW2RpYWdvbmFsUGF0aF0gPSB1bmRlZmluZWQ7XG4gICAgICAgICAgY29udGludWU7XG4gICAgICAgIH1cblxuICAgICAgICAvLyBTZWxlY3QgdGhlIGRpYWdvbmFsIHRoYXQgd2Ugd2FudCB0byBicmFuY2ggZnJvbS4gV2Ugc2VsZWN0IHRoZSBwcmlvclxuICAgICAgICAvLyBwYXRoIHdob3NlIHBvc2l0aW9uIGluIHRoZSBuZXcgc3RyaW5nIGlzIHRoZSBmYXJ0aGVzdCBmcm9tIHRoZSBvcmlnaW5cbiAgICAgICAgLy8gYW5kIGRvZXMgbm90IHBhc3MgdGhlIGJvdW5kcyBvZiB0aGUgZGlmZiBncmFwaFxuICAgICAgICBpZiAoIWNhbkFkZCB8fCAoY2FuUmVtb3ZlICYmIGFkZFBhdGgubmV3UG9zIDwgcmVtb3ZlUGF0aC5uZXdQb3MpKSB7XG4gICAgICAgICAgYmFzZVBhdGggPSBjbG9uZVBhdGgocmVtb3ZlUGF0aCk7XG4gICAgICAgICAgc2VsZi5wdXNoQ29tcG9uZW50KGJhc2VQYXRoLmNvbXBvbmVudHMsIHVuZGVmaW5lZCwgdHJ1ZSk7XG4gICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgYmFzZVBhdGggPSBhZGRQYXRoOyAgIC8vIE5vIG5lZWQgdG8gY2xvbmUsIHdlJ3ZlIHB1bGxlZCBpdCBmcm9tIHRoZSBsaXN0XG4gICAgICAgICAgYmFzZVBhdGgubmV3UG9zKys7XG4gICAgICAgICAgc2VsZi5wdXNoQ29tcG9uZW50KGJhc2VQYXRoLmNvbXBvbmVudHMsIHRydWUsIHVuZGVmaW5lZCk7XG4gICAgICAgIH1cblxuICAgICAgICBvbGRQb3MgPSBzZWxmLmV4dHJhY3RDb21tb24oYmFzZVBhdGgsIG5ld1N0cmluZywgb2xkU3RyaW5nLCBkaWFnb25hbFBhdGgpO1xuXG4gICAgICAgIC8vIElmIHdlIGhhdmUgaGl0IHRoZSBlbmQgb2YgYm90aCBzdHJpbmdzLCB0aGVuIHdlIGFyZSBkb25lXG4gICAgICAgIGlmIChiYXNlUGF0aC5uZXdQb3MgKyAxID49IG5ld0xlbiAmJiBvbGRQb3MgKyAxID49IG9sZExlbikge1xuICAgICAgICAgIHJldHVybiBkb25lKGJ1aWxkVmFsdWVzKHNlbGYsIGJhc2VQYXRoLmNvbXBvbmVudHMsIG5ld1N0cmluZywgb2xkU3RyaW5nLCBzZWxmLnVzZUxvbmdlc3RUb2tlbikpO1xuICAgICAgICB9IGVsc2Uge1xuICAgICAgICAgIC8vIE90aGVyd2lzZSB0cmFjayB0aGlzIHBhdGggYXMgYSBwb3RlbnRpYWwgY2FuZGlkYXRlIGFuZCBjb250aW51ZS5cbiAgICAgICAgICBiZXN0UGF0aFtkaWFnb25hbFBhdGhdID0gYmFzZVBhdGg7XG4gICAgICAgIH1cbiAgICAgIH1cblxuICAgICAgZWRpdExlbmd0aCsrO1xuICAgIH1cblxuICAgIC8vIFBlcmZvcm1zIHRoZSBsZW5ndGggb2YgZWRpdCBpdGVyYXRpb24uIElzIGEgYml0IGZ1Z2x5IGFzIHRoaXMgaGFzIHRvIHN1cHBvcnQgdGhlXG4gICAgLy8gc3luYyBhbmQgYXN5bmMgbW9kZSB3aGljaCBpcyBuZXZlciBmdW4uIExvb3BzIG92ZXIgZXhlY0VkaXRMZW5ndGggdW50aWwgYSB2YWx1ZVxuICAgIC8vIGlzIHByb2R1Y2VkLlxuICAgIGlmIChjYWxsYmFjaykge1xuICAgICAgKGZ1bmN0aW9uIGV4ZWMoKSB7XG4gICAgICAgIHNldFRpbWVvdXQoZnVuY3Rpb24oKSB7XG4gICAgICAgICAgLy8gVGhpcyBzaG91bGQgbm90IGhhcHBlbiwgYnV0IHdlIHdhbnQgdG8gYmUgc2FmZS5cbiAgICAgICAgICAvKiBpc3RhbmJ1bCBpZ25vcmUgbmV4dCAqL1xuICAgICAgICAgIGlmIChlZGl0TGVuZ3RoID4gbWF4RWRpdExlbmd0aCkge1xuICAgICAgICAgICAgcmV0dXJuIGNhbGxiYWNrKCk7XG4gICAgICAgICAgfVxuXG4gICAgICAgICAgaWYgKCFleGVjRWRpdExlbmd0aCgpKSB7XG4gICAgICAgICAgICBleGVjKCk7XG4gICAgICAgICAgfVxuICAgICAgICB9LCAwKTtcbiAgICAgIH0oKSk7XG4gICAgfSBlbHNlIHtcbiAgICAgIHdoaWxlIChlZGl0TGVuZ3RoIDw9IG1heEVkaXRMZW5ndGgpIHtcbiAgICAgICAgbGV0IHJldCA9IGV4ZWNFZGl0TGVuZ3RoKCk7XG4gICAgICAgIGlmIChyZXQpIHtcbiAgICAgICAgICByZXR1cm4gcmV0O1xuICAgICAgICB9XG4gICAgICB9XG4gICAgfVxuICB9LFxuXG4gIHB1c2hDb21wb25lbnQoY29tcG9uZW50cywgYWRkZWQsIHJlbW92ZWQpIHtcbiAgICBsZXQgbGFzdCA9IGNvbXBvbmVudHNbY29tcG9uZW50cy5sZW5ndGggLSAxXTtcbiAgICBpZiAobGFzdCAmJiBsYXN0LmFkZGVkID09PSBhZGRlZCAmJiBsYXN0LnJlbW92ZWQgPT09IHJlbW92ZWQpIHtcbiAgICAgIC8vIFdlIG5lZWQgdG8gY2xvbmUgaGVyZSBhcyB0aGUgY29tcG9uZW50IGNsb25lIG9wZXJhdGlvbiBpcyBqdXN0XG4gICAgICAvLyBhcyBzaGFsbG93IGFycmF5IGNsb25lXG4gICAgICBjb21wb25lbnRzW2NvbXBvbmVudHMubGVuZ3RoIC0gMV0gPSB7Y291bnQ6IGxhc3QuY291bnQgKyAxLCBhZGRlZDogYWRkZWQsIHJlbW92ZWQ6IHJlbW92ZWQgfTtcbiAgICB9IGVsc2Uge1xuICAgICAgY29tcG9uZW50cy5wdXNoKHtjb3VudDogMSwgYWRkZWQ6IGFkZGVkLCByZW1vdmVkOiByZW1vdmVkIH0pO1xuICAgIH1cbiAgfSxcbiAgZXh0cmFjdENvbW1vbihiYXNlUGF0aCwgbmV3U3RyaW5nLCBvbGRTdHJpbmcsIGRpYWdvbmFsUGF0aCkge1xuICAgIGxldCBuZXdMZW4gPSBuZXdTdHJpbmcubGVuZ3RoLFxuICAgICAgICBvbGRMZW4gPSBvbGRTdHJpbmcubGVuZ3RoLFxuICAgICAgICBuZXdQb3MgPSBiYXNlUGF0aC5uZXdQb3MsXG4gICAgICAgIG9sZFBvcyA9IG5ld1BvcyAtIGRpYWdvbmFsUGF0aCxcblxuICAgICAgICBjb21tb25Db3VudCA9IDA7XG4gICAgd2hpbGUgKG5ld1BvcyArIDEgPCBuZXdMZW4gJiYgb2xkUG9zICsgMSA8IG9sZExlbiAmJiB0aGlzLmVxdWFscyhuZXdTdHJpbmdbbmV3UG9zICsgMV0sIG9sZFN0cmluZ1tvbGRQb3MgKyAxXSkpIHtcbiAgICAgIG5ld1BvcysrO1xuICAgICAgb2xkUG9zKys7XG4gICAgICBjb21tb25Db3VudCsrO1xuICAgIH1cblxuICAgIGlmIChjb21tb25Db3VudCkge1xuICAgICAgYmFzZVBhdGguY29tcG9uZW50cy5wdXNoKHtjb3VudDogY29tbW9uQ291bnR9KTtcbiAgICB9XG5cbiAgICBiYXNlUGF0aC5uZXdQb3MgPSBuZXdQb3M7XG4gICAgcmV0dXJuIG9sZFBvcztcbiAgfSxcblxuICBlcXVhbHMobGVmdCwgcmlnaHQpIHtcbiAgICByZXR1cm4gbGVmdCA9PT0gcmlnaHQ7XG4gIH0sXG4gIHJlbW92ZUVtcHR5KGFycmF5KSB7XG4gICAgbGV0IHJldCA9IFtdO1xuICAgIGZvciAobGV0IGkgPSAwOyBpIDwgYXJyYXkubGVuZ3RoOyBpKyspIHtcbiAgICAgIGlmIChhcnJheVtpXSkge1xuICAgICAgICByZXQucHVzaChhcnJheVtpXSk7XG4gICAgICB9XG4gICAgfVxuICAgIHJldHVybiByZXQ7XG4gIH0sXG4gIGNhc3RJbnB1dCh2YWx1ZSkge1xuICAgIHJldHVybiB2YWx1ZTtcbiAgfSxcbiAgdG9rZW5pemUodmFsdWUpIHtcbiAgICByZXR1cm4gdmFsdWUuc3BsaXQoJycpO1xuICB9XG59O1xuXG5mdW5jdGlvbiBidWlsZFZhbHVlcyhkaWZmLCBjb21wb25lbnRzLCBuZXdTdHJpbmcsIG9sZFN0cmluZywgdXNlTG9uZ2VzdFRva2VuKSB7XG4gIGxldCBjb21wb25lbnRQb3MgPSAwLFxuICAgICAgY29tcG9uZW50TGVuID0gY29tcG9uZW50cy5sZW5ndGgsXG4gICAgICBuZXdQb3MgPSAwLFxuICAgICAgb2xkUG9zID0gMDtcblxuICBmb3IgKDsgY29tcG9uZW50UG9zIDwgY29tcG9uZW50TGVuOyBjb21wb25lbnRQb3MrKykge1xuICAgIGxldCBjb21wb25lbnQgPSBjb21wb25lbnRzW2NvbXBvbmVudFBvc107XG4gICAgaWYgKCFjb21wb25lbnQucmVtb3ZlZCkge1xuICAgICAgaWYgKCFjb21wb25lbnQuYWRkZWQgJiYgdXNlTG9uZ2VzdFRva2VuKSB7XG4gICAgICAgIGxldCB2YWx1ZSA9IG5ld1N0cmluZy5zbGljZShuZXdQb3MsIG5ld1BvcyArIGNvbXBvbmVudC5jb3VudCk7XG4gICAgICAgIHZhbHVlID0gdmFsdWUubWFwKGZ1bmN0aW9uKHZhbHVlLCBpKSB7XG4gICAgICAgICAgbGV0IG9sZFZhbHVlID0gb2xkU3RyaW5nW29sZFBvcyArIGldO1xuICAgICAgICAgIHJldHVybiBvbGRWYWx1ZS5sZW5ndGggPiB2YWx1ZS5sZW5ndGggPyBvbGRWYWx1ZSA6IHZhbHVlO1xuICAgICAgICB9KTtcblxuICAgICAgICBjb21wb25lbnQudmFsdWUgPSB2YWx1ZS5qb2luKCcnKTtcbiAgICAgIH0gZWxzZSB7XG4gICAgICAgIGNvbXBvbmVudC52YWx1ZSA9IG5ld1N0cmluZy5zbGljZShuZXdQb3MsIG5ld1BvcyArIGNvbXBvbmVudC5jb3VudCkuam9pbignJyk7XG4gICAgICB9XG4gICAgICBuZXdQb3MgKz0gY29tcG9uZW50LmNvdW50O1xuXG4gICAgICAvLyBDb21tb24gY2FzZVxuICAgICAgaWYgKCFjb21wb25lbnQuYWRkZWQpIHtcbiAgICAgICAgb2xkUG9zICs9IGNvbXBvbmVudC5jb3VudDtcbiAgICAgIH1cbiAgICB9IGVsc2Uge1xuICAgICAgY29tcG9uZW50LnZhbHVlID0gb2xkU3RyaW5nLnNsaWNlKG9sZFBvcywgb2xkUG9zICsgY29tcG9uZW50LmNvdW50KS5qb2luKCcnKTtcbiAgICAgIG9sZFBvcyArPSBjb21wb25lbnQuY291bnQ7XG5cbiAgICAgIC8vIFJldmVyc2UgYWRkIGFuZCByZW1vdmUgc28gcmVtb3ZlcyBhcmUgb3V0cHV0IGZpcnN0IHRvIG1hdGNoIGNvbW1vbiBjb252ZW50aW9uXG4gICAgICAvLyBUaGUgZGlmZmluZyBhbGdvcml0aG0gaXMgdGllZCB0byBhZGQgdGhlbiByZW1vdmUgb3V0cHV0IGFuZCB0aGlzIGlzIHRoZSBzaW1wbGVzdFxuICAgICAgLy8gcm91dGUgdG8gZ2V0IHRoZSBkZXNpcmVkIG91dHB1dCB3aXRoIG1pbmltYWwgb3ZlcmhlYWQuXG4gICAgICBpZiAoY29tcG9uZW50UG9zICYmIGNvbXBvbmVudHNbY29tcG9uZW50UG9zIC0gMV0uYWRkZWQpIHtcbiAgICAgICAgbGV0IHRtcCA9IGNvbXBvbmVudHNbY29tcG9uZW50UG9zIC0gMV07XG4gICAgICAgIGNvbXBvbmVudHNbY29tcG9uZW50UG9zIC0gMV0gPSBjb21wb25lbnRzW2NvbXBvbmVudFBvc107XG4gICAgICAgIGNvbXBvbmVudHNbY29tcG9uZW50UG9zXSA9IHRtcDtcbiAgICAgIH1cbiAgICB9XG4gIH1cblxuICAvLyBTcGVjaWFsIGNhc2UgaGFuZGxlIGZvciB3aGVuIG9uZSB0ZXJtaW5hbCBpcyBpZ25vcmVkLiBGb3IgdGhpcyBjYXNlIHdlIG1lcmdlIHRoZVxuICAvLyB0ZXJtaW5hbCBpbnRvIHRoZSBwcmlvciBzdHJpbmcgYW5kIGRyb3AgdGhlIGNoYW5nZS5cbiAgbGV0IGxhc3RDb21wb25lbnQgPSBjb21wb25lbnRzW2NvbXBvbmVudExlbiAtIDFdO1xuICBpZiAoY29tcG9uZW50TGVuID4gMVxuICAgICAgJiYgKGxhc3RDb21wb25lbnQuYWRkZWQgfHwgbGFzdENvbXBvbmVudC5yZW1vdmVkKVxuICAgICAgJiYgZGlmZi5lcXVhbHMoJycsIGxhc3RDb21wb25lbnQudmFsdWUpKSB7XG4gICAgY29tcG9uZW50c1tjb21wb25lbnRMZW4gLSAyXS52YWx1ZSArPSBsYXN0Q29tcG9uZW50LnZhbHVlO1xuICAgIGNvbXBvbmVudHMucG9wKCk7XG4gIH1cblxuICByZXR1cm4gY29tcG9uZW50cztcbn1cblxuZnVuY3Rpb24gY2xvbmVQYXRoKHBhdGgpIHtcbiAgcmV0dXJuIHsgbmV3UG9zOiBwYXRoLm5ld1BvcywgY29tcG9uZW50czogcGF0aC5jb21wb25lbnRzLnNsaWNlKDApIH07XG59XG4iXX0=
+
+
+/***/ },
+/* 12 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports.characterDiff = undefined;
+	exports. /*istanbul ignore end*/diffChars = diffChars;
+
+	var /*istanbul ignore start*/_base = __webpack_require__(11) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	var _base2 = _interopRequireDefault(_base);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	/*istanbul ignore end*/var characterDiff = /*istanbul ignore start*/exports. /*istanbul ignore end*/characterDiff = new /*istanbul ignore start*/_base2.default() /*istanbul ignore end*/;
+	function diffChars(oldStr, newStr, callback) {
+	  return characterDiff.diff(oldStr, newStr, callback);
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9kaWZmL2NoYXJhY3Rlci5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7O2dDQUdnQjs7QUFIaEI7Ozs7Ozs7dUJBRU8sSUFBTSx5RkFBZ0IscUVBQWhCO0FBQ04sU0FBUyxTQUFULENBQW1CLE1BQW5CLEVBQTJCLE1BQTNCLEVBQW1DLFFBQW5DLEVBQTZDO0FBQUUsU0FBTyxjQUFjLElBQWQsQ0FBbUIsTUFBbkIsRUFBMkIsTUFBM0IsRUFBbUMsUUFBbkMsQ0FBUCxDQUFGO0NBQTdDIiwiZmlsZSI6ImNoYXJhY3Rlci5qcyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBEaWZmIGZyb20gJy4vYmFzZSc7XG5cbmV4cG9ydCBjb25zdCBjaGFyYWN0ZXJEaWZmID0gbmV3IERpZmYoKTtcbmV4cG9ydCBmdW5jdGlvbiBkaWZmQ2hhcnMob2xkU3RyLCBuZXdTdHIsIGNhbGxiYWNrKSB7IHJldHVybiBjaGFyYWN0ZXJEaWZmLmRpZmYob2xkU3RyLCBuZXdTdHIsIGNhbGxiYWNrKTsgfVxuIl19
+
+
+/***/ },
+/* 13 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports.wordDiff = undefined;
+	exports. /*istanbul ignore end*/diffWords = diffWords;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffWordsWithSpace = diffWordsWithSpace;
+
+	var /*istanbul ignore start*/_base = __webpack_require__(11) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	var _base2 = _interopRequireDefault(_base);
+
+	/*istanbul ignore end*/
+	var /*istanbul ignore start*/_params = __webpack_require__(14) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	/*istanbul ignore end*/
+
+	// Based on https://en.wikipedia.org/wiki/Latin_script_in_Unicode
+	//
+	// Ranges and exceptions:
+	// Latin-1 Supplement, 0080–00FF
+	//  - U+00D7  × Multiplication sign
+	//  - U+00F7  ÷ Division sign
+	// Latin Extended-A, 0100–017F
+	// Latin Extended-B, 0180–024F
+	// IPA Extensions, 0250–02AF
+	// Spacing Modifier Letters, 02B0–02FF
+	//  - U+02C7  ˇ &#711;  Caron
+	//  - U+02D8  ˘ &#728;  Breve
+	//  - U+02D9  ˙ &#729;  Dot Above
+	//  - U+02DA  ˚ &#730;  Ring Above
+	//  - U+02DB  ˛ &#731;  Ogonek
+	//  - U+02DC  ˜ &#732;  Small Tilde
+	//  - U+02DD  ˝ &#733;  Double Acute Accent
+	// Latin Extended Additional, 1E00–1EFF
+	var extendedWordChars = /^[A-Za-z\xC0-\u02C6\u02C8-\u02D7\u02DE-\u02FF\u1E00-\u1EFF]+$/;
+
+	var reWhitespace = /\S/;
+
+	var wordDiff = /*istanbul ignore start*/exports. /*istanbul ignore end*/wordDiff = new /*istanbul ignore start*/_base2.default() /*istanbul ignore end*/;
+	wordDiff.equals = function (left, right) {
+	  return left === right || this.options.ignoreWhitespace && !reWhitespace.test(left) && !reWhitespace.test(right);
+	};
+	wordDiff.tokenize = function (value) {
+	  var tokens = value.split(/(\s+|\b)/);
+
+	  // Join the boundary splits that we do not consider to be boundaries. This is primarily the extended Latin character set.
+	  for (var i = 0; i < tokens.length - 1; i++) {
+	    // If we have an empty string in the next field and we have only word chars before and after, merge
+	    if (!tokens[i + 1] && tokens[i + 2] && extendedWordChars.test(tokens[i]) && extendedWordChars.test(tokens[i + 2])) {
+	      tokens[i] += tokens[i + 2];
+	      tokens.splice(i + 1, 2);
+	      i--;
+	    }
+	  }
+
+	  return tokens;
+	};
+
+	function diffWords(oldStr, newStr, callback) {
+	  var options = /*istanbul ignore start*/(0, _params.generateOptions) /*istanbul ignore end*/(callback, { ignoreWhitespace: true });
+	  return wordDiff.diff(oldStr, newStr, options);
+	}
+	function diffWordsWithSpace(oldStr, newStr, callback) {
+	  return wordDiff.diff(oldStr, newStr, callback);
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9kaWZmL3dvcmQuanMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7OztnQ0ErQ2dCO3lEQUlBOztBQW5EaEI7Ozs7OztBQUNBOzs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7Ozs7O0FBb0JBLElBQU0sb0JBQW9CLCtEQUFwQjs7QUFFTixJQUFNLGVBQWUsSUFBZjs7QUFFQyxJQUFNLCtFQUFXLHFFQUFYO0FBQ2IsU0FBUyxNQUFULEdBQWtCLFVBQVMsSUFBVCxFQUFlLEtBQWYsRUFBc0I7QUFDdEMsU0FBTyxTQUFTLEtBQVQsSUFBbUIsS0FBSyxPQUFMLENBQWEsZ0JBQWIsSUFBaUMsQ0FBQyxhQUFhLElBQWIsQ0FBa0IsSUFBbEIsQ0FBRCxJQUE0QixDQUFDLGFBQWEsSUFBYixDQUFrQixLQUFsQixDQUFELENBRGpEO0NBQXRCO0FBR2xCLFNBQVMsUUFBVCxHQUFvQixVQUFTLEtBQVQsRUFBZ0I7QUFDbEMsTUFBSSxTQUFTLE1BQU0sS0FBTixDQUFZLFVBQVosQ0FBVDs7O0FBRDhCLE9BSTdCLElBQUksSUFBSSxDQUFKLEVBQU8sSUFBSSxPQUFPLE1BQVAsR0FBZ0IsQ0FBaEIsRUFBbUIsR0FBdkMsRUFBNEM7O0FBRTFDLFFBQUksQ0FBQyxPQUFPLElBQUksQ0FBSixDQUFSLElBQWtCLE9BQU8sSUFBSSxDQUFKLENBQXpCLElBQ0ssa0JBQWtCLElBQWxCLENBQXVCLE9BQU8sQ0FBUCxDQUF2QixDQURMLElBRUssa0JBQWtCLElBQWxCLENBQXVCLE9BQU8sSUFBSSxDQUFKLENBQTlCLENBRkwsRUFFNEM7QUFDOUMsYUFBTyxDQUFQLEtBQWEsT0FBTyxJQUFJLENBQUosQ0FBcEIsQ0FEOEM7QUFFOUMsYUFBTyxNQUFQLENBQWMsSUFBSSxDQUFKLEVBQU8sQ0FBckIsRUFGOEM7QUFHOUMsVUFIOEM7S0FGaEQ7R0FGRjs7QUFXQSxTQUFPLE1BQVAsQ0Fma0M7Q0FBaEI7O0FBa0JiLFNBQVMsU0FBVCxDQUFtQixNQUFuQixFQUEyQixNQUEzQixFQUFtQyxRQUFuQyxFQUE2QztBQUNsRCxNQUFJLFVBQVUsOEVBQWdCLFFBQWhCLEVBQTBCLEVBQUMsa0JBQWtCLElBQWxCLEVBQTNCLENBQVYsQ0FEOEM7QUFFbEQsU0FBTyxTQUFTLElBQVQsQ0FBYyxNQUFkLEVBQXNCLE1BQXRCLEVBQThCLE9BQTlCLENBQVAsQ0FGa0Q7Q0FBN0M7QUFJQSxTQUFTLGtCQUFULENBQTRCLE1BQTVCLEVBQW9DLE1BQXBDLEVBQTRDLFFBQTVDLEVBQXNEO0FBQzNELFNBQU8sU0FBUyxJQUFULENBQWMsTUFBZCxFQUFzQixNQUF0QixFQUE4QixRQUE5QixDQUFQLENBRDJEO0NBQXREIiwiZmlsZSI6IndvcmQuanMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgRGlmZiBmcm9tICcuL2Jhc2UnO1xuaW1wb3J0IHtnZW5lcmF0ZU9wdGlvbnN9IGZyb20gJy4uL3V0aWwvcGFyYW1zJztcblxuLy8gQmFzZWQgb24gaHR0cHM6Ly9lbi53aWtpcGVkaWEub3JnL3dpa2kvTGF0aW5fc2NyaXB0X2luX1VuaWNvZGVcbi8vXG4vLyBSYW5nZXMgYW5kIGV4Y2VwdGlvbnM6XG4vLyBMYXRpbi0xIFN1cHBsZW1lbnQsIDAwODDigJMwMEZGXG4vLyAgLSBVKzAwRDcgIMOXIE11bHRpcGxpY2F0aW9uIHNpZ25cbi8vICAtIFUrMDBGNyAgw7cgRGl2aXNpb24gc2lnblxuLy8gTGF0aW4gRXh0ZW5kZWQtQSwgMDEwMOKAkzAxN0Zcbi8vIExhdGluIEV4dGVuZGVkLUIsIDAxODDigJMwMjRGXG4vLyBJUEEgRXh0ZW5zaW9ucywgMDI1MOKAkzAyQUZcbi8vIFNwYWNpbmcgTW9kaWZpZXIgTGV0dGVycywgMDJCMOKAkzAyRkZcbi8vICAtIFUrMDJDNyAgy4cgJiM3MTE7ICBDYXJvblxuLy8gIC0gVSswMkQ4ICDLmCAmIzcyODsgIEJyZXZlXG4vLyAgLSBVKzAyRDkgIMuZICYjNzI5OyAgRG90IEFib3ZlXG4vLyAgLSBVKzAyREEgIMuaICYjNzMwOyAgUmluZyBBYm92ZVxuLy8gIC0gVSswMkRCICDLmyAmIzczMTsgIE9nb25la1xuLy8gIC0gVSswMkRDICDLnCAmIzczMjsgIFNtYWxsIFRpbGRlXG4vLyAgLSBVKzAyREQgIMudICYjNzMzOyAgRG91YmxlIEFjdXRlIEFjY2VudFxuLy8gTGF0aW4gRXh0ZW5kZWQgQWRkaXRpb25hbCwgMUUwMOKAkzFFRkZcbmNvbnN0IGV4dGVuZGVkV29yZENoYXJzID0gL15bYS16QS1aXFx1e0MwfS1cXHV7RkZ9XFx1e0Q4fS1cXHV7RjZ9XFx1e0Y4fS1cXHV7MkM2fVxcdXsyQzh9LVxcdXsyRDd9XFx1ezJERX0tXFx1ezJGRn1cXHV7MUUwMH0tXFx1ezFFRkZ9XSskL3U7XG5cbmNvbnN0IHJlV2hpdGVzcGFjZSA9IC9cXFMvO1xuXG5leHBvcnQgY29uc3Qgd29yZERpZmYgPSBuZXcgRGlmZigpO1xud29yZERpZmYuZXF1YWxzID0gZnVuY3Rpb24obGVmdCwgcmlnaHQpIHtcbiAgcmV0dXJuIGxlZnQgPT09IHJpZ2h0IHx8ICh0aGlzLm9wdGlvbnMuaWdub3JlV2hpdGVzcGFjZSAmJiAhcmVXaGl0ZXNwYWNlLnRlc3QobGVmdCkgJiYgIXJlV2hpdGVzcGFjZS50ZXN0KHJpZ2h0KSk7XG59O1xud29yZERpZmYudG9rZW5pemUgPSBmdW5jdGlvbih2YWx1ZSkge1xuICBsZXQgdG9rZW5zID0gdmFsdWUuc3BsaXQoLyhcXHMrfFxcYikvKTtcblxuICAvLyBKb2luIHRoZSBib3VuZGFyeSBzcGxpdHMgdGhhdCB3ZSBkbyBub3QgY29uc2lkZXIgdG8gYmUgYm91bmRhcmllcy4gVGhpcyBpcyBwcmltYXJpbHkgdGhlIGV4dGVuZGVkIExhdGluIGNoYXJhY3RlciBzZXQuXG4gIGZvciAobGV0IGkgPSAwOyBpIDwgdG9rZW5zLmxlbmd0aCAtIDE7IGkrKykge1xuICAgIC8vIElmIHdlIGhhdmUgYW4gZW1wdHkgc3RyaW5nIGluIHRoZSBuZXh0IGZpZWxkIGFuZCB3ZSBoYXZlIG9ubHkgd29yZCBjaGFycyBiZWZvcmUgYW5kIGFmdGVyLCBtZXJnZVxuICAgIGlmICghdG9rZW5zW2kgKyAxXSAmJiB0b2tlbnNbaSArIDJdXG4gICAgICAgICAgJiYgZXh0ZW5kZWRXb3JkQ2hhcnMudGVzdCh0b2tlbnNbaV0pXG4gICAgICAgICAgJiYgZXh0ZW5kZWRXb3JkQ2hhcnMudGVzdCh0b2tlbnNbaSArIDJdKSkge1xuICAgICAgdG9rZW5zW2ldICs9IHRva2Vuc1tpICsgMl07XG4gICAgICB0b2tlbnMuc3BsaWNlKGkgKyAxLCAyKTtcbiAgICAgIGktLTtcbiAgICB9XG4gIH1cblxuICByZXR1cm4gdG9rZW5zO1xufTtcblxuZXhwb3J0IGZ1bmN0aW9uIGRpZmZXb3JkcyhvbGRTdHIsIG5ld1N0ciwgY2FsbGJhY2spIHtcbiAgbGV0IG9wdGlvbnMgPSBnZW5lcmF0ZU9wdGlvbnMoY2FsbGJhY2ssIHtpZ25vcmVXaGl0ZXNwYWNlOiB0cnVlfSk7XG4gIHJldHVybiB3b3JkRGlmZi5kaWZmKG9sZFN0ciwgbmV3U3RyLCBvcHRpb25zKTtcbn1cbmV4cG9ydCBmdW5jdGlvbiBkaWZmV29yZHNXaXRoU3BhY2Uob2xkU3RyLCBuZXdTdHIsIGNhbGxiYWNrKSB7XG4gIHJldHVybiB3b3JkRGlmZi5kaWZmKG9sZFN0ciwgbmV3U3RyLCBjYWxsYmFjayk7XG59XG4iXX0=
+
+
+/***/ },
+/* 14 */
+/***/ function(module, exports) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports. /*istanbul ignore end*/generateOptions = generateOptions;
+	function generateOptions(options, defaults) {
+	  if (typeof options === 'function') {
+	    defaults.callback = options;
+	  } else if (options) {
+	    for (var name in options) {
+	      /* istanbul ignore else */
+	      if (options.hasOwnProperty(name)) {
+	        defaults[name] = options[name];
+	      }
+	    }
+	  }
+	  return defaults;
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy91dGlsL3BhcmFtcy5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Z0NBQWdCO0FBQVQsU0FBUyxlQUFULENBQXlCLE9BQXpCLEVBQWtDLFFBQWxDLEVBQTRDO0FBQ2pELE1BQUksT0FBTyxPQUFQLEtBQW1CLFVBQW5CLEVBQStCO0FBQ2pDLGFBQVMsUUFBVCxHQUFvQixPQUFwQixDQURpQztHQUFuQyxNQUVPLElBQUksT0FBSixFQUFhO0FBQ2xCLFNBQUssSUFBSSxJQUFKLElBQVksT0FBakIsRUFBMEI7O0FBRXhCLFVBQUksUUFBUSxjQUFSLENBQXVCLElBQXZCLENBQUosRUFBa0M7QUFDaEMsaUJBQVMsSUFBVCxJQUFpQixRQUFRLElBQVIsQ0FBakIsQ0FEZ0M7T0FBbEM7S0FGRjtHQURLO0FBUVAsU0FBTyxRQUFQLENBWGlEO0NBQTVDIiwiZmlsZSI6InBhcmFtcy5qcyIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBmdW5jdGlvbiBnZW5lcmF0ZU9wdGlvbnMob3B0aW9ucywgZGVmYXVsdHMpIHtcbiAgaWYgKHR5cGVvZiBvcHRpb25zID09PSAnZnVuY3Rpb24nKSB7XG4gICAgZGVmYXVsdHMuY2FsbGJhY2sgPSBvcHRpb25zO1xuICB9IGVsc2UgaWYgKG9wdGlvbnMpIHtcbiAgICBmb3IgKGxldCBuYW1lIGluIG9wdGlvbnMpIHtcbiAgICAgIC8qIGlzdGFuYnVsIGlnbm9yZSBlbHNlICovXG4gICAgICBpZiAob3B0aW9ucy5oYXNPd25Qcm9wZXJ0eShuYW1lKSkge1xuICAgICAgICBkZWZhdWx0c1tuYW1lXSA9IG9wdGlvbnNbbmFtZV07XG4gICAgICB9XG4gICAgfVxuICB9XG4gIHJldHVybiBkZWZhdWx0cztcbn1cbiJdfQ==
+
+
+/***/ },
+/* 15 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports.lineDiff = undefined;
+	exports. /*istanbul ignore end*/diffLines = diffLines;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/diffTrimmedLines = diffTrimmedLines;
+
+	var /*istanbul ignore start*/_base = __webpack_require__(11) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	var _base2 = _interopRequireDefault(_base);
+
+	/*istanbul ignore end*/
+	var /*istanbul ignore start*/_params = __webpack_require__(14) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	/*istanbul ignore end*/var lineDiff = /*istanbul ignore start*/exports. /*istanbul ignore end*/lineDiff = new /*istanbul ignore start*/_base2.default() /*istanbul ignore end*/;
+	lineDiff.tokenize = function (value) {
+	  var retLines = [],
+	      linesAndNewlines = value.split(/(\n|\r\n)/);
+
+	  // Ignore the final empty token that occurs if the string ends with a new line
+	  if (!linesAndNewlines[linesAndNewlines.length - 1]) {
+	    linesAndNewlines.pop();
+	  }
+
+	  // Merge the content and line separators into single tokens
+	  for (var i = 0; i < linesAndNewlines.length; i++) {
+	    var line = linesAndNewlines[i];
+
+	    if (i % 2 && !this.options.newlineIsToken) {
+	      retLines[retLines.length - 1] += line;
+	    } else {
+	      if (this.options.ignoreWhitespace) {
+	        line = line.trim();
+	      }
+	      retLines.push(line);
+	    }
+	  }
+
+	  return retLines;
+	};
+
+	function diffLines(oldStr, newStr, callback) {
+	  return lineDiff.diff(oldStr, newStr, callback);
+	}
+	function diffTrimmedLines(oldStr, newStr, callback) {
+	  var options = /*istanbul ignore start*/(0, _params.generateOptions) /*istanbul ignore end*/(callback, { ignoreWhitespace: true });
+	  return lineDiff.diff(oldStr, newStr, options);
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9kaWZmL2xpbmUuanMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7OztnQ0E4QmdCO3lEQUNBOztBQS9CaEI7Ozs7OztBQUNBOzs7Ozt1QkFFTyxJQUFNLCtFQUFXLHFFQUFYO0FBQ2IsU0FBUyxRQUFULEdBQW9CLFVBQVMsS0FBVCxFQUFnQjtBQUNsQyxNQUFJLFdBQVcsRUFBWDtNQUNBLG1CQUFtQixNQUFNLEtBQU4sQ0FBWSxXQUFaLENBQW5COzs7QUFGOEIsTUFLOUIsQ0FBQyxpQkFBaUIsaUJBQWlCLE1BQWpCLEdBQTBCLENBQTFCLENBQWxCLEVBQWdEO0FBQ2xELHFCQUFpQixHQUFqQixHQURrRDtHQUFwRDs7O0FBTGtDLE9BVTdCLElBQUksSUFBSSxDQUFKLEVBQU8sSUFBSSxpQkFBaUIsTUFBakIsRUFBeUIsR0FBN0MsRUFBa0Q7QUFDaEQsUUFBSSxPQUFPLGlCQUFpQixDQUFqQixDQUFQLENBRDRDOztBQUdoRCxRQUFJLElBQUksQ0FBSixJQUFTLENBQUMsS0FBSyxPQUFMLENBQWEsY0FBYixFQUE2QjtBQUN6QyxlQUFTLFNBQVMsTUFBVCxHQUFrQixDQUFsQixDQUFULElBQWlDLElBQWpDLENBRHlDO0tBQTNDLE1BRU87QUFDTCxVQUFJLEtBQUssT0FBTCxDQUFhLGdCQUFiLEVBQStCO0FBQ2pDLGVBQU8sS0FBSyxJQUFMLEVBQVAsQ0FEaUM7T0FBbkM7QUFHQSxlQUFTLElBQVQsQ0FBYyxJQUFkLEVBSks7S0FGUDtHQUhGOztBQWFBLFNBQU8sUUFBUCxDQXZCa0M7Q0FBaEI7O0FBMEJiLFNBQVMsU0FBVCxDQUFtQixNQUFuQixFQUEyQixNQUEzQixFQUFtQyxRQUFuQyxFQUE2QztBQUFFLFNBQU8sU0FBUyxJQUFULENBQWMsTUFBZCxFQUFzQixNQUF0QixFQUE4QixRQUE5QixDQUFQLENBQUY7Q0FBN0M7QUFDQSxTQUFTLGdCQUFULENBQTBCLE1BQTFCLEVBQWtDLE1BQWxDLEVBQTBDLFFBQTFDLEVBQW9EO0FBQ3pELE1BQUksVUFBVSw4RUFBZ0IsUUFBaEIsRUFBMEIsRUFBQyxrQkFBa0IsSUFBbEIsRUFBM0IsQ0FBVixDQURxRDtBQUV6RCxTQUFPLFNBQVMsSUFBVCxDQUFjLE1BQWQsRUFBc0IsTUFBdEIsRUFBOEIsT0FBOUIsQ0FBUCxDQUZ5RDtDQUFwRCIsImZpbGUiOiJsaW5lLmpzIiwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IERpZmYgZnJvbSAnLi9iYXNlJztcbmltcG9ydCB7Z2VuZXJhdGVPcHRpb25zfSBmcm9tICcuLi91dGlsL3BhcmFtcyc7XG5cbmV4cG9ydCBjb25zdCBsaW5lRGlmZiA9IG5ldyBEaWZmKCk7XG5saW5lRGlmZi50b2tlbml6ZSA9IGZ1bmN0aW9uKHZhbHVlKSB7XG4gIGxldCByZXRMaW5lcyA9IFtdLFxuICAgICAgbGluZXNBbmROZXdsaW5lcyA9IHZhbHVlLnNwbGl0KC8oXFxufFxcclxcbikvKTtcblxuICAvLyBJZ25vcmUgdGhlIGZpbmFsIGVtcHR5IHRva2VuIHRoYXQgb2NjdXJzIGlmIHRoZSBzdHJpbmcgZW5kcyB3aXRoIGEgbmV3IGxpbmVcbiAgaWYgKCFsaW5lc0FuZE5ld2xpbmVzW2xpbmVzQW5kTmV3bGluZXMubGVuZ3RoIC0gMV0pIHtcbiAgICBsaW5lc0FuZE5ld2xpbmVzLnBvcCgpO1xuICB9XG5cbiAgLy8gTWVyZ2UgdGhlIGNvbnRlbnQgYW5kIGxpbmUgc2VwYXJhdG9ycyBpbnRvIHNpbmdsZSB0b2tlbnNcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBsaW5lc0FuZE5ld2xpbmVzLmxlbmd0aDsgaSsrKSB7XG4gICAgbGV0IGxpbmUgPSBsaW5lc0FuZE5ld2xpbmVzW2ldO1xuXG4gICAgaWYgKGkgJSAyICYmICF0aGlzLm9wdGlvbnMubmV3bGluZUlzVG9rZW4pIHtcbiAgICAgIHJldExpbmVzW3JldExpbmVzLmxlbmd0aCAtIDFdICs9IGxpbmU7XG4gICAgfSBlbHNlIHtcbiAgICAgIGlmICh0aGlzLm9wdGlvbnMuaWdub3JlV2hpdGVzcGFjZSkge1xuICAgICAgICBsaW5lID0gbGluZS50cmltKCk7XG4gICAgICB9XG4gICAgICByZXRMaW5lcy5wdXNoKGxpbmUpO1xuICAgIH1cbiAgfVxuXG4gIHJldHVybiByZXRMaW5lcztcbn07XG5cbmV4cG9ydCBmdW5jdGlvbiBkaWZmTGluZXMob2xkU3RyLCBuZXdTdHIsIGNhbGxiYWNrKSB7IHJldHVybiBsaW5lRGlmZi5kaWZmKG9sZFN0ciwgbmV3U3RyLCBjYWxsYmFjayk7IH1cbmV4cG9ydCBmdW5jdGlvbiBkaWZmVHJpbW1lZExpbmVzKG9sZFN0ciwgbmV3U3RyLCBjYWxsYmFjaykge1xuICBsZXQgb3B0aW9ucyA9IGdlbmVyYXRlT3B0aW9ucyhjYWxsYmFjaywge2lnbm9yZVdoaXRlc3BhY2U6IHRydWV9KTtcbiAgcmV0dXJuIGxpbmVEaWZmLmRpZmYob2xkU3RyLCBuZXdTdHIsIG9wdGlvbnMpO1xufVxuIl19
+
+
+/***/ },
+/* 16 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports.sentenceDiff = undefined;
+	exports. /*istanbul ignore end*/diffSentences = diffSentences;
+
+	var /*istanbul ignore start*/_base = __webpack_require__(11) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	var _base2 = _interopRequireDefault(_base);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	/*istanbul ignore end*/var sentenceDiff = /*istanbul ignore start*/exports. /*istanbul ignore end*/sentenceDiff = new /*istanbul ignore start*/_base2.default() /*istanbul ignore end*/;
+	sentenceDiff.tokenize = function (value) {
+	  return value.split(/(\S.+?[.!?])(?=\s+|$)/);
+	};
+
+	function diffSentences(oldStr, newStr, callback) {
+	  return sentenceDiff.diff(oldStr, newStr, callback);
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9kaWZmL3NlbnRlbmNlLmpzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7Z0NBUWdCOztBQVJoQjs7Ozs7Ozt1QkFHTyxJQUFNLHVGQUFlLHFFQUFmO0FBQ2IsYUFBYSxRQUFiLEdBQXdCLFVBQVMsS0FBVCxFQUFnQjtBQUN0QyxTQUFPLE1BQU0sS0FBTixDQUFZLHVCQUFaLENBQVAsQ0FEc0M7Q0FBaEI7O0FBSWpCLFNBQVMsYUFBVCxDQUF1QixNQUF2QixFQUErQixNQUEvQixFQUF1QyxRQUF2QyxFQUFpRDtBQUFFLFNBQU8sYUFBYSxJQUFiLENBQWtCLE1BQWxCLEVBQTBCLE1BQTFCLEVBQWtDLFFBQWxDLENBQVAsQ0FBRjtDQUFqRCIsImZpbGUiOiJzZW50ZW5jZS5qcyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBEaWZmIGZyb20gJy4vYmFzZSc7XG5cblxuZXhwb3J0IGNvbnN0IHNlbnRlbmNlRGlmZiA9IG5ldyBEaWZmKCk7XG5zZW50ZW5jZURpZmYudG9rZW5pemUgPSBmdW5jdGlvbih2YWx1ZSkge1xuICByZXR1cm4gdmFsdWUuc3BsaXQoLyhcXFMuKz9bLiE/XSkoPz1cXHMrfCQpLyk7XG59O1xuXG5leHBvcnQgZnVuY3Rpb24gZGlmZlNlbnRlbmNlcyhvbGRTdHIsIG5ld1N0ciwgY2FsbGJhY2spIHsgcmV0dXJuIHNlbnRlbmNlRGlmZi5kaWZmKG9sZFN0ciwgbmV3U3RyLCBjYWxsYmFjayk7IH1cbiJdfQ==
+
+
+/***/ },
+/* 17 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports.cssDiff = undefined;
+	exports. /*istanbul ignore end*/diffCss = diffCss;
+
+	var /*istanbul ignore start*/_base = __webpack_require__(11) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	var _base2 = _interopRequireDefault(_base);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	/*istanbul ignore end*/var cssDiff = /*istanbul ignore start*/exports. /*istanbul ignore end*/cssDiff = new /*istanbul ignore start*/_base2.default() /*istanbul ignore end*/;
+	cssDiff.tokenize = function (value) {
+	  return value.split(/([{}:;,]|\s+)/);
+	};
+
+	function diffCss(oldStr, newStr, callback) {
+	  return cssDiff.diff(oldStr, newStr, callback);
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9kaWZmL2Nzcy5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7O2dDQU9nQjs7QUFQaEI7Ozs7Ozs7dUJBRU8sSUFBTSw2RUFBVSxxRUFBVjtBQUNiLFFBQVEsUUFBUixHQUFtQixVQUFTLEtBQVQsRUFBZ0I7QUFDakMsU0FBTyxNQUFNLEtBQU4sQ0FBWSxlQUFaLENBQVAsQ0FEaUM7Q0FBaEI7O0FBSVosU0FBUyxPQUFULENBQWlCLE1BQWpCLEVBQXlCLE1BQXpCLEVBQWlDLFFBQWpDLEVBQTJDO0FBQUUsU0FBTyxRQUFRLElBQVIsQ0FBYSxNQUFiLEVBQXFCLE1BQXJCLEVBQTZCLFFBQTdCLENBQVAsQ0FBRjtDQUEzQyIsImZpbGUiOiJjc3MuanMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgRGlmZiBmcm9tICcuL2Jhc2UnO1xuXG5leHBvcnQgY29uc3QgY3NzRGlmZiA9IG5ldyBEaWZmKCk7XG5jc3NEaWZmLnRva2VuaXplID0gZnVuY3Rpb24odmFsdWUpIHtcbiAgcmV0dXJuIHZhbHVlLnNwbGl0KC8oW3t9OjssXXxcXHMrKS8pO1xufTtcblxuZXhwb3J0IGZ1bmN0aW9uIGRpZmZDc3Mob2xkU3RyLCBuZXdTdHIsIGNhbGxiYWNrKSB7IHJldHVybiBjc3NEaWZmLmRpZmYob2xkU3RyLCBuZXdTdHIsIGNhbGxiYWNrKTsgfVxuIl19
+
+
+/***/ },
+/* 18 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports.jsonDiff = undefined;
+
+	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
+	exports. /*istanbul ignore end*/diffJson = diffJson;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/canonicalize = canonicalize;
+
+	var /*istanbul ignore start*/_base = __webpack_require__(11) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	var _base2 = _interopRequireDefault(_base);
+
+	/*istanbul ignore end*/
+	var /*istanbul ignore start*/_line = __webpack_require__(15) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	/*istanbul ignore end*/
+
+	var objectPrototypeToString = Object.prototype.toString;
+
+	var jsonDiff = /*istanbul ignore start*/exports. /*istanbul ignore end*/jsonDiff = new /*istanbul ignore start*/_base2.default() /*istanbul ignore end*/;
+	// Discriminate between two lines of pretty-printed, serialized JSON where one of them has a
+	// dangling comma and the other doesn't. Turns out including the dangling comma yields the nicest output:
+	jsonDiff.useLongestToken = true;
+
+	jsonDiff.tokenize = /*istanbul ignore start*/_line.lineDiff. /*istanbul ignore end*/tokenize;
+	jsonDiff.castInput = function (value) {
+	  return typeof value === 'string' ? value : JSON.stringify(canonicalize(value), undefined, '  ');
+	};
+	jsonDiff.equals = function (left, right) {
+	  return (/*istanbul ignore start*/_base2.default. /*istanbul ignore end*/prototype.equals(left.replace(/,([\r\n])/g, '$1'), right.replace(/,([\r\n])/g, '$1'))
+	  );
+	};
+
+	function diffJson(oldObj, newObj, callback) {
+	  return jsonDiff.diff(oldObj, newObj, callback);
+	}
+
+	// This function handles the presence of circular references by bailing out when encountering an
+	// object that is already on the "stack" of items being processed.
+	function canonicalize(obj, stack, replacementStack) {
+	  stack = stack || [];
+	  replacementStack = replacementStack || [];
+
+	  var i = /*istanbul ignore start*/void 0 /*istanbul ignore end*/;
+
+	  for (i = 0; i < stack.length; i += 1) {
+	    if (stack[i] === obj) {
+	      return replacementStack[i];
+	    }
+	  }
+
+	  var canonicalizedObj = /*istanbul ignore start*/void 0 /*istanbul ignore end*/;
+
+	  if ('[object Array]' === objectPrototypeToString.call(obj)) {
+	    stack.push(obj);
+	    canonicalizedObj = new Array(obj.length);
+	    replacementStack.push(canonicalizedObj);
+	    for (i = 0; i < obj.length; i += 1) {
+	      canonicalizedObj[i] = canonicalize(obj[i], stack, replacementStack);
+	    }
+	    stack.pop();
+	    replacementStack.pop();
+	    return canonicalizedObj;
+	  }
+
+	  if (obj && obj.toJSON) {
+	    obj = obj.toJSON();
+	  }
+
+	  if ( /*istanbul ignore start*/(typeof /*istanbul ignore end*/obj === 'undefined' ? 'undefined' : _typeof(obj)) === 'object' && obj !== null) {
+	    stack.push(obj);
+	    canonicalizedObj = {};
+	    replacementStack.push(canonicalizedObj);
+	    var sortedKeys = [],
+	        key = /*istanbul ignore start*/void 0 /*istanbul ignore end*/;
+	    for (key in obj) {
+	      /* istanbul ignore else */
+	      if (obj.hasOwnProperty(key)) {
+	        sortedKeys.push(key);
+	      }
+	    }
+	    sortedKeys.sort();
+	    for (i = 0; i < sortedKeys.length; i += 1) {
+	      key = sortedKeys[i];
+	      canonicalizedObj[key] = canonicalize(obj[key], stack, replacementStack);
+	    }
+	    stack.pop();
+	    replacementStack.pop();
+	  } else {
+	    canonicalizedObj = obj;
+	  }
+	  return canonicalizedObj;
+	}
+	//# sourceMappingURL=data:application/json;base64,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QjtLQUZGO0FBTUEsZUFBVyxJQUFYLEdBWjJDO0FBYTNDLFNBQUssSUFBSSxDQUFKLEVBQU8sSUFBSSxXQUFXLE1BQVgsRUFBbUIsS0FBSyxDQUFMLEVBQVE7QUFDekMsWUFBTSxXQUFXLENBQVgsQ0FBTixDQUR5QztBQUV6Qyx1QkFBaUIsR0FBakIsSUFBd0IsYUFBYSxJQUFJLEdBQUosQ0FBYixFQUF1QixLQUF2QixFQUE4QixnQkFBOUIsQ0FBeEIsQ0FGeUM7S0FBM0M7QUFJQSxVQUFNLEdBQU4sR0FqQjJDO0FBa0IzQyxxQkFBaUIsR0FBakIsR0FsQjJDO0dBQTdDLE1BbUJPO0FBQ0wsdUJBQW1CLEdBQW5CLENBREs7R0FuQlA7QUFzQkEsU0FBTyxnQkFBUCxDQXBEeUQ7Q0FBcEQiLCJmaWxlIjoianNvbi5qcyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCBEaWZmIGZyb20gJy4vYmFzZSc7XG5pbXBvcnQge2xpbmVEaWZmfSBmcm9tICcuL2xpbmUnO1xuXG5jb25zdCBvYmplY3RQcm90b3R5cGVUb1N0cmluZyA9IE9iamVjdC5wcm90b3R5cGUudG9TdHJpbmc7XG5cblxuZXhwb3J0IGNvbnN0IGpzb25EaWZmID0gbmV3IERpZmYoKTtcbi8vIERpc2NyaW1pbmF0ZSBiZXR3ZWVuIHR3byBsaW5lcyBvZiBwcmV0dHktcHJpbnRlZCwgc2VyaWFsaXplZCBKU09OIHdoZXJlIG9uZSBvZiB0aGVtIGhhcyBhXG4vLyBkYW5nbGluZyBjb21tYSBhbmQgdGhlIG90aGVyIGRvZXNuJ3QuIFR1cm5zIG91dCBpbmNsdWRpbmcgdGhlIGRhbmdsaW5nIGNvbW1hIHlpZWxkcyB0aGUgbmljZXN0IG91dHB1dDpcbmpzb25EaWZmLnVzZUxvbmdlc3RUb2tlbiA9IHRydWU7XG5cbmpzb25EaWZmLnRva2VuaXplID0gbGluZURpZmYudG9rZW5pemU7XG5qc29uRGlmZi5jYXN0SW5wdXQgPSBmdW5jdGlvbih2YWx1ZSkge1xuICByZXR1cm4gdHlwZW9mIHZhbHVlID09PSAnc3RyaW5nJyA/IHZhbHVlIDogSlNPTi5zdHJpbmdpZnkoY2Fub25pY2FsaXplKHZhbHVlKSwgdW5kZWZpbmVkLCAnICAnKTtcbn07XG5qc29uRGlmZi5lcXVhbHMgPSBmdW5jdGlvbihsZWZ0LCByaWdodCkge1xuICByZXR1cm4gRGlmZi5wcm90b3R5cGUuZXF1YWxzKGxlZnQucmVwbGFjZSgvLChbXFxyXFxuXSkvZywgJyQxJyksIHJpZ2h0LnJlcGxhY2UoLywoW1xcclxcbl0pL2csICckMScpKTtcbn07XG5cbmV4cG9ydCBmdW5jdGlvbiBkaWZmSnNvbihvbGRPYmosIG5ld09iaiwgY2FsbGJhY2spIHsgcmV0dXJuIGpzb25EaWZmLmRpZmYob2xkT2JqLCBuZXdPYmosIGNhbGxiYWNrKTsgfVxuXG5cbi8vIFRoaXMgZnVuY3Rpb24gaGFuZGxlcyB0aGUgcHJlc2VuY2Ugb2YgY2lyY3VsYXIgcmVmZXJlbmNlcyBieSBiYWlsaW5nIG91dCB3aGVuIGVuY291bnRlcmluZyBhblxuLy8gb2JqZWN0IHRoYXQgaXMgYWxyZWFkeSBvbiB0aGUgXCJzdGFja1wiIG9mIGl0ZW1zIGJlaW5nIHByb2Nlc3NlZC5cbmV4cG9ydCBmdW5jdGlvbiBjYW5vbmljYWxpemUob2JqLCBzdGFjaywgcmVwbGFjZW1lbnRTdGFjaykge1xuICBzdGFjayA9IHN0YWNrIHx8IFtdO1xuICByZXBsYWNlbWVudFN0YWNrID0gcmVwbGFjZW1lbnRTdGFjayB8fCBbXTtcblxuICBsZXQgaTtcblxuICBmb3IgKGkgPSAwOyBpIDwgc3RhY2subGVuZ3RoOyBpICs9IDEpIHtcbiAgICBpZiAoc3RhY2tbaV0gPT09IG9iaikge1xuICAgICAgcmV0dXJuIHJlcGxhY2VtZW50U3RhY2tbaV07XG4gICAgfVxuICB9XG5cbiAgbGV0IGNhbm9uaWNhbGl6ZWRPYmo7XG5cbiAgaWYgKCdbb2JqZWN0IEFycmF5XScgPT09IG9iamVjdFByb3RvdHlwZVRvU3RyaW5nLmNhbGwob2JqKSkge1xuICAgIHN0YWNrLnB1c2gob2JqKTtcbiAgICBjYW5vbmljYWxpemVkT2JqID0gbmV3IEFycmF5KG9iai5sZW5ndGgpO1xuICAgIHJlcGxhY2VtZW50U3RhY2sucHVzaChjYW5vbmljYWxpemVkT2JqKTtcbiAgICBmb3IgKGkgPSAwOyBpIDwgb2JqLmxlbmd0aDsgaSArPSAxKSB7XG4gICAgICBjYW5vbmljYWxpemVkT2JqW2ldID0gY2Fub25pY2FsaXplKG9ialtpXSwgc3RhY2ssIHJlcGxhY2VtZW50U3RhY2spO1xuICAgIH1cbiAgICBzdGFjay5wb3AoKTtcbiAgICByZXBsYWNlbWVudFN0YWNrLnBvcCgpO1xuICAgIHJldHVybiBjYW5vbmljYWxpemVkT2JqO1xuICB9XG5cbiAgaWYgKG9iaiAmJiBvYmoudG9KU09OKSB7XG4gICAgb2JqID0gb2JqLnRvSlNPTigpO1xuICB9XG5cbiAgaWYgKHR5cGVvZiBvYmogPT09ICdvYmplY3QnICYmIG9iaiAhPT0gbnVsbCkge1xuICAgIHN0YWNrLnB1c2gob2JqKTtcbiAgICBjYW5vbmljYWxpemVkT2JqID0ge307XG4gICAgcmVwbGFjZW1lbnRTdGFjay5wdXNoKGNhbm9uaWNhbGl6ZWRPYmopO1xuICAgIGxldCBzb3J0ZWRLZXlzID0gW10sXG4gICAgICAgIGtleTtcbiAgICBmb3IgKGtleSBpbiBvYmopIHtcbiAgICAgIC8qIGlzdGFuYnVsIGlnbm9yZSBlbHNlICovXG4gICAgICBpZiAob2JqLmhhc093blByb3BlcnR5KGtleSkpIHtcbiAgICAgICAgc29ydGVkS2V5cy5wdXNoKGtleSk7XG4gICAgICB9XG4gICAgfVxuICAgIHNvcnRlZEtleXMuc29ydCgpO1xuICAgIGZvciAoaSA9IDA7IGkgPCBzb3J0ZWRLZXlzLmxlbmd0aDsgaSArPSAxKSB7XG4gICAgICBrZXkgPSBzb3J0ZWRLZXlzW2ldO1xuICAgICAgY2Fub25pY2FsaXplZE9ialtrZXldID0gY2Fub25pY2FsaXplKG9ialtrZXldLCBzdGFjaywgcmVwbGFjZW1lbnRTdGFjayk7XG4gICAgfVxuICAgIHN0YWNrLnBvcCgpO1xuICAgIHJlcGxhY2VtZW50U3RhY2sucG9wKCk7XG4gIH0gZWxzZSB7XG4gICAgY2Fub25pY2FsaXplZE9iaiA9IG9iajtcbiAgfVxuICByZXR1cm4gY2Fub25pY2FsaXplZE9iajtcbn1cbiJdfQ==
+
+
+/***/ },
+/* 19 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports. /*istanbul ignore end*/applyPatch = applyPatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/applyPatches = applyPatches;
+
+	var /*istanbul ignore start*/_parse = __webpack_require__(20) /*istanbul ignore end*/;
+
+	var /*istanbul ignore start*/_distanceIterator = __webpack_require__(21) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	var _distanceIterator2 = _interopRequireDefault(_distanceIterator);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	/*istanbul ignore end*/function applyPatch(source, uniDiff) {
+	  /*istanbul ignore start*/var /*istanbul ignore end*/options = arguments.length <= 2 || arguments[2] === undefined ? {} : arguments[2];
+
+	  if (typeof uniDiff === 'string') {
+	    uniDiff = /*istanbul ignore start*/(0, _parse.parsePatch) /*istanbul ignore end*/(uniDiff);
+	  }
+
+	  if (Array.isArray(uniDiff)) {
+	    if (uniDiff.length > 1) {
+	      throw new Error('applyPatch only works with a single input.');
+	    }
+
+	    uniDiff = uniDiff[0];
+	  }
+
+	  // Apply the diff to the input
+	  var lines = source.split('\n'),
+	      hunks = uniDiff.hunks,
+	      compareLine = options.compareLine || function (lineNumber, line, operation, patchContent) /*istanbul ignore start*/{
+	    return (/*istanbul ignore end*/line === patchContent
+	    );
+	  },
+	      errorCount = 0,
+	      fuzzFactor = options.fuzzFactor || 0,
+	      minLine = 0,
+	      offset = 0,
+	      removeEOFNL = /*istanbul ignore start*/void 0 /*istanbul ignore end*/,
+	      addEOFNL = /*istanbul ignore start*/void 0 /*istanbul ignore end*/;
+
+	  /**
+	   * Checks if the hunk exactly fits on the provided location
+	   */
+	  function hunkFits(hunk, toPos) {
+	    for (var j = 0; j < hunk.lines.length; j++) {
+	      var line = hunk.lines[j],
+	          operation = line[0],
+	          content = line.substr(1);
+
+	      if (operation === ' ' || operation === '-') {
+	        // Context sanity check
+	        if (!compareLine(toPos + 1, lines[toPos], operation, content)) {
+	          errorCount++;
+
+	          if (errorCount > fuzzFactor) {
+	            return false;
+	          }
+	        }
+	        toPos++;
+	      }
+	    }
+
+	    return true;
+	  }
+
+	  // Search best fit offsets for each hunk based on the previous ones
+	  for (var i = 0; i < hunks.length; i++) {
+	    var hunk = hunks[i],
+	        maxLine = lines.length - hunk.oldLines,
+	        localOffset = 0,
+	        toPos = offset + hunk.oldStart - 1;
+
+	    var iterator = /*istanbul ignore start*/(0, _distanceIterator2.default) /*istanbul ignore end*/(toPos, minLine, maxLine);
+
+	    for (; localOffset !== undefined; localOffset = iterator()) {
+	      if (hunkFits(hunk, toPos + localOffset)) {
+	        hunk.offset = offset += localOffset;
+	        break;
+	      }
+	    }
+
+	    if (localOffset === undefined) {
+	      return false;
+	    }
+
+	    // Set lower text limit to end of the current hunk, so next ones don't try
+	    // to fit over already patched text
+	    minLine = hunk.offset + hunk.oldStart + hunk.oldLines;
+	  }
+
+	  // Apply patch hunks
+	  for (var _i = 0; _i < hunks.length; _i++) {
+	    var _hunk = hunks[_i],
+	        _toPos = _hunk.offset + _hunk.newStart - 1;
+	    if (_hunk.newLines == 0) {
+	      _toPos++;
+	    }
+
+	    for (var j = 0; j < _hunk.lines.length; j++) {
+	      var line = _hunk.lines[j],
+	          operation = line[0],
+	          content = line.substr(1);
+
+	      if (operation === ' ') {
+	        _toPos++;
+	      } else if (operation === '-') {
+	        lines.splice(_toPos, 1);
+	        /* istanbul ignore else */
+	      } else if (operation === '+') {
+	          lines.splice(_toPos, 0, content);
+	          _toPos++;
+	        } else if (operation === '\\') {
+	          var previousOperation = _hunk.lines[j - 1] ? _hunk.lines[j - 1][0] : null;
+	          if (previousOperation === '+') {
+	            removeEOFNL = true;
+	          } else if (previousOperation === '-') {
+	            addEOFNL = true;
+	          }
+	        }
+	    }
+	  }
+
+	  // Handle EOFNL insertion/removal
+	  if (removeEOFNL) {
+	    while (!lines[lines.length - 1]) {
+	      lines.pop();
+	    }
+	  } else if (addEOFNL) {
+	    lines.push('');
+	  }
+	  return lines.join('\n');
+	}
+
+	// Wrapper that supports multiple file patches via callbacks.
+	function applyPatches(uniDiff, options) {
+	  if (typeof uniDiff === 'string') {
+	    uniDiff = /*istanbul ignore start*/(0, _parse.parsePatch) /*istanbul ignore end*/(uniDiff);
+	  }
+
+	  var currentIndex = 0;
+	  function processIndex() {
+	    var index = uniDiff[currentIndex++];
+	    if (!index) {
+	      return options.complete();
+	    }
+
+	    options.loadFile(index, function (err, data) {
+	      if (err) {
+	        return options.complete(err);
+	      }
+
+	      var updatedContent = applyPatch(data, index, options);
+	      options.patched(index, updatedContent);
+
+	      setTimeout(processIndex, 0);
+	    });
+	  }
+	  processIndex();
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9wYXRjaC9hcHBseS5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Z0NBR2dCO3lEQXNIQTs7QUF6SGhCOztBQUNBOzs7Ozs7O3VCQUVPLFNBQVMsVUFBVCxDQUFvQixNQUFwQixFQUE0QixPQUE1QixFQUFtRDtzREFBZCxnRUFBVSxrQkFBSTs7QUFDeEQsTUFBSSxPQUFPLE9BQVAsS0FBbUIsUUFBbkIsRUFBNkI7QUFDL0IsY0FBVSx3RUFBVyxPQUFYLENBQVYsQ0FEK0I7R0FBakM7O0FBSUEsTUFBSSxNQUFNLE9BQU4sQ0FBYyxPQUFkLENBQUosRUFBNEI7QUFDMUIsUUFBSSxRQUFRLE1BQVIsR0FBaUIsQ0FBakIsRUFBb0I7QUFDdEIsWUFBTSxJQUFJLEtBQUosQ0FBVSw0Q0FBVixDQUFOLENBRHNCO0tBQXhCOztBQUlBLGNBQVUsUUFBUSxDQUFSLENBQVYsQ0FMMEI7R0FBNUI7OztBQUx3RCxNQWNwRCxRQUFRLE9BQU8sS0FBUCxDQUFhLElBQWIsQ0FBUjtNQUNBLFFBQVEsUUFBUSxLQUFSO01BRVIsY0FBYyxRQUFRLFdBQVIsSUFBd0IsVUFBQyxVQUFELEVBQWEsSUFBYixFQUFtQixTQUFuQixFQUE4QixZQUE5QjttQ0FBK0MsU0FBUyxZQUFUOztHQUEvQztNQUN0QyxhQUFhLENBQWI7TUFDQSxhQUFhLFFBQVEsVUFBUixJQUFzQixDQUF0QjtNQUNiLFVBQVUsQ0FBVjtNQUNBLFNBQVMsQ0FBVDtNQUVBLHFFQVRKO01BVUksa0VBVko7Ozs7O0FBZHdELFdBNkIvQyxRQUFULENBQWtCLElBQWxCLEVBQXdCLEtBQXhCLEVBQStCO0FBQzdCLFNBQUssSUFBSSxJQUFJLENBQUosRUFBTyxJQUFJLEtBQUssS0FBTCxDQUFXLE1BQVgsRUFBbUIsR0FBdkMsRUFBNEM7QUFDMUMsVUFBSSxPQUFPLEtBQUssS0FBTCxDQUFXLENBQVgsQ0FBUDtVQUNBLFlBQVksS0FBSyxDQUFMLENBQVo7VUFDQSxVQUFVLEtBQUssTUFBTCxDQUFZLENB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QUFOLEdBRCtCO0tBQWpDO0dBREYsTUFJTyxJQUFJLFFBQUosRUFBYztBQUNuQixVQUFNLElBQU4sQ0FBVyxFQUFYLEVBRG1CO0dBQWQ7QUFHUCxTQUFPLE1BQU0sSUFBTixDQUFXLElBQVgsQ0FBUCxDQWxId0Q7Q0FBbkQ7OztBQXNIQSxTQUFTLFlBQVQsQ0FBc0IsT0FBdEIsRUFBK0IsT0FBL0IsRUFBd0M7QUFDN0MsTUFBSSxPQUFPLE9BQVAsS0FBbUIsUUFBbkIsRUFBNkI7QUFDL0IsY0FBVSx3RUFBVyxPQUFYLENBQVYsQ0FEK0I7R0FBakM7O0FBSUEsTUFBSSxlQUFlLENBQWYsQ0FMeUM7QUFNN0MsV0FBUyxZQUFULEdBQXdCO0FBQ3RCLFFBQUksUUFBUSxRQUFRLGNBQVIsQ0FBUixDQURrQjtBQUV0QixRQUFJLENBQUMsS0FBRCxFQUFRO0FBQ1YsYUFBTyxRQUFRLFFBQVIsRUFBUCxDQURVO0tBQVo7O0FBSUEsWUFBUSxRQUFSLENBQWlCLEtBQWpCLEVBQXdCLFVBQVMsR0FBVCxFQUFjLElBQWQsRUFBb0I7QUFDMUMsVUFBSSxHQUFKLEVBQVM7QUFDUCxlQUFPLFFBQVEsUUFBUixDQUFpQixHQUFqQixDQUFQLENBRE87T0FBVDs7QUFJQSxVQUFJLGlCQUFpQixXQUFXLElBQVgsRUFBaUIsS0FBakIsRUFBd0IsT0FBeEIsQ0FBakIsQ0FMc0M7QUFNMUMsY0FBUSxPQUFSLENBQWdCLEtBQWhCLEVBQXVCLGNBQXZCLEVBTjBDOztBQVExQyxpQkFBVyxZQUFYLEVBQXlCLENBQXpCLEVBUjBDO0tBQXBCLENBQXhCLENBTnNCO0dBQXhCO0FBaUJBLGlCQXZCNkM7Q0FBeEMiLCJmaWxlIjoiYXBwbHkuanMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQge3BhcnNlUGF0Y2h9IGZyb20gJy4vcGFyc2UnO1xuaW1wb3J0IGRpc3RhbmNlSXRlcmF0b3IgZnJvbSAnLi4vdXRpbC9kaXN0YW5jZS1pdGVyYXRvcic7XG5cbmV4cG9ydCBmdW5jdGlvbiBhcHBseVBhdGNoKHNvdXJjZSwgdW5pRGlmZiwgb3B0aW9ucyA9IHt9KSB7XG4gIGlmICh0eXBlb2YgdW5pRGlmZiA9PT0gJ3N0cmluZycpIHtcbiAgICB1bmlEaWZmID0gcGFyc2VQYXRjaCh1bmlEaWZmKTtcbiAgfVxuXG4gIGlmIChBcnJheS5pc0FycmF5KHVuaURpZmYpKSB7XG4gICAgaWYgKHVuaURpZmYubGVuZ3RoID4gMSkge1xuICAgICAgdGhyb3cgbmV3IEVycm9yKCdhcHBseVBhdGNoIG9ubHkgd29ya3Mgd2l0aCBhIHNpbmdsZSBpbnB1dC4nKTtcbiAgICB9XG5cbiAgICB1bmlEaWZmID0gdW5pRGlmZlswXTtcbiAgfVxuXG4gIC8vIEFwcGx5IHRoZSBkaWZmIHRvIHRoZSBpbnB1dFxuICBsZXQgbGluZXMgPSBzb3VyY2Uuc3BsaXQoJ1xcbicpLFxuICAgICAgaHVua3MgPSB1bmlEaWZmLmh1bmtzLFxuXG4gICAgICBjb21wYXJlTGluZSA9IG9wdGlvbnMuY29tcGFyZUxpbmUgfHwgKChsaW5lTnVtYmVyLCBsaW5lLCBvcGVyYXRpb24sIHBhdGNoQ29udGVudCkgPT4gbGluZSA9PT0gcGF0Y2hDb250ZW50KSxcbiAgICAgIGVycm9yQ291bnQgPSAwLFxuICAgICAgZnV6ekZhY3RvciA9IG9wdGlvbnMuZnV6ekZhY3RvciB8fCAwLFxuICAgICAgbWluTGluZSA9IDAsXG4gICAgICBvZmZzZXQgPSAwLFxuXG4gICAgICByZW1vdmVFT0ZOTCxcbiAgICAgIGFkZEVPRk5MO1xuXG4gIC8qKlxuICAgKiBDaGVja3MgaWYgdGhlIGh1bmsgZXhhY3RseSBmaXRzIG9uIHRoZSBwcm92aWRlZCBsb2NhdGlvblxuICAgKi9cbiAgZnVuY3Rpb24gaHVua0ZpdHMoaHVuaywgdG9Qb3MpIHtcbiAgICBmb3IgKGxldCBqID0gMDsgaiA8IGh1bmsubGluZXMubGVuZ3RoOyBqKyspIHtcbiAgICAgIGxldCBsaW5lID0gaHVuay5saW5lc1tqXSxcbiAgICAgICAgICBvcGVyYXRpb24gPSBsaW5lWzBdLFxuICAgICAgICAgIGNvbnRlbnQgPSBsaW5lLnN1YnN0cigxKTtcblxuICAgICAgaWYgKG9wZXJhdGlvbiA9PT0gJyAnIHx8IG9wZXJhdGlvbiA9PT0gJy0nKSB7XG4gICAgICAgIC8vIENvbnRleHQgc2FuaXR5IGNoZWNrXG4gICAgICAgIGlmICghY29tcGFyZUxpbmUodG9Qb3MgKyAxLCBsaW5lc1t0b1Bvc10sIG9wZXJhdGlvbiwgY29udGVudCkpIHtcbiAgICAgICAgICBlcnJvckNvdW50Kys7XG5cbiAgICAgICAgICBpZiAoZXJyb3JDb3VudCA+IGZ1enpGYWN0b3IpIHtcbiAgICAgICAgICAgIHJldHVybiBmYWxzZTtcbiAgICAgICAgICB9XG4gICAgICAgIH1cbiAgICAgICAgdG9Qb3MrKztcbiAgICAgIH1cbiAgICB9XG5cbiAgICByZXR1cm4gdHJ1ZTtcbiAgfVxuXG4gIC8vIFNlYXJjaCBiZXN0IGZpdCBvZmZzZXRzIGZvciBlYWNoIGh1bmsgYmFzZWQgb24gdGhlIHByZXZpb3VzIG9uZXNcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBodW5rcy5sZW5ndGg7IGkrKykge1xuICAgIGxldCBodW5rID0gaHVua3NbaV0sXG4gICAgICAgIG1heExpbmUgPSBsaW5lcy5sZW5ndGggLSBodW5rLm9sZExpbmVzLFxuICAgICAgICBsb2NhbE9mZnNldCA9IDAsXG4gICAgICAgIHRvUG9zID0gb2Zmc2V0ICsgaHVuay5vbGRTdGFydCAtIDE7XG5cbiAgICBsZXQgaXRlcmF0b3IgPSBkaXN0YW5jZUl0ZXJhdG9yKHRvUG9zLCBtaW5MaW5lLCBtYXhMaW5lKTtcblxuICAgIGZvciAoOyBsb2NhbE9mZnNldCAhPT0gdW5kZWZpbmVkOyBsb2NhbE9mZnNldCA9IGl0ZXJhdG9yKCkpIHtcbiAgICAgIGlmIChodW5rRml0cyhodW5rLCB0b1BvcyArIGxvY2FsT2Zmc2V0KSkge1xuICAgICAgICBodW5rLm9mZnNldCA9IG9mZnNldCArPSBsb2NhbE9mZnNldDtcbiAgICAgICAgYnJlYWs7XG4gICAgICB9XG4gICAgfVxuXG4gICAgaWYgKGxvY2FsT2Zmc2V0ID09PSB1bmRlZmluZWQpIHtcbiAgICAgIHJldHVybiBmYWxzZTtcbiAgICB9XG5cbiAgICAvLyBTZXQgbG93ZXIgdGV4dCBsaW1pdCB0byBlbmQgb2YgdGhlIGN1cnJlbnQgaHVuaywgc28gbmV4dCBvbmVzIGRvbid0IHRyeVxuICAgIC8vIHRvIGZpdCBvdmVyIGFscmVhZHkgcGF0Y2hlZCB0ZXh0XG4gICAgbWluTGluZSA9IGh1bmsub2Zmc2V0ICsgaHVuay5vbGRTdGFydCArIGh1bmsub2xkTGluZXM7XG4gIH1cblxuICAvLyBBcHBseSBwYXRjaCBodW5rc1xuICBmb3IgKGxldCBpID0gMDsgaSA8IGh1bmtzLmxlbmd0aDsgaSsrKSB7XG4gICAgbGV0IGh1bmsgPSBodW5rc1tpXSxcbiAgICAgICAgdG9Qb3MgPSBodW5rLm9mZnNldCArIGh1bmsubmV3U3RhcnQgLSAxO1xuICAgIGlmIChodW5rLm5ld0xpbmVzID09IDApIHsgdG9Qb3MrKzsgfVxuXG4gICAgZm9yIChsZXQgaiA9IDA7IGogPCBodW5rLmxpbmVzLmxlbmd0aDsgaisrKSB7XG4gICAgICBsZXQgbGluZSA9IGh1bmsubGluZXNbal0sXG4gICAgICAgICAgb3BlcmF0aW9uID0gbGluZVswXSxcbiAgICAgICAgICBjb250ZW50ID0gbGluZS5zdWJzdHIoMSk7XG5cbiAgICAgIGlmIChvcGVyYXRpb24gPT09ICcgJykge1xuICAgICAgICB0b1BvcysrO1xuICAgICAgfSBlbHNlIGlmIChvcGVyYXRpb24gPT09ICctJykge1xuICAgICAgICBsaW5lcy5zcGxpY2UodG9Qb3MsIDEpO1xuICAgICAgLyogaXN0YW5idWwgaWdub3JlIGVsc2UgKi9cbiAgICAgIH0gZWxzZSBpZiAob3BlcmF0aW9uID09PSAnKycpIHtcbiAgICAgICAgbGluZXMuc3BsaWNlKHRvUG9zLCAwLCBjb250ZW50KTtcbiAgICAgICAgdG9Qb3MrKztcbiAgICAgIH0gZWxzZSBpZiAob3BlcmF0aW9uID09PSAnXFxcXCcpIHtcbiAgICAgICAgbGV0IHByZXZpb3VzT3BlcmF0aW9uID0gaHVuay5saW5lc1tqIC0gMV0gPyBodW5rLmxpbmVzW2ogLSAxXVswXSA6IG51bGw7XG4gICAgICAgIGlmIChwcmV2aW91c09wZXJhdGlvbiA9PT0gJysnKSB7XG4gICAgICAgICAgcmVtb3ZlRU9GTkwgPSB0cnVlO1xuICAgICAgICB9IGVsc2UgaWYgKHByZXZpb3VzT3BlcmF0aW9uID09PSAnLScpIHtcbiAgICAgICAgICBhZGRFT0ZOTCA9IHRydWU7XG4gICAgICAgIH1cbiAgICAgIH1cbiAgICB9XG4gIH1cblxuICAvLyBIYW5kbGUgRU9GTkwgaW5zZXJ0aW9uL3JlbW92YWxcbiAgaWYgKHJlbW92ZUVPRk5MKSB7XG4gICAgd2hpbGUgKCFsaW5lc1tsaW5lcy5sZW5ndGggLSAxXSkge1xuICAgICAgbGluZXMucG9wKCk7XG4gICAgfVxuICB9IGVsc2UgaWYgKGFkZEVPRk5MKSB7XG4gICAgbGluZXMucHVzaCgnJyk7XG4gIH1cbiAgcmV0dXJuIGxpbmVzLmpvaW4oJ1xcbicpO1xufVxuXG4vLyBXcmFwcGVyIHRoYXQgc3VwcG9ydHMgbXVsdGlwbGUgZmlsZSBwYXRjaGVzIHZpYSBjYWxsYmFja3MuXG5leHBvcnQgZnVuY3Rpb24gYXBwbHlQYXRjaGVzKHVuaURpZmYsIG9wdGlvbnMpIHtcbiAgaWYgKHR5cGVvZiB1bmlEaWZmID09PSAnc3RyaW5nJykge1xuICAgIHVuaURpZmYgPSBwYXJzZVBhdGNoKHVuaURpZmYpO1xuICB9XG5cbiAgbGV0IGN1cnJlbnRJbmRleCA9IDA7XG4gIGZ1bmN0aW9uIHByb2Nlc3NJbmRleCgpIHtcbiAgICBsZXQgaW5kZXggPSB1bmlEaWZmW2N1cnJlbnRJbmRleCsrXTtcbiAgICBpZiAoIWluZGV4KSB7XG4gICAgICByZXR1cm4gb3B0aW9ucy5jb21wbGV0ZSgpO1xuICAgIH1cblxuICAgIG9wdGlvbnMubG9hZEZpbGUoaW5kZXgsIGZ1bmN0aW9uKGVyciwgZGF0YSkge1xuICAgICAgaWYgKGVycikge1xuICAgICAgICByZXR1cm4gb3B0aW9ucy5jb21wbGV0ZShlcnIpO1xuICAgICAgfVxuXG4gICAgICBsZXQgdXBkYXRlZENvbnRlbnQgPSBhcHBseVBhdGNoKGRhdGEsIGluZGV4LCBvcHRpb25zKTtcbiAgICAgIG9wdGlvbnMucGF0Y2hlZChpbmRleCwgdXBkYXRlZENvbnRlbnQpO1xuXG4gICAgICBzZXRUaW1lb3V0KHByb2Nlc3NJbmRleCwgMCk7XG4gICAgfSk7XG4gIH1cbiAgcHJvY2Vzc0luZGV4KCk7XG59XG4iXX0=
+
+
+/***/ },
+/* 20 */
+/***/ function(module, exports) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports. /*istanbul ignore end*/parsePatch = parsePatch;
+	function parsePatch(uniDiff) {
+	  /*istanbul ignore start*/var /*istanbul ignore end*/options = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
+
+	  var diffstr = uniDiff.split('\n'),
+	      list = [],
+	      i = 0;
+
+	  function parseIndex() {
+	    var index = {};
+	    list.push(index);
+
+	    // Parse diff metadata
+	    while (i < diffstr.length) {
+	      var line = diffstr[i];
+
+	      // File header found, end parsing diff metadata
+	      if (/^(\-\-\-|\+\+\+|@@)\s/.test(line)) {
+	        break;
+	      }
+
+	      // Diff index
+	      var header = /^(?:Index:|diff(?: -r \w+)+)\s+(.+?)\s*$/.exec(line);
+	      if (header) {
+	        index.index = header[1];
+	      }
+
+	      i++;
+	    }
+
+	    // Parse file headers if they are defined. Unified diff requires them, but
+	    // there's no technical issues to have an isolated hunk without file header
+	    parseFileHeader(index);
+	    parseFileHeader(index);
+
+	    // Parse hunks
+	    index.hunks = [];
+
+	    while (i < diffstr.length) {
+	      var _line = diffstr[i];
+
+	      if (/^(Index:|diff|\-\-\-|\+\+\+)\s/.test(_line)) {
+	        break;
+	      } else if (/^@@/.test(_line)) {
+	        index.hunks.push(parseHunk());
+	      } else if (_line && options.strict) {
+	        // Ignore unexpected content unless in strict mode
+	        throw new Error('Unknown line ' + (i + 1) + ' ' + JSON.stringify(_line));
+	      } else {
+	        i++;
+	      }
+	    }
+	  }
+
+	  // Parses the --- and +++ headers, if none are found, no lines
+	  // are consumed.
+	  function parseFileHeader(index) {
+	    var fileHeader = /^(\-\-\-|\+\+\+)\s+(\S*)\s?(.*?)\s*$/.exec(diffstr[i]);
+	    if (fileHeader) {
+	      var keyPrefix = fileHeader[1] === '---' ? 'old' : 'new';
+	      index[keyPrefix + 'FileName'] = fileHeader[2];
+	      index[keyPrefix + 'Header'] = fileHeader[3];
+
+	      i++;
+	    }
+	  }
+
+	  // Parses a hunk
+	  // This assumes that we are at the start of a hunk.
+	  function parseHunk() {
+	    var chunkHeaderIndex = i,
+	        chunkHeaderLine = diffstr[i++],
+	        chunkHeader = chunkHeaderLine.split(/@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/);
+
+	    var hunk = {
+	      oldStart: +chunkHeader[1],
+	      oldLines: +chunkHeader[2] || 1,
+	      newStart: +chunkHeader[3],
+	      newLines: +chunkHeader[4] || 1,
+	      lines: []
+	    };
+
+	    var addCount = 0,
+	        removeCount = 0;
+	    for (; i < diffstr.length; i++) {
+	      var operation = diffstr[i][0];
+
+	      if (operation === '+' || operation === '-' || operation === ' ' || operation === '\\') {
+	        hunk.lines.push(diffstr[i]);
+
+	        if (operation === '+') {
+	          addCount++;
+	        } else if (operation === '-') {
+	          removeCount++;
+	        } else if (operation === ' ') {
+	          addCount++;
+	          removeCount++;
+	        }
+	      } else {
+	        break;
+	      }
+	    }
+
+	    // Handle the empty block count case
+	    if (!addCount && hunk.newLines === 1) {
+	      hunk.newLines = 0;
+	    }
+	    if (!removeCount && hunk.oldLines === 1) {
+	      hunk.oldLines = 0;
+	    }
+
+	    // Perform optional sanity checking
+	    if (options.strict) {
+	      if (addCount !== hunk.newLines) {
+	        throw new Error('Added line count did not match for hunk at line ' + (chunkHeaderIndex + 1));
+	      }
+	      if (removeCount !== hunk.oldLines) {
+	        throw new Error('Removed line count did not match for hunk at line ' + (chunkHeaderIndex + 1));
+	      }
+	    }
+
+	    return hunk;
+	  }
+
+	  while (i < diffstr.length) {
+	    parseIndex();
+	  }
+
+	  return list;
+	}
+	//# sourceMappingURL=data:application/json;base64,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cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGZ1bmN0aW9uIHBhcnNlUGF0Y2godW5pRGlmZiwgb3B0aW9ucyA9IHt9KSB7XG4gIGxldCBkaWZmc3RyID0gdW5pRGlmZi5zcGxpdCgnXFxuJyksXG4gICAgICBsaXN0ID0gW10sXG4gICAgICBpID0gMDtcblxuICBmdW5jdGlvbiBwYXJzZUluZGV4KCkge1xuICAgIGxldCBpbmRleCA9IHt9O1xuICAgIGxpc3QucHVzaChpbmRleCk7XG5cbiAgICAvLyBQYXJzZSBkaWZmIG1ldGFkYXRhXG4gICAgd2hpbGUgKGkgPCBkaWZmc3RyLmxlbmd0aCkge1xuICAgICAgbGV0IGxpbmUgPSBkaWZmc3RyW2ldO1xuXG4gICAgICAvLyBGaWxlIGhlYWRlciBmb3VuZCwgZW5kIHBhcnNpbmcgZGlmZiBtZXRhZGF0YVxuICAgICAgaWYgKC9eKFxcLVxcLVxcLXxcXCtcXCtcXCt8QEApXFxzLy50ZXN0KGxpbmUpKSB7XG4gICAgICAgIGJyZWFrO1xuICAgICAgfVxuXG4gICAgICAvLyBEaWZmIGluZGV4XG4gICAgICBsZXQgaGVhZGVyID0gKC9eKD86SW5kZXg6fGRpZmYoPzogLXIgXFx3KykrKVxccysoLis/KVxccyokLykuZXhlYyhsaW5lKTtcbiAgICAgIGlmIChoZWFkZXIpIHtcbiAgICAgICAgaW5kZXguaW5kZXggPSBoZWFkZXJbMV07XG4gICAgICB9XG5cbiAgICAgIGkrKztcbiAgICB9XG5cbiAgICAvLyBQYXJzZSBmaWxlIGhlYWRlcnMgaWYgdGhleSBhcmUgZGVmaW5lZC4gVW5pZmllZCBkaWZmIHJlcXVpcmVzIHRoZW0sIGJ1dFxuICAgIC8vIHRoZXJlJ3Mgbm8gdGVjaG5pY2FsIGlzc3VlcyB0byBoYXZlIGFuIGlzb2xhdGVkIGh1bmsgd2l0aG91dCBmaWxlIGhlYWRlclxuICAgIHBhcnNlRmlsZUhlYWRlcihpbmRleCk7XG4gICAgcGFyc2VGaWxlSGVhZGVyKGluZGV4KTtcblxuICAgIC8vIFBhcnNlIGh1bmtzXG4gICAgaW5kZXguaHVua3MgPSBbXTtcblxuICAgIHdoaWxlIChpIDwgZGlmZnN0ci5sZW5ndGgpIHtcbiAgICAgIGxldCBsaW5lID0gZGlmZnN0cltpXTtcblxuICAgICAgaWYgKC9eKEluZGV4OnxkaWZmfFxcLVxcLVxcLXxcXCtcXCtcXCspXFxzLy50ZXN0KGxpbmUpKSB7XG4gICAgICAgIGJyZWFrO1xuICAgICAgfSBlbHNlIGlmICgvXkBALy50ZXN0KGxpbmUpKSB7XG4gICAgICAgIGluZGV4Lmh1bmtzLnB1c2gocGFyc2VIdW5rKCkpO1xuICAgICAgfSBlbHNlIGlmIChsaW5lICYmIG9wdGlvbnMuc3RyaWN0KSB7XG4gICAgICAgIC8vIElnbm9yZSB1bmV4cGVjdGVkIGNvbnRlbnQgdW5sZXNzIGluIHN0cmljdCBtb2RlXG4gICAgICAgIHRocm93IG5ldyBFcnJvcignVW5rbm93biBsaW5lICcgKyAoaSArIDEpICsgJyAnICsgSlNPTi5zdHJpbmdpZnkobGluZSkpO1xuICAgICAgfSBlbHNlIHtcbiAgICAgICAgaSsrO1xuICAgICAgfVxuICAgIH1cbiAgfVxuXG4gIC8vIFBhcnNlcyB0aGUgLS0tIGFuZCArKysgaGVhZGVycywgaWYgbm9uZSBhcmUgZm91bmQsIG5vIGxpbmVzXG4gIC8vIGFyZSBjb25zdW1lZC5cbiAgZnVuY3Rpb24gcGFyc2VGaWxlSGVhZGVyKGluZGV4KSB7XG4gICAgbGV0IGZpbGVIZWFkZXIgPSAoL14oXFwtXFwtXFwtfFxcK1xcK1xcKylcXHMrKFxcUyopXFxzPyguKj8pXFxzKiQvKS5leGVjKGRpZmZzdHJbaV0pO1xuICAgIGlmIChmaWxlSGVhZGVyKSB7XG4gICAgICBsZXQga2V5UHJlZml4ID0gZmlsZUhlYWRlclsxXSA9PT0gJy0tLScgPyAnb2xkJyA6ICduZXcnO1xuICAgICAgaW5kZXhba2V5UHJlZml4ICsgJ0ZpbGVOYW1lJ10gPSBmaWxlSGVhZGVyWzJdO1xuICAgICAgaW5kZXhba2V5UHJlZml4ICsgJ0hlYWRlciddID0gZmlsZUhlYWRlclszXTtcblxuICAgICAgaSsrO1xuICAgIH1cbiAgfVxuXG4gIC8vIFBhcnNlcyBhIGh1bmtcbiAgLy8gVGhpcyBhc3N1bWVzIHRoYXQgd2UgYXJlIGF0IHRoZSBzdGFydCBvZiBhIGh1bmsuXG4gIGZ1bmN0aW9uIHBhcnNlSHVuaygpIHtcbiAgICBsZXQgY2h1bmtIZWFkZXJJbmRleCA9IGksXG4gICAgICAgIGNodW5rSGVhZGVyTGluZSA9IGRpZmZzdHJbaSsrXSxcbiAgICAgICAgY2h1bmtIZWFkZXIgPSBjaHVua0hlYWRlckxpbmUuc3BsaXQoL0BAIC0oXFxkKykoPzosKFxcZCspKT8gXFwrKFxcZCspKD86LChcXGQrKSk/IEBALyk7XG5cbiAgICBsZXQgaHVuayA9IHtcbiAgICAgIG9sZFN0YXJ0OiArY2h1bmtIZWFkZXJbMV0sXG4gICAgICBvbGRMaW5lczogK2NodW5rSGVhZGVyWzJdIHx8IDEsXG4gICAgICBuZXdTdGFydDogK2NodW5rSGVhZGVyWzNdLFxuICAgICAgbmV3TGluZXM6ICtjaHVua0hlYWRlcls0XSB8fCAxLFxuICAgICAgbGluZXM6IFtdXG4gICAgfTtcblxuICAgIGxldCBhZGRDb3VudCA9IDAsXG4gICAgICAgIHJlbW92ZUNvdW50ID0gMDtcbiAgICBmb3IgKDsgaSA8IGRpZmZzdHIubGVuZ3RoOyBpKyspIHtcbiAgICAgIGxldCBvcGVyYXRpb24gPSBkaWZmc3RyW2ldWzBdO1xuXG4gICAgICBpZiAob3BlcmF0aW9uID09PSAnKycgfHwgb3BlcmF0aW9uID09PSAnLScgfHwgb3BlcmF0aW9uID09PSAnICcgfHwgb3BlcmF0aW9uID09PSAnXFxcXCcpIHtcbiAgICAgICAgaHVuay5saW5lcy5wdXNoKGRpZmZzdHJbaV0pO1xuXG4gICAgICAgIGlmIChvcGVyYXRpb24gPT09ICcrJykge1xuICAgICAgICAgIGFkZENvdW50Kys7XG4gICAgICAgIH0gZWxzZSBpZiAob3BlcmF0aW9uID09PSAnLScpIHtcbiAgICAgICAgICByZW1vdmVDb3VudCsrO1xuICAgICAgICB9IGVsc2UgaWYgKG9wZXJhdGlvbiA9PT0gJyAnKSB7XG4gICAgICAgICAgYWRkQ291bnQrKztcbiAgICAgICAgICByZW1vdmVDb3VudCsrO1xuICAgICAgICB9XG4gICAgICB9IGVsc2Uge1xuICAgICAgICBicmVhaztcbiAgICAgIH1cbiAgICB9XG5cbiAgICAvLyBIYW5kbGUgdGhlIGVtcHR5IGJsb2NrIGNvdW50IGNhc2VcbiAgICBpZiAoIWFkZENvdW50ICYmIGh1bmsubmV3TGluZXMgPT09IDEpIHtcbiAgICAgIGh1bmsubmV3TGluZXMgPSAwO1xuICAgIH1cbiAgICBpZiAoIXJlbW92ZUNvdW50ICYmIGh1bmsub2xkTGluZXMgPT09IDEpIHtcbiAgICAgIGh1bmsub2xkTGluZXMgPSAwO1xuICAgIH1cblxuICAgIC8vIFBlcmZvcm0gb3B0aW9uYWwgc2FuaXR5IGNoZWNraW5nXG4gICAgaWYgKG9wdGlvbnMuc3RyaWN0KSB7XG4gICAgICBpZiAoYWRkQ291bnQgIT09IGh1bmsubmV3TGluZXMpIHtcbiAgICAgICAgdGhyb3cgbmV3IEVycm9yKCdBZGRlZCBsaW5lIGNvdW50IGRpZCBub3QgbWF0Y2ggZm9yIGh1bmsgYXQgbGluZSAnICsgKGNodW5rSGVhZGVySW5kZXggKyAxKSk7XG4gICAgICB9XG4gICAgICBpZiAocmVtb3ZlQ291bnQgIT09IGh1bmsub2xkTGluZXMpIHtcbiAgICAgICAgdGhyb3cgbmV3IEVycm9yKCdSZW1vdmVkIGxpbmUgY291bnQgZGlkIG5vdCBtYXRjaCBmb3IgaHVuayBhdCBsaW5lICcgKyAoY2h1bmtIZWFkZXJJbmRleCArIDEpKTtcbiAgICAgIH1cbiAgICB9XG5cbiAgICByZXR1cm4gaHVuaztcbiAgfVxuXG4gIHdoaWxlIChpIDwgZGlmZnN0ci5sZW5ndGgpIHtcbiAgICBwYXJzZUluZGV4KCk7XG4gIH1cblxuICByZXR1cm4gbGlzdDtcbn1cbiJdfQ==
+
+
+/***/ },
+/* 21 */
+/***/ function(module, exports) {
+
+	/*istanbul ignore start*/"use strict";
+
+	exports.__esModule = true;
+
+	exports.default = /*istanbul ignore end*/function (start, minLine, maxLine) {
+	  var wantForward = true,
+	      backwardExhausted = false,
+	      forwardExhausted = false,
+	      localOffset = 1;
+
+	  return function iterator() {
+	    if (wantForward && !forwardExhausted) {
+	      if (backwardExhausted) {
+	        localOffset++;
+	      } else {
+	        wantForward = false;
+	      }
+
+	      // Check if trying to fit beyond text length, and if not, check it fits
+	      // after offset location (or desired location on first iteration)
+	      if (start + localOffset <= maxLine) {
+	        return localOffset;
+	      }
+
+	      forwardExhausted = true;
+	    }
+
+	    if (!backwardExhausted) {
+	      if (!forwardExhausted) {
+	        wantForward = true;
+	      }
+
+	      // Check if trying to fit before text beginning, and if not, check it fits
+	      // before offset location
+	      if (minLine <= start - localOffset) {
+	        return - localOffset++;
+	      }
+
+	      backwardExhausted = true;
+	      return iterator();
+	    }
+
+	    // We tried to fit hunk before text beginning and beyond text lenght, then
+	    // hunk can't fit on the text. Return undefined
+	  };
+	};
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy91dGlsL2Rpc3RhbmNlLWl0ZXJhdG9yLmpzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiI7Ozs7eUNBR2UsVUFBUyxLQUFULEVBQWdCLE9BQWhCLEVBQXlCLE9BQXpCLEVBQWtDO0FBQy9DLE1BQUksY0FBYyxJQUFkO01BQ0Esb0JBQW9CLEtBQXBCO01BQ0EsbUJBQW1CLEtBQW5CO01BQ0EsY0FBYyxDQUFkLENBSjJDOztBQU0vQyxTQUFPLFNBQVMsUUFBVCxHQUFvQjtBQUN6QixRQUFJLGVBQWUsQ0FBQyxnQkFBRCxFQUFtQjtBQUNwQyxVQUFJLGlCQUFKLEVBQXVCO0FBQ3JCLHNCQURxQjtPQUF2QixNQUVPO0FBQ0wsc0JBQWMsS0FBZCxDQURLO09BRlA7Ozs7QUFEb0MsVUFTaEMsUUFBUSxXQUFSLElBQXVCLE9BQXZCLEVBQWdDO0FBQ2xDLGVBQU8sV0FBUCxDQURrQztPQUFwQzs7QUFJQSx5QkFBbUIsSUFBbkIsQ0Fib0M7S0FBdEM7O0FBZ0JBLFFBQUksQ0FBQyxpQkFBRCxFQUFvQjtBQUN0QixVQUFJLENBQUMsZ0JBQUQsRUFBbUI7QUFDckIsc0JBQWMsSUFBZCxDQURxQjtPQUF2Qjs7OztBQURzQixVQU9sQixXQUFXLFFBQVEsV0FBUixFQUFxQjtBQUNsQyxlQUFPLEVBQUMsYUFBRCxDQUQyQjtPQUFwQzs7QUFJQSwwQkFBb0IsSUFBcEIsQ0FYc0I7QUFZdEIsYUFBTyxVQUFQLENBWnNCO0tBQXhCOzs7O0FBakJ5QixHQUFwQixDQU53QztDQUFsQyIsImZpbGUiOiJkaXN0YW5jZS1pdGVyYXRvci5qcyIsInNvdXJjZXNDb250ZW50IjpbIi8vIEl0ZXJhdG9yIHRoYXQgdHJhdmVyc2VzIGluIHRoZSByYW5nZSBvZiBbbWluLCBtYXhdLCBzdGVwcGluZ1xuLy8gYnkgZGlzdGFuY2UgZnJvbSBhIGdpdmVuIHN0YXJ0IHBvc2l0aW9uLiBJLmUuIGZvciBbMCwgNF0sIHdpdGhcbi8vIHN0YXJ0IG9mIDIsIHRoaXMgd2lsbCBpdGVyYXRlIDIsIDMsIDEsIDQsIDAuXG5leHBvcnQgZGVmYXVsdCBmdW5jdGlvbihzdGFydCwgbWluTGluZSwgbWF4TGluZSkge1xuICBsZXQgd2FudEZvcndhcmQgPSB0cnVlLFxuICAgICAgYmFja3dhcmRFeGhhdXN0ZWQgPSBmYWxzZSxcbiAgICAgIGZvcndhcmRFeGhhdXN0ZWQgPSBmYWxzZSxcbiAgICAgIGxvY2FsT2Zmc2V0ID0gMTtcblxuICByZXR1cm4gZnVuY3Rpb24gaXRlcmF0b3IoKSB7XG4gICAgaWYgKHdhbnRGb3J3YXJkICYmICFmb3J3YXJkRXhoYXVzdGVkKSB7XG4gICAgICBpZiAoYmFja3dhcmRFeGhhdXN0ZWQpIHtcbiAgICAgICAgbG9jYWxPZmZzZXQrKztcbiAgICAgIH0gZWxzZSB7XG4gICAgICAgIHdhbnRGb3J3YXJkID0gZmFsc2U7XG4gICAgICB9XG5cbiAgICAgIC8vIENoZWNrIGlmIHRyeWluZyB0byBmaXQgYmV5b25kIHRleHQgbGVuZ3RoLCBhbmQgaWYgbm90LCBjaGVjayBpdCBmaXRzXG4gICAgICAvLyBhZnRlciBvZmZzZXQgbG9jYXRpb24gKG9yIGRlc2lyZWQgbG9jYXRpb24gb24gZmlyc3QgaXRlcmF0aW9uKVxuICAgICAgaWYgKHN0YXJ0ICsgbG9jYWxPZmZzZXQgPD0gbWF4TGluZSkge1xuICAgICAgICByZXR1cm4gbG9jYWxPZmZzZXQ7XG4gICAgICB9XG5cbiAgICAgIGZvcndhcmRFeGhhdXN0ZWQgPSB0cnVlO1xuICAgIH1cblxuICAgIGlmICghYmFja3dhcmRFeGhhdXN0ZWQpIHtcbiAgICAgIGlmICghZm9yd2FyZEV4aGF1c3RlZCkge1xuICAgICAgICB3YW50Rm9yd2FyZCA9IHRydWU7XG4gICAgICB9XG5cbiAgICAgIC8vIENoZWNrIGlmIHRyeWluZyB0byBmaXQgYmVmb3JlIHRleHQgYmVnaW5uaW5nLCBhbmQgaWYgbm90LCBjaGVjayBpdCBmaXRzXG4gICAgICAvLyBiZWZvcmUgb2Zmc2V0IGxvY2F0aW9uXG4gICAgICBpZiAobWluTGluZSA8PSBzdGFydCAtIGxvY2FsT2Zmc2V0KSB7XG4gICAgICAgIHJldHVybiAtbG9jYWxPZmZzZXQrKztcbiAgICAgIH1cblxuICAgICAgYmFja3dhcmRFeGhhdXN0ZWQgPSB0cnVlO1xuICAgICAgcmV0dXJuIGl0ZXJhdG9yKCk7XG4gICAgfVxuXG4gICAgLy8gV2UgdHJpZWQgdG8gZml0IGh1bmsgYmVmb3JlIHRleHQgYmVnaW5uaW5nIGFuZCBiZXlvbmQgdGV4dCBsZW5naHQsIHRoZW5cbiAgICAvLyBodW5rIGNhbid0IGZpdCBvbiB0aGUgdGV4dC4gUmV0dXJuIHVuZGVmaW5lZFxuICB9O1xufVxuIl19
+
+
+/***/ },
+/* 22 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports. /*istanbul ignore end*/structuredPatch = structuredPatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/createTwoFilesPatch = createTwoFilesPatch;
+	/*istanbul ignore start*/exports. /*istanbul ignore end*/createPatch = createPatch;
+
+	var /*istanbul ignore start*/_line = __webpack_require__(15) /*istanbul ignore end*/;
+
+	/*istanbul ignore start*/
+	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
+	/*istanbul ignore end*/function structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
+	  if (!options) {
+	    options = { context: 4 };
+	  }
+
+	  var diff = /*istanbul ignore start*/(0, _line.diffLines) /*istanbul ignore end*/(oldStr, newStr);
+	  diff.push({ value: '', lines: [] }); // Append an empty value to make cleanup easier
+
+	  function contextLines(lines) {
+	    return lines.map(function (entry) {
+	      return ' ' + entry;
+	    });
+	  }
+
+	  var hunks = [];
+	  var oldRangeStart = 0,
+	      newRangeStart = 0,
+	      curRange = [],
+	      oldLine = 1,
+	      newLine = 1;
+	  /*istanbul ignore start*/
+	  var _loop = function _loop( /*istanbul ignore end*/i) {
+	    var current = diff[i],
+	        lines = current.lines || current.value.replace(/\n$/, '').split('\n');
+	    current.lines = lines;
+
+	    if (current.added || current.removed) {
+	      /*istanbul ignore start*/
+	      var _curRange;
+
+	      /*istanbul ignore end*/
+	      // If we have previous context, start with that
+	      if (!oldRangeStart) {
+	        var prev = diff[i - 1];
+	        oldRangeStart = oldLine;
+	        newRangeStart = newLine;
+
+	        if (prev) {
+	          curRange = options.context > 0 ? contextLines(prev.lines.slice(-options.context)) : [];
+	          oldRangeStart -= curRange.length;
+	          newRangeStart -= curRange.length;
+	        }
+	      }
+
+	      // Output our changes
+	      /*istanbul ignore start*/(_curRange = /*istanbul ignore end*/curRange).push. /*istanbul ignore start*/apply /*istanbul ignore end*/( /*istanbul ignore start*/_curRange /*istanbul ignore end*/, /*istanbul ignore start*/_toConsumableArray( /*istanbul ignore end*/lines.map(function (entry) {
+	        return (current.added ? '+' : '-') + entry;
+	      })));
+
+	      // Track the updated file position
+	      if (current.added) {
+	        newLine += lines.length;
+	      } else {
+	        oldLine += lines.length;
+	      }
+	    } else {
+	      // Identical context lines. Track line changes
+	      if (oldRangeStart) {
+	        // Close out any changes that have been output (or join overlapping)
+	        if (lines.length <= options.context * 2 && i < diff.length - 2) {
+	          /*istanbul ignore start*/
+	          var _curRange2;
+
+	          /*istanbul ignore end*/
+	          // Overlapping
+	          /*istanbul ignore start*/(_curRange2 = /*istanbul ignore end*/curRange).push. /*istanbul ignore start*/apply /*istanbul ignore end*/( /*istanbul ignore start*/_curRange2 /*istanbul ignore end*/, /*istanbul ignore start*/_toConsumableArray( /*istanbul ignore end*/contextLines(lines)));
+	        } else {
+	          /*istanbul ignore start*/
+	          var _curRange3;
+
+	          /*istanbul ignore end*/
+	          // end the range and output
+	          var contextSize = Math.min(lines.length, options.context);
+	          /*istanbul ignore start*/(_curRange3 = /*istanbul ignore end*/curRange).push. /*istanbul ignore start*/apply /*istanbul ignore end*/( /*istanbul ignore start*/_curRange3 /*istanbul ignore end*/, /*istanbul ignore start*/_toConsumableArray( /*istanbul ignore end*/contextLines(lines.slice(0, contextSize))));
+
+	          var hunk = {
+	            oldStart: oldRangeStart,
+	            oldLines: oldLine - oldRangeStart + contextSize,
+	            newStart: newRangeStart,
+	            newLines: newLine - newRangeStart + contextSize,
+	            lines: curRange
+	          };
+	          if (i >= diff.length - 2 && lines.length <= options.context) {
+	            // EOF is inside this hunk
+	            var oldEOFNewline = /\n$/.test(oldStr);
+	            var newEOFNewline = /\n$/.test(newStr);
+	            if (lines.length == 0 && !oldEOFNewline) {
+	              // special case: old has no eol and no trailing context; no-nl can end up before adds
+	              curRange.splice(hunk.oldLines, 0, '\\ No newline at end of file');
+	            } else if (!oldEOFNewline || !newEOFNewline) {
+	              curRange.push('\\ No newline at end of file');
+	            }
+	          }
+	          hunks.push(hunk);
+
+	          oldRangeStart = 0;
+	          newRangeStart = 0;
+	          curRange = [];
+	        }
+	      }
+	      oldLine += lines.length;
+	      newLine += lines.length;
+	    }
+	  };
+
+	  for (var i = 0; i < diff.length; i++) {
+	    /*istanbul ignore start*/
+	    _loop( /*istanbul ignore end*/i);
+	  }
+
+	  return {
+	    oldFileName: oldFileName, newFileName: newFileName,
+	    oldHeader: oldHeader, newHeader: newHeader,
+	    hunks: hunks
+	  };
+	}
+
+	function createTwoFilesPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options) {
+	  var diff = structuredPatch(oldFileName, newFileName, oldStr, newStr, oldHeader, newHeader, options);
+
+	  var ret = [];
+	  if (oldFileName == newFileName) {
+	    ret.push('Index: ' + oldFileName);
+	  }
+	  ret.push('===================================================================');
+	  ret.push('--- ' + diff.oldFileName + (typeof diff.oldHeader === 'undefined' ? '' : '\t' + diff.oldHeader));
+	  ret.push('+++ ' + diff.newFileName + (typeof diff.newHeader === 'undefined' ? '' : '\t' + diff.newHeader));
+
+	  for (var i = 0; i < diff.hunks.length; i++) {
+	    var hunk = diff.hunks[i];
+	    ret.push('@@ -' + hunk.oldStart + ',' + hunk.oldLines + ' +' + hunk.newStart + ',' + hunk.newLines + ' @@');
+	    ret.push.apply(ret, hunk.lines);
+	  }
+
+	  return ret.join('\n') + '\n';
+	}
+
+	function createPatch(fileName, oldStr, newStr, oldHeader, newHeader, options) {
+	  return createTwoFilesPatch(fileName, fileName, oldStr, newStr, oldHeader, newHeader, options);
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9wYXRjaC9jcmVhdGUuanMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O2dDQUVnQjt5REE4RkE7eURBd0JBOztBQXhIaEI7Ozs7O3VCQUVPLFNBQVMsZUFBVCxDQUF5QixXQUF6QixFQUFzQyxXQUF0QyxFQUFtRCxNQUFuRCxFQUEyRCxNQUEzRCxFQUFtRSxTQUFuRSxFQUE4RSxTQUE5RSxFQUF5RixPQUF6RixFQUFrRztBQUN2RyxNQUFJLENBQUMsT0FBRCxFQUFVO0FBQ1osY0FBVSxFQUFFLFNBQVMsQ0FBVCxFQUFaLENBRFk7R0FBZDs7QUFJQSxNQUFNLE9BQU8sc0VBQVUsTUFBVixFQUFrQixNQUFsQixDQUFQLENBTGlHO0FBTXZHLE9BQUssSUFBTCxDQUFVLEVBQUMsT0FBTyxFQUFQLEVBQVcsT0FBTyxFQUFQLEVBQXRCOztBQU51RyxXQVE5RixZQUFULENBQXNCLEtBQXRCLEVBQTZCO0FBQzNCLFdBQU8sTUFBTSxHQUFOLENBQVUsVUFBUyxLQUFULEVBQWdCO0FBQUUsYUFBTyxNQUFNLEtBQU4sQ0FBVDtLQUFoQixDQUFqQixDQUQyQjtHQUE3Qjs7QUFJQSxNQUFJLFFBQVEsRUFBUixDQVptRztBQWF2RyxNQUFJLGdCQUFnQixDQUFoQjtNQUFtQixnQkFBZ0IsQ0FBaEI7TUFBbUIsV0FBVyxFQUFYO01BQ3RDLFVBQVUsQ0FBVjtNQUFhLFVBQVUsQ0FBVixDQWRzRjs7cURBZTlGO0FBQ1AsUUFBTSxVQUFVLEtBQUssQ0FBTCxDQUFWO1FBQ0EsUUFBUSxRQUFRLEtBQVIsSUFBaUIsUUFBUSxLQUFSLENBQWMsT0FBZCxDQUFzQixLQUF0QixFQUE2QixFQUE3QixFQUFpQyxLQUFqQyxDQUF1QyxJQUF2QyxDQUFqQjtBQUNkLFlBQVEsS0FBUixHQUFnQixLQUFoQjs7QUFFQSxRQUFJLFFBQVEsS0FBUixJQUFpQixRQUFRLE9BQVIsRUFBaUI7Ozs7OztBQUVwQyxVQUFJLENBQUMsYUFBRCxFQUFnQjtBQUNsQixZQUFNLE9BQU8sS0FB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LENBQVMsSUFBVCxJQUFpQixJQUFqQixDQXJCb0c7Q0FBdEc7O0FBd0JBLFNBQVMsV0FBVCxDQUFxQixRQUFyQixFQUErQixNQUEvQixFQUF1QyxNQUF2QyxFQUErQyxTQUEvQyxFQUEwRCxTQUExRCxFQUFxRSxPQUFyRSxFQUE4RTtBQUNuRixTQUFPLG9CQUFvQixRQUFwQixFQUE4QixRQUE5QixFQUF3QyxNQUF4QyxFQUFnRCxNQUFoRCxFQUF3RCxTQUF4RCxFQUFtRSxTQUFuRSxFQUE4RSxPQUE5RSxDQUFQLENBRG1GO0NBQTlFIiwiZmlsZSI6ImNyZWF0ZS5qcyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7ZGlmZkxpbmVzfSBmcm9tICcuLi9kaWZmL2xpbmUnO1xuXG5leHBvcnQgZnVuY3Rpb24gc3RydWN0dXJlZFBhdGNoKG9sZEZpbGVOYW1lLCBuZXdGaWxlTmFtZSwgb2xkU3RyLCBuZXdTdHIsIG9sZEhlYWRlciwgbmV3SGVhZGVyLCBvcHRpb25zKSB7XG4gIGlmICghb3B0aW9ucykge1xuICAgIG9wdGlvbnMgPSB7IGNvbnRleHQ6IDQgfTtcbiAgfVxuXG4gIGNvbnN0IGRpZmYgPSBkaWZmTGluZXMob2xkU3RyLCBuZXdTdHIpO1xuICBkaWZmLnB1c2goe3ZhbHVlOiAnJywgbGluZXM6IFtdfSk7ICAgLy8gQXBwZW5kIGFuIGVtcHR5IHZhbHVlIHRvIG1ha2UgY2xlYW51cCBlYXNpZXJcblxuICBmdW5jdGlvbiBjb250ZXh0TGluZXMobGluZXMpIHtcbiAgICByZXR1cm4gbGluZXMubWFwKGZ1bmN0aW9uKGVudHJ5KSB7IHJldHVybiAnICcgKyBlbnRyeTsgfSk7XG4gIH1cblxuICBsZXQgaHVua3MgPSBbXTtcbiAgbGV0IG9sZFJhbmdlU3RhcnQgPSAwLCBuZXdSYW5nZVN0YXJ0ID0gMCwgY3VyUmFuZ2UgPSBbXSxcbiAgICAgIG9sZExpbmUgPSAxLCBuZXdMaW5lID0gMTtcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBkaWZmLmxlbmd0aDsgaSsrKSB7XG4gICAgY29uc3QgY3VycmVudCA9IGRpZmZbaV0sXG4gICAgICAgICAgbGluZXMgPSBjdXJyZW50LmxpbmVzIHx8IGN1cnJlbnQudmFsdWUucmVwbGFjZSgvXFxuJC8sICcnKS5zcGxpdCgnXFxuJyk7XG4gICAgY3VycmVudC5saW5lcyA9IGxpbmVzO1xuXG4gICAgaWYgKGN1cnJlbnQuYWRkZWQgfHwgY3VycmVudC5yZW1vdmVkKSB7XG4gICAgICAvLyBJZiB3ZSBoYXZlIHByZXZpb3VzIGNvbnRleHQsIHN0YXJ0IHdpdGggdGhhdFxuICAgICAgaWYgKCFvbGRSYW5nZVN0YXJ0KSB7XG4gICAgICAgIGNvbnN0IHByZXYgPSBkaWZmW2kgLSAxXTtcbiAgICAgICAgb2xkUmFuZ2VTdGFydCA9IG9sZExpbmU7XG4gICAgICAgIG5ld1JhbmdlU3RhcnQgPSBuZXdMaW5lO1xuXG4gICAgICAgIGlmIChwcmV2KSB7XG4gICAgICAgICAgY3VyUmFuZ2UgPSBvcHRpb25zLmNvbnRleHQgPiAwID8gY29udGV4dExpbmVzKHByZXYubGluZXMuc2xpY2UoLW9wdGlvbnMuY29udGV4dCkpIDogW107XG4gICAgICAgICAgb2xkUmFuZ2VTdGFydCAtPSBjdXJSYW5nZS5sZW5ndGg7XG4gICAgICAgICAgbmV3UmFuZ2VTdGFydCAtPSBjdXJSYW5nZS5sZW5ndGg7XG4gICAgICAgIH1cbiAgICAgIH1cblxuICAgICAgLy8gT3V0cHV0IG91ciBjaGFuZ2VzXG4gICAgICBjdXJSYW5nZS5wdXNoKC4uLiBsaW5lcy5tYXAoZnVuY3Rpb24oZW50cnkpIHtcbiAgICAgICAgcmV0dXJuIChjdXJyZW50LmFkZGVkID8gJysnIDogJy0nKSArIGVudHJ5O1xuICAgICAgfSkpO1xuXG4gICAgICAvLyBUcmFjayB0aGUgdXBkYXRlZCBmaWxlIHBvc2l0aW9uXG4gICAgICBpZiAoY3VycmVudC5hZGRlZCkge1xuICAgICAgICBuZXdMaW5lICs9IGxpbmVzLmxlbmd0aDtcbiAgICAgIH0gZWxzZSB7XG4gICAgICAgIG9sZExpbmUgKz0gbGluZXMubGVuZ3RoO1xuICAgICAgfVxuICAgIH0gZWxzZSB7XG4gICAgICAvLyBJZGVudGljYWwgY29udGV4dCBsaW5lcy4gVHJhY2sgbGluZSBjaGFuZ2VzXG4gICAgICBpZiAob2xkUmFuZ2VTdGFydCkge1xuICAgICAgICAvLyBDbG9zZSBvdXQgYW55IGNoYW5nZXMgdGhhdCBoYXZlIGJlZW4gb3V0cHV0IChvciBqb2luIG92ZXJsYXBwaW5nKVxuICAgICAgICBpZiAobGluZXMubGVuZ3RoIDw9IG9wdGlvbnMuY29udGV4dCAqIDIgJiYgaSA8IGRpZmYubGVuZ3RoIC0gMikge1xuICAgICAgICAgIC8vIE92ZXJsYXBwaW5nXG4gICAgICAgICAgY3VyUmFuZ2UucHVzaCguLi4gY29udGV4dExpbmVzKGxpbmVzKSk7XG4gICAgICAgIH0gZWxzZSB7XG4gICAgICAgICAgLy8gZW5kIHRoZSByYW5nZSBhbmQgb3V0cHV0XG4gICAgICAgICAgbGV0IGNvbnRleHRTaXplID0gTWF0aC5taW4obGluZXMubGVuZ3RoLCBvcHRpb25zLmNvbnRleHQpO1xuICAgICAgICAgIGN1clJhbmdlLnB1c2goLi4uIGNvbnRleHRMaW5lcyhsaW5lcy5zbGljZSgwLCBjb250ZXh0U2l6ZSkpKTtcblxuICAgICAgICAgIGxldCBodW5rID0ge1xuICAgICAgICAgICAgb2xkU3RhcnQ6IG9sZFJhbmdlU3RhcnQsXG4gICAgICAgICAgICBvbGRMaW5lczogKG9sZExpbmUgLSBvbGRSYW5nZVN0YXJ0ICsgY29udGV4dFNpemUpLFxuICAgICAgICAgICAgbmV3U3RhcnQ6IG5ld1JhbmdlU3RhcnQsXG4gICAgICAgICAgICBuZXdMaW5lczogKG5ld0xpbmUgLSBuZXdSYW5nZVN0YXJ0ICsgY29udGV4dFNpemUpLFxuICAgICAgICAgICAgbGluZXM6IGN1clJhbmdlXG4gICAgICAgICAgfTtcbiAgICAgICAgICBpZiAoaSA+PSBkaWZmLmxlbmd0aCAtIDIgJiYgbGluZXMubGVuZ3RoIDw9IG9wdGlvbnMuY29udGV4dCkge1xuICAgICAgICAgICAgLy8gRU9GIGlzIGluc2lkZSB0aGlzIGh1bmtcbiAgICAgICAgICAgIGxldCBvbGRFT0ZOZXdsaW5lID0gKC9cXG4kLy50ZXN0KG9sZFN0cikpO1xuICAgICAgICAgICAgbGV0IG5ld0VPRk5ld2xpbmUgPSAoL1xcbiQvLnRlc3QobmV3U3RyKSk7XG4gICAgICAgICAgICBpZiAobGluZXMubGVuZ3RoID09IDAgJiYgIW9sZEVPRk5ld2xpbmUpIHtcbiAgICAgICAgICAgICAgLy8gc3BlY2lhbCBjYXNlOiBvbGQgaGFzIG5vIGVvbCBhbmQgbm8gdHJhaWxpbmcgY29udGV4dDsgbm8tbmwgY2FuIGVuZCB1cCBiZWZvcmUgYWRkc1xuICAgICAgICAgICAgICBjdXJSYW5nZS5zcGxpY2UoaHVuay5vbGRMaW5lcywgMCwgJ1xcXFwgTm8gbmV3bGluZSBhdCBlbmQgb2YgZmlsZScpO1xuICAgICAgICAgICAgfSBlbHNlIGlmICghb2xkRU9GTmV3bGluZSB8fCAhbmV3RU9GTmV3bGluZSkge1xuICAgICAgICAgICAgICBjdXJSYW5nZS5wdXNoKCdcXFxcIE5vIG5ld2xpbmUgYXQgZW5kIG9mIGZpbGUnKTtcbiAgICAgICAgICAgIH1cbiAgICAgICAgICB9XG4gICAgICAgICAgaHVua3MucHVzaChodW5rKTtcblxuICAgICAgICAgIG9sZFJhbmdlU3RhcnQgPSAwO1xuICAgICAgICAgIG5ld1JhbmdlU3RhcnQgPSAwO1xuICAgICAgICAgIGN1clJhbmdlID0gW107XG4gICAgICAgIH1cbiAgICAgIH1cbiAgICAgIG9sZExpbmUgKz0gbGluZXMubGVuZ3RoO1xuICAgICAgbmV3TGluZSArPSBsaW5lcy5sZW5ndGg7XG4gICAgfVxuICB9XG5cbiAgcmV0dXJuIHtcbiAgICBvbGRGaWxlTmFtZTogb2xkRmlsZU5hbWUsIG5ld0ZpbGVOYW1lOiBuZXdGaWxlTmFtZSxcbiAgICBvbGRIZWFkZXI6IG9sZEhlYWRlciwgbmV3SGVhZGVyOiBuZXdIZWFkZXIsXG4gICAgaHVua3M6IGh1bmtzXG4gIH07XG59XG5cbmV4cG9ydCBmdW5jdGlvbiBjcmVhdGVUd29GaWxlc1BhdGNoKG9sZEZpbGVOYW1lLCBuZXdGaWxlTmFtZSwgb2xkU3RyLCBuZXdTdHIsIG9sZEhlYWRlciwgbmV3SGVhZGVyLCBvcHRpb25zKSB7XG4gIGNvbnN0IGRpZmYgPSBzdHJ1Y3R1cmVkUGF0Y2gob2xkRmlsZU5hbWUsIG5ld0ZpbGVOYW1lLCBvbGRTdHIsIG5ld1N0ciwgb2xkSGVhZGVyLCBuZXdIZWFkZXIsIG9wdGlvbnMpO1xuXG4gIGNvbnN0IHJldCA9IFtdO1xuICBpZiAob2xkRmlsZU5hbWUgPT0gbmV3RmlsZU5hbWUpIHtcbiAgICByZXQucHVzaCgnSW5kZXg6ICcgKyBvbGRGaWxlTmFtZSk7XG4gIH1cbiAgcmV0LnB1c2goJz09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0nKTtcbiAgcmV0LnB1c2goJy0tLSAnICsgZGlmZi5vbGRGaWxlTmFtZSArICh0eXBlb2YgZGlmZi5vbGRIZWFkZXIgPT09ICd1bmRlZmluZWQnID8gJycgOiAnXFx0JyArIGRpZmYub2xkSGVhZGVyKSk7XG4gIHJldC5wdXNoKCcrKysgJyArIGRpZmYubmV3RmlsZU5hbWUgKyAodHlwZW9mIGRpZmYubmV3SGVhZGVyID09PSAndW5kZWZpbmVkJyA/ICcnIDogJ1xcdCcgKyBkaWZmLm5ld0hlYWRlcikpO1xuXG4gIGZvciAobGV0IGkgPSAwOyBpIDwgZGlmZi5odW5rcy5sZW5ndGg7IGkrKykge1xuICAgIGNvbnN0IGh1bmsgPSBkaWZmLmh1bmtzW2ldO1xuICAgIHJldC5wdXNoKFxuICAgICAgJ0BAIC0nICsgaHVuay5vbGRTdGFydCArICcsJyArIGh1bmsub2xkTGluZXNcbiAgICAgICsgJyArJyArIGh1bmsubmV3U3RhcnQgKyAnLCcgKyBodW5rLm5ld0xpbmVzXG4gICAgICArICcgQEAnXG4gICAgKTtcbiAgICByZXQucHVzaC5hcHBseShyZXQsIGh1bmsubGluZXMpO1xuICB9XG5cbiAgcmV0dXJuIHJldC5qb2luKCdcXG4nKSArICdcXG4nO1xufVxuXG5leHBvcnQgZnVuY3Rpb24gY3JlYXRlUGF0Y2goZmlsZU5hbWUsIG9sZFN0ciwgbmV3U3RyLCBvbGRIZWFkZXIsIG5ld0hlYWRlciwgb3B0aW9ucykge1xuICByZXR1cm4gY3JlYXRlVHdvRmlsZXNQYXRjaChmaWxlTmFtZSwgZmlsZU5hbWUsIG9sZFN0ciwgbmV3U3RyLCBvbGRIZWFkZXIsIG5ld0hlYWRlciwgb3B0aW9ucyk7XG59XG4iXX0=
+
+
+/***/ },
+/* 23 */
+/***/ function(module, exports) {
+
+	/*istanbul ignore start*/"use strict";
+
+	exports.__esModule = true;
+	exports. /*istanbul ignore end*/convertChangesToDMP = convertChangesToDMP;
+	// See: http://code.google.com/p/google-diff-match-patch/wiki/API
+	function convertChangesToDMP(changes) {
+	  var ret = [],
+	      change = /*istanbul ignore start*/void 0 /*istanbul ignore end*/,
+	      operation = /*istanbul ignore start*/void 0 /*istanbul ignore end*/;
+	  for (var i = 0; i < changes.length; i++) {
+	    change = changes[i];
+	    if (change.added) {
+	      operation = 1;
+	    } else if (change.removed) {
+	      operation = -1;
+	    } else {
+	      operation = 0;
+	    }
+
+	    ret.push([operation, change.value]);
+	  }
+	  return ret;
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9jb252ZXJ0L2RtcC5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Z0NBQ2dCOztBQUFULFNBQVMsbUJBQVQsQ0FBNkIsT0FBN0IsRUFBc0M7QUFDM0MsTUFBSSxNQUFNLEVBQU47TUFDQSxnRUFESjtNQUVJLG1FQUZKLENBRDJDO0FBSTNDLE9BQUssSUFBSSxJQUFJLENBQUosRUFBTyxJQUFJLFFBQVEsTUFBUixFQUFnQixHQUFwQyxFQUF5QztBQUN2QyxhQUFTLFFBQVEsQ0FBUixDQUFULENBRHVDO0FBRXZDLFFBQUksT0FBTyxLQUFQLEVBQWM7QUFDaEIsa0JBQVksQ0FBWixDQURnQjtLQUFsQixNQUVPLElBQUksT0FBTyxPQUFQLEVBQWdCO0FBQ3pCLGtCQUFZLENBQUMsQ0FBRCxDQURhO0tBQXBCLE1BRUE7QUFDTCxrQkFBWSxDQUFaLENBREs7S0FGQTs7QUFNUCxRQUFJLElBQUosQ0FBUyxDQUFDLFNBQUQsRUFBWSxPQUFPLEtBQVAsQ0FBckIsRUFWdUM7R0FBekM7QUFZQSxTQUFPLEdBQVAsQ0FoQjJDO0NBQXRDIiwiZmlsZSI6ImRtcC5qcyIsInNvdXJjZXNDb250ZW50IjpbIi8vIFNlZTogaHR0cDovL2NvZGUuZ29vZ2xlLmNvbS9wL2dvb2dsZS1kaWZmLW1hdGNoLXBhdGNoL3dpa2kvQVBJXG5leHBvcnQgZnVuY3Rpb24gY29udmVydENoYW5nZXNUb0RNUChjaGFuZ2VzKSB7XG4gIGxldCByZXQgPSBbXSxcbiAgICAgIGNoYW5nZSxcbiAgICAgIG9wZXJhdGlvbjtcbiAgZm9yIChsZXQgaSA9IDA7IGkgPCBjaGFuZ2VzLmxlbmd0aDsgaSsrKSB7XG4gICAgY2hhbmdlID0gY2hhbmdlc1tpXTtcbiAgICBpZiAoY2hhbmdlLmFkZGVkKSB7XG4gICAgICBvcGVyYXRpb24gPSAxO1xuICAgIH0gZWxzZSBpZiAoY2hhbmdlLnJlbW92ZWQpIHtcbiAgICAgIG9wZXJhdGlvbiA9IC0xO1xuICAgIH0gZWxzZSB7XG4gICAgICBvcGVyYXRpb24gPSAwO1xuICAgIH1cblxuICAgIHJldC5wdXNoKFtvcGVyYXRpb24sIGNoYW5nZS52YWx1ZV0pO1xuICB9XG4gIHJldHVybiByZXQ7XG59XG4iXX0=
+
+
+/***/ },
+/* 24 */
+/***/ function(module, exports) {
+
+	/*istanbul ignore start*/'use strict';
+
+	exports.__esModule = true;
+	exports. /*istanbul ignore end*/convertChangesToXML = convertChangesToXML;
+	function convertChangesToXML(changes) {
+	  var ret = [];
+	  for (var i = 0; i < changes.length; i++) {
+	    var change = changes[i];
+	    if (change.added) {
+	      ret.push('<ins>');
+	    } else if (change.removed) {
+	      ret.push('<del>');
+	    }
+
+	    ret.push(escapeHTML(change.value));
+
+	    if (change.added) {
+	      ret.push('</ins>');
+	    } else if (change.removed) {
+	      ret.push('</del>');
+	    }
+	  }
+	  return ret.join('');
+	}
+
+	function escapeHTML(s) {
+	  var n = s;
+	  n = n.replace(/&/g, '&amp;');
+	  n = n.replace(/</g, '&lt;');
+	  n = n.replace(/>/g, '&gt;');
+	  n = n.replace(/"/g, '&quot;');
+
+	  return n;
+	}
+	//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJzb3VyY2VzIjpbIi4uLy4uL3NyYy9jb252ZXJ0L3htbC5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiOzs7Z0NBQWdCO0FBQVQsU0FBUyxtQkFBVCxDQUE2QixPQUE3QixFQUFzQztBQUMzQyxNQUFJLE1BQU0sRUFBTixDQUR1QztBQUUzQyxPQUFLLElBQUksSUFBSSxDQUFKLEVBQU8sSUFBSSxRQUFRLE1BQVIsRUFBZ0IsR0FBcEMsRUFBeUM7QUFDdkMsUUFBSSxTQUFTLFFBQVEsQ0FBUixDQUFULENBRG1DO0FBRXZDLFFBQUksT0FBTyxLQUFQLEVBQWM7QUFDaEIsVUFBSSxJQUFKLENBQVMsT0FBVCxFQURnQjtLQUFsQixNQUVPLElBQUksT0FBTyxPQUFQLEVBQWdCO0FBQ3pCLFVBQUksSUFBSixDQUFTLE9BQVQsRUFEeUI7S0FBcEI7O0FBSVAsUUFBSSxJQUFKLENBQVMsV0FBVyxPQUFPLEtBQVAsQ0FBcEIsRUFSdUM7O0FBVXZDLFFBQUksT0FBTyxLQUFQLEVBQWM7QUFDaEIsVUFBSSxJQUFKLENBQVMsUUFBVCxFQURnQjtLQUFsQixNQUVPLElBQUksT0FBTyxPQUFQLEVBQWdCO0FBQ3pCLFVBQUksSUFBSixDQUFTLFFBQVQsRUFEeUI7S0FBcEI7R0FaVDtBQWdCQSxTQUFPLElBQUksSUFBSixDQUFTLEVBQVQsQ0FBUCxDQWxCMkM7Q0FBdEM7O0FBcUJQLFNBQVMsVUFBVCxDQUFvQixDQUFwQixFQUF1QjtBQUNyQixNQUFJLElBQUksQ0FBSixDQURpQjtBQUVyQixNQUFJLEVBQUUsT0FBRixDQUFVLElBQVYsRUFBZ0IsT0FBaEIsQ0FBSixDQUZxQjtBQUdyQixNQUFJLEVBQUUsT0FBRixDQUFVLElBQVYsRUFBZ0IsTUFBaEIsQ0FBSixDQUhxQjtBQUlyQixNQUFJLEVBQUUsT0FBRixDQUFVLElBQVYsRUFBZ0IsTUFBaEIsQ0FBSixDQUpxQjtBQUtyQixNQUFJLEVBQUUsT0FBRixDQUFVLElBQVYsRUFBZ0IsUUFBaEIsQ0FBSixDQUxxQjs7QUFPckIsU0FBTyxDQUFQLENBUHFCO0NBQXZCIiwiZmlsZSI6InhtbC5qcyIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBmdW5jdGlvbiBjb252ZXJ0Q2hhbmdlc1RvWE1MKGNoYW5nZXMpIHtcbiAgbGV0IHJldCA9IFtdO1xuICBmb3IgKGxldCBpID0gMDsgaSA8IGNoYW5nZXMubGVuZ3RoOyBpKyspIHtcbiAgICBsZXQgY2hhbmdlID0gY2hhbmdlc1tpXTtcbiAgICBpZiAoY2hhbmdlLmFkZGVkKSB7XG4gICAgICByZXQucHVzaCgnPGlucz4nKTtcbiAgICB9IGVsc2UgaWYgKGNoYW5nZS5yZW1vdmVkKSB7XG4gICAgICByZXQucHVzaCgnPGRlbD4nKTtcbiAgICB9XG5cbiAgICByZXQucHVzaChlc2NhcGVIVE1MKGNoYW5nZS52YWx1ZSkpO1xuXG4gICAgaWYgKGNoYW5nZS5hZGRlZCkge1xuICAgICAgcmV0LnB1c2goJzwvaW5zPicpO1xuICAgIH0gZWxzZSBpZiAoY2hhbmdlLnJlbW92ZWQpIHtcbiAgICAgIHJldC5wdXNoKCc8L2RlbD4nKTtcbiAgICB9XG4gIH1cbiAgcmV0dXJuIHJldC5qb2luKCcnKTtcbn1cblxuZnVuY3Rpb24gZXNjYXBlSFRNTChzKSB7XG4gIGxldCBuID0gcztcbiAgbiA9IG4ucmVwbGFjZSgvJi9nLCAnJmFtcDsnKTtcbiAgbiA9IG4ucmVwbGFjZSgvPC9nLCAnJmx0OycpO1xuICBuID0gbi5yZXBsYWNlKC8+L2csICcmZ3Q7Jyk7XG4gIG4gPSBuLnJlcGxhY2UoL1wiL2csICcmcXVvdDsnKTtcblxuICByZXR1cm4gbjtcbn1cbiJdfQ==
+
+
+/***/ },
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -43801,7 +44588,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 11 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -43827,7 +44614,7 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var InteractionCore = __webpack_require__(12);
+	var InteractionCore = __webpack_require__(27);
 
 	////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////
@@ -43943,7 +44730,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 12 */
+/* 27 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -44033,7 +44820,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 13 */
+/* 28 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -44119,7 +44906,7 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 14 */
+/* 29 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -44144,9 +44931,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var Viewport = __webpack_require__(15);
-	var Cursor = __webpack_require__(35);
-	var Browser = __webpack_require__(17);
+	var Viewport = __webpack_require__(30);
+	var Cursor = __webpack_require__(51);
+	var Browser = __webpack_require__(32);
 
 	/**
 	 * Private properties
@@ -44238,6 +45025,37 @@ var Iconeezin =
 	 * Start/Stop video animation
 	 */
 	VideoCore.hasVR = Browser.hasVR;
+
+
+	/**
+	 * Fade-in from black
+	 */
+	VideoCore.fadeIn = function( cb ) {
+
+		// Run tween
+		this.viewport.runTween( 1000, (function(tweenProgress) {
+
+			// Fade out
+			this.viewport.setOpacity( tweenProgress );
+
+		}).bind(this), cb);
+
+	}
+
+	/**
+	 * Fade-out to black
+	 */
+	VideoCore.fadeOut = function( cb ) {
+
+		// Run tween
+		this.viewport.runTween( 1000, (function(tweenProgress) {
+
+			// Fade out
+			this.viewport.setOpacity( 1.0 - tweenProgress );
+
+		}).bind(this), cb)
+
+	}
 
 	/**
 	 * Start/Stop video animation
@@ -44345,21 +45163,21 @@ var Iconeezin =
 	 * Show an interaction label
 	 */
 	VideoCore.showInteractionLabel = function( label ) {
-		VideoCore.viewport.label.text = label;
+		VideoCore.viewport.hudStatus.setLabel( label );
 	}
 
 	/**
 	 * Hide an interaction label
 	 */
 	VideoCore.hideInteractionLabel = function() {
-		VideoCore.viewport.label.text = "";
+		VideoCore.viewport.hudStatus.setLabel( null );
 	}
 
 	// Export
 	module.exports = VideoCore;
 
 /***/ },
-/* 15 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -44385,38 +45203,40 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var Label = __webpack_require__(16);
-	var Browser = __webpack_require__(17);
+	var Label = __webpack_require__(31);
+	var Browser = __webpack_require__(32);
+	var HUDStatus = __webpack_require__(33);
 
 	// Modified version of example scripts
 	// in order to work with Z-Up orientation
-	__webpack_require__(18);
+	__webpack_require__(36);
 
 	// Effect composer complex
-	__webpack_require__(19);
-	__webpack_require__(20);
+	__webpack_require__(37);
+	__webpack_require__(38);
 
-	__webpack_require__(21);
-	__webpack_require__(22);
-	__webpack_require__(23);
-	__webpack_require__(24);
+	__webpack_require__(39);
+	__webpack_require__(40);
+	__webpack_require__(41);
+	__webpack_require__(42);
 
-	__webpack_require__(25);
-	__webpack_require__(26);
+	__webpack_require__(43);
+	__webpack_require__(44);
 
-	__webpack_require__(27);
-	__webpack_require__(28);
+	__webpack_require__(45);
+	__webpack_require__(46);
 
-	__webpack_require__(29);
-	__webpack_require__(30);
+	__webpack_require__(47);
+	__webpack_require__(48);
 
-	__webpack_require__(31);
+	__webpack_require__(49);
 
 	// Custom pass for rendering the HMD display in a texture
 	// for possible post-processing.
-	__webpack_require__(32);
+	__webpack_require__(50);
 
-	__webpack_require__(33);
+	// require("./custom/shaders/HUDShader");
+	// require("./custom/postprocessing/HUDPass");
 	__webpack_require__(34);
 
 	/**
@@ -44464,6 +45284,14 @@ var Iconeezin =
 		this.camera.position.set( 0.0, 0.0, 0.0 );
 		this.camera.rotation.set( Math.PI/2, 0, 0 );
 
+		// Create Heads-up Display
+		this.hud = new THREE.HUD();
+		this.camera.add( this.hud );
+
+		// Create a HUD display
+		this.hudStatus = new HUDStatus();
+		this.hud.addLayer( this.hudStatus );
+
 		/////////////////////////////////////////////////////////////
 		// Rendering
 		/////////////////////////////////////////////////////////////
@@ -44472,17 +45300,6 @@ var Iconeezin =
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setPixelRatio( 1 );
 		this.viewportDOM.appendChild( this.renderer.domElement );
-
-		// Camera opacity
-		var black = new THREE.MeshBasicMaterial({
-			color: 0x00,
-			opacity: 0.5,
-			transparent: true
-		});
-		this.opacityQuad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), black );
-		this.opacityQuad.position.z = -0.25;
-		this.opacityQuad.visible = false;
-		this.camera.add( this.opacityQuad );
 
 		// Effect composer
 		this.effectComposer = new THREE.EffectComposer( this.renderer );
@@ -44506,8 +45323,8 @@ var Iconeezin =
 		// this.effectComposer.addPass( this.glitchPass );
 
 		// Add GUI
-		this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
-		this.hudPass.renderToScreen = true;
+		// this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
+		// this.hudPass.renderToScreen = true;
 		// this.effectComposer.addPass( this.hudPass );
 
 		// var cp = new THREE.ShaderPass( THREE.CopyShader );
@@ -44552,34 +45369,6 @@ var Iconeezin =
 	}
 
 	/**
-	 * Render the HUD canvas
-	 */
-	Viewport.prototype.renderHUD = function( ctx, width, height ) {
-		
-		// ctx.fillStyle = "green";
-		// ctx.fillRect( 0,0,128,128);
-
-		// ctx.fillStyle = "red";
-		// ctx.fillRect( 128,128,128,128);
-
-		ctx.fillStyle = "#000000";
-		ctx.fillRect( 64,110,128,28);
-
-		ctx.fillStyle = "white";
-		ctx.textAlign = 'center';
-		ctx.font = '12px Tahoma';
-		ctx.fillText( "Flat HUD", 128, 128 );
-
-	}
-
-	/**
-	 * Redraw hud
-	 */
-	Viewport.prototype.redrawHUD = function() {
-		this.hudPass.needsUpdate = true;
-	}
-
-	/**
 	 * Enable or diable antialias pass
 	 */
 	Viewport.prototype.setAntialias = function( enabled ) {
@@ -44590,15 +45379,7 @@ var Iconeezin =
 	 * Resize viewport to fit new size
 	 */
 	Viewport.prototype.setOpacity = function( value ) {
-		if (value <= 0) {
-			this.opacityQuad.visible = true;
-			this.opacityQuad.material.opacity = 1.0;
-		} else if (value >= 1) {
-			this.opacityQuad.visible = false;
-		} else {
-			this.opacityQuad.visible = true;
-			this.opacityQuad.material.opacity = 1.0 - value;
-		}
+		this.hud.setFadeoutOpacity( value );
 	}
 
 	/**
@@ -44642,6 +45423,9 @@ var Iconeezin =
 		// Re-render if paused
 		if (this.paused)
 			this.render();
+
+		// Re-orient hud
+		this.hud.setSize( width, height );
 
 	}
 
@@ -44730,8 +45514,7 @@ var Iconeezin =
 		this.useHMD = enabled;
 
 		// Enable HMD GUI Effect
-		this.hudPass.setHMD( enabled );
-
+		// this.hudPass.setHMD( enabled );
 	}
 
 	/**
@@ -44834,7 +45617,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 16 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -45069,7 +45852,7 @@ var Iconeezin =
 	module.exports = Label;
 
 /***/ },
-/* 17 */
+/* 32 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -45424,7 +46207,487 @@ var Iconeezin =
 	module.exports = Browser;
 
 /***/ },
-/* 18 */
+/* 33 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 * 
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 * 
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 * 
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
+	var THREE = __webpack_require__(1);
+	__webpack_require__(34);
+
+	/**
+	 * HUD Status component
+	 */
+	var HUDStatus = function() {
+		THREE.HUDLayer.call(this, 256, 128, 'cc');
+
+		// Label text
+		this.labelText = "";
+	};
+
+	// Subclass from sprite
+	HUDStatus.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), {
+
+		constructor: HUDStatus,
+
+		setLabel: function( text ) {
+
+			this.labelText = text;
+			this.redraw();
+
+		},
+
+		onPaint: function( ctx, width, height ) {
+
+			//
+			// Draw label if data exists
+			//
+			if (this.labelText) {
+
+				ctx.fillStyle = "#000000";
+				ctx.globalAlpha = 0.8;
+				ctx.fillRect( 2, 2, width-4, 30 );
+				ctx.globalAlpha = 1.0;
+
+				ctx.textAlign = "center";
+				ctx.font = "16px Tahoma";
+				ctx.fillStyle = "#FFFFFF";
+				ctx.fillText( this.labelText, width/2, 24);
+
+			}
+
+		},
+
+	});
+
+	// Export label
+	module.exports = HUDStatus;
+
+/***/ },
+/* 34 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * @author wavesoft / https://github.com/wavesoft
+	 */
+	var THREE = __webpack_require__(1);
+	__webpack_require__(35);
+
+	/**
+	 * Maximum number of layers allowed
+	 */
+	const MAX_LAYERS = 4;
+
+	/**
+	 * HUD object that is placed on the camera in the scene and
+	 * renders the HUD UI with a custom shader.
+	 */
+	THREE.HUD = function () {
+		THREE.Object3D.call( this );
+
+		// Local properties
+		this.hudLayers = [];
+		this.size = new THREE.Vector2(0,0);
+		this.pixelRatio = 1.0;
+
+		// Initialize the shader material
+		this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShaderQuad.uniforms );
+		this.material = new THREE.ShaderMaterial( {
+
+			defines: THREE.HUDShaderQuad.defines || {},
+			uniforms: this.uniforms,
+			vertexShader: THREE.HUDShaderQuad.vertexShader,
+			fragmentShader: THREE.HUDShaderQuad.fragmentShader,
+			transparent: true
+
+		} );
+
+		// Create a quad that fills the screen
+		var quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), this.material );
+		quad.position.z = -0.25;
+		this.add( quad );
+
+	}
+
+	THREE.HUD.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
+
+		constructor: THREE.HUD,
+
+		addLayer: function( layer ) {
+
+			// Check for a free layer
+			var id = -1;
+			for (var i=1; i<=MAX_LAYERS; i++) {
+				if (this.uniforms['layer'+i+'_size'].value.x == 0) {
+					id = i;
+					break;
+				}
+			}
+			if (id < 0) {
+				console.warn("THREE.HUD: you can create up to "+MAX_LAYERS+" layers in the HUD.");
+				return;
+			}
+
+			// Register layer on HUD
+			layer.register( this, id );
+			this.hudLayers.push( layer );
+
+			return this;
+
+		},
+
+		setPixelRatio: function( ratio ) {
+
+			// Update pixel ratio of all components
+			this.pixelRatio = ratio;
+
+			// Re-orient all layers
+			for (var i=0; i<this.hudLayers.length; ++i) {
+				this.hudLayers[i].setPixelRatio( this.pixelRatio );
+			}
+
+		},
+
+		setSize: function( width, height ) {
+
+			// Update size
+			this.size.set( width, height );
+
+			// Re-orient all layers
+			for (var i=0; i<this.hudLayers.length; ++i) {
+				this.hudLayers[i].updateUniforms();
+			}
+
+		},
+
+		setFadeoutOpacity: function( value ) {
+
+			// Update fade-out opacity
+			this.uniforms['black_fader'].value = value;
+
+		},
+
+	});
+
+	/**
+	 * A HUD layer contains drawable and addressable information
+	 */
+	THREE.HUDLayer = function ( width, height, anchor ) {
+
+		// Link information
+		this.id = null;
+		this.hud = null;
+		this.pixelRatio = 1.0;
+
+		// Local properties
+		this.anchor = anchor || 'tl';
+		this.size = new THREE.Vector2( width, height );
+		this.position = new THREE.Vector2( 0, 0 );
+
+		this.uniforms = {
+			'size': new THREE.Vector2(0,0),
+			'pos': new THREE.Vector2(0,0),
+			'tex': null
+		};
+
+		// Create a 2D canvas
+		this.canvas = document.createElement('canvas');
+		this.context = this.canvas.getContext('2d');
+		this.setSize( width, height );
+
+		// Create texture using the canvas
+		this.uniforms.tex = new THREE.Texture( this.canvas );
+		this.uniforms.tex.needsUpdate = true;
+
+	}
+
+	THREE.HUDLayer.prototype = {
+		constructor: THREE.HUDLayer,
+
+		register: function( hud, layer_id ) {
+
+			// Update uniforms
+			this.id = layer_id;
+			this.hud = hud;
+			this.hud.uniforms['layer'+layer_id+'_size'].value = this.uniforms.size;
+			this.hud.uniforms['layer'+layer_id+'_pos'].value = this.uniforms.pos;
+			this.hud.uniforms['layer'+layer_id+'_tex'].value = this.uniforms.tex;
+
+			// Adapt pixel ratio from HUD
+			this.setPixelRatio( this.hud.pixelRatio );
+
+			// Update uniforms
+			this.updateUniforms();
+			this.redraw();
+
+		},
+
+		unregister: function() {
+
+			// Unregister
+			this.id = null;
+			this.hud = null;
+			this.hud.uniforms['layer'+layer_id+'_size'].value = new THREE.Vector2(0,0);
+			this.hud.uniforms['layer'+layer_id+'_pos'].value = new THREE.Vector2(0,0);
+			this.hud.uniforms['layer'+layer_id+'_tex'].value = null;
+
+		},
+
+		setPosition: function( x, y ) {
+
+			// Set position & Update uniforms
+			this.position.set( x, y );
+			this.updateUniforms();
+
+		},
+
+		setAnchor: function( anchor ) {
+
+			// Set anchor & Update uniforms
+			this.anchor = anchor;
+			this.updateUniforms();
+
+		},
+
+		setPixelRatio: function( ratio ) {
+
+			// Set anchor & Update uniforms
+			this.pixelRatio = ratio;
+			this.setSize( this.size.x, this.size.y );
+
+		},
+
+		setSize: function( width, height ) {
+
+			// Snap canvas to multiplicants of power of 2
+			this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width))) * this.pixelRatio;
+			this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height))) * this.pixelRatio;
+			this.canvas.style = "width: "+width+"px; height: "+height+" px;";
+
+			// Keep real size available
+			this.size.set( width, height );
+
+			// Update uniforms
+			this.updateUniforms();
+			this.redraw();
+
+		},
+
+		updateUniforms: function() {
+
+			// Skip if disposed or not registered
+			if (!this.canvas) return;
+			if (!this.hud) return;
+
+			//
+			// Update size
+			//
+			this.uniforms.size.set( this.canvas.width, this.canvas.height );
+
+			//
+			// Depending on anchor alignment, update position uniform
+			//
+			switch (this.anchor[0].toLowerCase()) {
+				case 't':
+					this.uniforms.pos.y = (this.hud.size.y - this.canvas.height) - this.position.y;
+					break;
+				case 'c':
+					this.uniforms.pos.y = (this.hud.size.y - this.size.y) / 2 - (this.canvas.height - this.size.y) - this.position.y;
+					break;
+				case 'b':
+					this.uniforms.pos.y = (this.size.y - this.canvas.height) + this.position.y;
+					break;
+				default:
+					console.warn("THREE.HUD: unknown anchor argument '"+this.anchor[0]+"'. Expecting 't','c','b'.")
+					break;
+			}
+			switch (this.anchor[1].toLowerCase()) {
+				case 'l':
+					this.uniforms.pos.x = this.position.x;
+					break;
+				case 'c':
+					this.uniforms.pos.x = this.hud.size.x/2 - this.size.x/2 + this.position.x;
+					break;
+				case 'r':
+					this.uniforms.pos.x = (this.hud.size.x - this.size.x) + this.position.x;
+					break;
+				default:
+					console.warn("THREE.HUD: unknown anchor argument '"+this.anchor[1]+"'. Expecting 'l','c','r'.")
+					break;
+			}
+
+			// Round position
+			this.uniforms.pos.set(
+					Math.round(this.uniforms.pos.x),
+					Math.round(this.uniforms.pos.y)
+				);
+
+			console.log("HUD Layer",this.id,"at (",this.uniforms.pos.x,",",this.uniforms.pos.y,") size=(",
+				this.uniforms.size.x,",",this.uniforms.size.y,") with HUD=(",this.hud.size.x,",",this.hud.size.y,")");
+
+		},
+
+		redraw: function() {
+
+			// Skip if disposed or not registered
+			if (!this.canvas) return;
+			if (!this.hud) return;
+
+			// Call user's paint method to draw the canvas
+			this.context.clearRect( -1, -1, this.canvas.width+2, this.canvas.height+2 );
+			this.context.save();
+			this.context.translate(0.5,0.5);
+			this.onPaint( this.context, this.size.x, this.size.y );
+			this.context.restore();
+
+			// Update texture
+			this.uniforms.tex.needsUpdate = true;
+
+		},
+
+		dispose: function() {
+
+			// Unregister from HUD
+			this.unregister();
+
+			// Release resources
+			this.context = null;
+			this.canvas = null;
+
+		},
+
+		onPaint: function( ctx, width, height ) {
+
+			// Must be implemented by the user to draw the layer contents
+
+		},
+
+	};
+
+/***/ },
+/* 35 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * @author ioannis Charalampidis / http://wavesoft.github.io/
+	 *
+	 * Overlay shader used by GUI pass
+	 */
+
+	var THREE = __webpack_require__(1);
+
+	THREE.HUDShaderQuad = {
+
+		uniforms: {
+
+			"black_fader"  : { value: 0.0 },
+
+			"layer1_pos"  : { value: new THREE.Vector2(0,0) },
+			"layer1_size" : { value: new THREE.Vector2(0,0) },
+			"layer1_tex"  : { value: null },
+
+			"layer2_pos"  : { value: new THREE.Vector2(0,0) },
+			"layer2_size" : { value: new THREE.Vector2(0,0) },
+			"layer2_tex"  : { value: null },
+
+			"layer3_pos"  : { value: new THREE.Vector2(0,0) },
+			"layer3_size" : { value: new THREE.Vector2(0,0) },
+			"layer3_tex"  : { value: null },
+
+			"layer4_pos"  : { value: new THREE.Vector2(0,0) },
+			"layer4_size" : { value: new THREE.Vector2(0,0) },
+			"layer4_tex"  : { value: null },
+
+		},
+
+		vertexShader: [
+
+			"void main() {",
+
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"uniform vec2 layer1_pos;",
+			"uniform vec2 layer1_size;",
+			"uniform sampler2D layer1_tex;",
+
+			"uniform vec2 layer2_pos;",
+			"uniform vec2 layer2_size;",
+			"uniform sampler2D layer2_tex;",
+
+			"uniform vec2 layer3_pos;",
+			"uniform vec2 layer3_size;",
+			"uniform sampler2D layer3_tex;",
+
+			"uniform vec2 layer4_pos;",
+			"uniform vec2 layer4_size;",
+			"uniform sampler2D layer4_tex;",
+
+			"uniform float black_fader;",
+
+			"void renderLayer( vec2 pos, vec2 sz, sampler2D tex ) {",
+				"vec4 col;",
+				"if ((gl_FragCoord.x > pos.x + 1.0) && (gl_FragCoord.y > pos.y + 1.0) &&",
+					"(gl_FragCoord.x < pos.x + sz.x - 2.0) && (gl_FragCoord.y < pos.y + sz.y - 2.0)) {",
+					"col = texture2D(tex, (gl_FragCoord.xy - pos) / sz);",
+					"gl_FragColor = mix(gl_FragColor, col, col.a);",
+				"}",
+			"}",
+
+			"void main() {",
+
+				"gl_FragColor = vec4( 0.0, 0.0, 0.0, 0.0 );",
+
+				"if (layer1_size.x > 0.0) {",
+					"renderLayer( layer1_pos, layer1_size, layer1_tex );",
+				"}",
+				"if (layer2_size.x > 0.0) {",
+					"renderLayer( layer2_pos, layer2_size, layer2_tex );",
+				"}",
+				"if (layer3_size.x > 0.0) {",
+					"renderLayer( layer3_pos, layer3_size, layer3_tex );",
+				"}",
+				"if (layer4_size.x > 0.0) {",
+					"renderLayer( layer4_pos, layer4_size, layer4_tex );",
+				"}",
+
+				"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), 1.0 - black_fader);",
+
+
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 36 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -45696,7 +46959,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 19 */
+/* 37 */
 /***/ function(module, exports) {
 
 	/**
@@ -45748,7 +47011,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 20 */
+/* 38 */
 /***/ function(module, exports) {
 
 	/**
@@ -45842,7 +47105,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 21 */
+/* 39 */
 /***/ function(module, exports) {
 
 	/**
@@ -46023,7 +47286,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 22 */
+/* 40 */
 /***/ function(module, exports) {
 
 	/**
@@ -46082,7 +47345,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 23 */
+/* 41 */
 /***/ function(module, exports) {
 
 	/**
@@ -46185,7 +47448,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 24 */
+/* 42 */
 /***/ function(module, exports) {
 
 	/**
@@ -46257,7 +47520,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 25 */
+/* 43 */
 /***/ function(module, exports) {
 
 	/**
@@ -46366,7 +47629,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 26 */
+/* 44 */
 /***/ function(module, exports) {
 
 	/**
@@ -46487,7 +47750,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 27 */
+/* 45 */
 /***/ function(module, exports) {
 
 	/**
@@ -46609,7 +47872,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 28 */
+/* 46 */
 /***/ function(module, exports) {
 
 	/**
@@ -46717,7 +47980,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 29 */
+/* 47 */
 /***/ function(module, exports) {
 
 	/**
@@ -47185,7 +48448,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 30 */
+/* 48 */
 /***/ function(module, exports) {
 
 	/**
@@ -47355,7 +48618,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 31 */
+/* 49 */
 /***/ function(module, exports) {
 
 	/**
@@ -47430,7 +48693,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 32 */
+/* 50 */
 /***/ function(module, exports) {
 
 	/**
@@ -47732,235 +48995,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 33 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * @author ioannis Charalampidis / http://wavesoft.github.io/
-	 *
-	 * Overlay shader used by GUI pass
-	 */
-
-	var THREE = __webpack_require__(1);
-
-	THREE.HUDShader = {
-
-		uniforms: {
-
-			// Front and back buffers
-			"tBack": { value: null },
-			"tFront": { value: null },
-
-			// Normalized size of the centered block
-			"size":  { value: new THREE.Vector2(1,1) },
-
-			// Left eye matrix
-			"eyeL_offset" : { value: new THREE.Vector2(-0.225,0) },
-			"eyeR_offset" : { value: new THREE.Vector2(0.225,0) },
-			"eyeL_scale"  : { value: new THREE.Vector2(1,1) },
-			"eyeR_scale"  : { value: new THREE.Vector2(1,1) },
-
-			// Enable or disable HMD
-			"hmd": { value: false },
-
-		},
-
-		vertexShader: [
-
-			"varying vec2 vUv;",
-
-			"void main() {",
-
-				"vUv = uv;",
-				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-
-			"}"
-
-		].join( "\n" ),
-
-		fragmentShader: [
-
-			"uniform sampler2D tBack;",
-			"uniform sampler2D tFront;",
-			"uniform vec2 size;",
-			"uniform vec2 eyeL_offset;",
-			"uniform vec2 eyeR_offset;",
-			"uniform vec2 eyeL_scale;",
-			"uniform vec2 eyeR_scale;",
-			"uniform bool hmd;",
-
-			"varying vec2 vUv;",
-
-			"const vec2 CENTER = vec2(0.5, 0.5);",
-			"const vec2 ZERO = vec2(0.0, 0.0);",
-			"const vec2 ONE = vec2(1.0, 1.0);",
-
-			"void renderAt( vec2 center, vec2 scale ) {",
-				"vec2 lUv = vUv - center + (size * scale / 2.0);",
-				"if ( all(greaterThan(lUv, ZERO)) && all(lessThan(lUv, size * scale)) ) {",
-					"lUv /= size * scale;",
-					"vec4 c_front = texture2D(tFront, lUv);",
-					"gl_FragColor = mix(gl_FragColor, c_front, c_front.a);",
-				"}",
-			"}",
-
-			"void main() {",
-
-				"gl_FragColor = texture2D(tBack, vUv);",
-
-				"if (hmd) {",
-					"renderAt( CENTER + eyeL_offset, eyeL_scale );",
-					"renderAt( CENTER + eyeR_offset, eyeR_scale );",
-				"} else {",
-					"renderAt( CENTER, ONE );",
-				"}",
-
-			"}"
-
-		].join( "\n" )
-
-	};
-
-
-/***/ },
-/* 34 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	/**
-	 * Iconeez.in - A Web VR Platform for social experiments
-	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
-	 * This program is free software; you can redistribute it and/or modify
-	 * it under the terms of the GNU General Public License as published by
-	 * the Free Software Foundation; either version 2 of the License, or
-	 * (at your option) any later version.
-	 * 
-	 * This program is distributed in the hope that it will be useful,
-	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
-	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	 * GNU General Public License for more details.
-	 * 
-	 * You should have received a copy of the GNU General Public License along
-	 * with this program; if not, write to the Free Software Foundation, Inc.,
-	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-	 *
-	 * @author Ioannis Charalampidis / https://github.com/wavesoft
-	 */
-
-	var THREE = __webpack_require__(1);
-
-	THREE.HUDPass = function ( width, height, onUpdate ) {
-
-		THREE.Pass.call( this );
-
-		// Clone uniforms
-		this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShader.uniforms );
-		this.material = new THREE.ShaderMaterial( {
-
-			defines: THREE.HUDShader.defines || {},
-			uniforms: this.uniforms,
-			vertexShader: THREE.HUDShader.vertexShader,
-			fragmentShader: THREE.HUDShader.fragmentShader
-
-		} );
-
-		// Global properties
-		this.needsUpdate = true;
-		this.autoUpdate = false;
-
-		// Create a canvas for overlaying GUI
-		this.canvas = document.createElement('canvas');
-
-		// Snap canvas size to powers of 2
-		this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width)));
-		this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height)));
-		this.size = new THREE.Vector2(0,0);
-		this.setSize( this.width, this.height );
-
-		// Create a canvas texture
-		this.uniforms['hmd'].value = false;
-		this.uniforms['tBack'].value = null;
-		this.uniforms['tFront'].value = this.canvasTexture = new THREE.Texture( this.canvas );
-
-		// Get context
-		this.context = this.canvas.getContext('2d');
-		this.canvasTexture.needsUpdate = true;
-
-		// Update callback
-		this.onUpdate = onUpdate;
-
-		this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-		this.scene = new THREE.Scene();
-
-		this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
-		this.scene.add( this.quad );
-
-	};
-
-	THREE.HUDPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
-
-		constructor: THREE.HUDPass,
-
-		setSize: function( width, height ) {
-
-			// Keep track of size
-			this.size.set( width, height );
-
-			// Apply hmd effect scale
-			this.uniforms['size'].value.set(
-				this.canvas.width / width,
-				this.canvas.height / height
-			);
-
-		},
-
-		setHMD: function( enabled ) {
-			this.uniforms['hmd'].value = enabled;
-		},
-
-		render: function( renderer, writeBuffer, readBuffer, delta, maskActive ) {
-
-			if ( this.uniforms[ this.textureID ] ) {
-
-				this.uniforms[ this.textureID ].value = readBuffer.texture;
-
-			}
-
-			// Call update function
-			if (this.onUpdate && (this.autoUpdate || this.needsUpdate)) {
-
-				// Render update
-				this.context.clearRect(0, 0, this.canvas.width, this.canvas.height );
-				this.onUpdate( this.context, this.canvas.width, this.canvas.height );
-
-				// Update texture
-				this.canvasTexture.needsUpdate = true;
-				this.needsUpdate = false;
-
-			}
-
-			// Update read buffer
-			this.uniforms['tBack'].value = readBuffer.texture;
-			this.quad.material = this.material;
-
-			if ( this.renderToScreen ) {
-
-				renderer.render( this.scene, this.camera );
-
-			} else {
-
-				renderer.render( this.scene, this.camera, writeBuffer, this.clear );
-
-			}
-
-		}
-
-	} );
-
-
-/***/ },
-/* 35 */
+/* 51 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -48087,7 +49122,7 @@ var Iconeezin =
 
 		// Create a spinner sprite
 		var loader = new THREE.TextureLoader();
-		loader.load( __webpack_require__(36), (function( texture ) {
+		loader.load( __webpack_require__(52), (function( texture ) {
 
 			// Set material map
 			mat.map = texture;
@@ -48260,13 +49295,13 @@ var Iconeezin =
 
 
 /***/ },
-/* 36 */
+/* 52 */
 /***/ function(module, exports) {
 
 	module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA8pJREFUeNrsW8uR2kAQFS7fRQbLRoAyQI7AcgSwF67GEVhEYO11L8tGYIUgMoAILDJAEeCercY122795isKdZVKhWo0mn7T3fPeSEwul0twz/YpuHMbARgBGAEYAbhr+2yqo5eXlwhOCRziPLU45jMcBzjy9Xp90O1sossDwHHhbA7HwsME7gXoAMTZCwDofAHH3GMUH+GIVUHQrQG5Z+cDfH7mPAJg9mdw+jOgevYIUVC6jIBkYAVdaTw6q8CUycWzQ4enJP2mrgGgtoMQzFx5Dym4gtOrTyJUtkSEbZv5ZoKljQFppGDpG4DYMQD0eUqsUJcICRAepEtfoA4UNfkqrOiyVOES++4gtN91WIIraOelCAoi9F36vUFmSAf7Kv2+UtjrrJ0xnCO8tiD3c6ClzDi8qEE6O19hwDEjXipybYGHAO8nnheMnqjo0oqia9kyDjcAoBrb08GgRri2EQ6sFB+xkjk+9kud3XNp53I/YEN+i5pQEBBEiD737PcZ72vTHhuvchhnJsVQblRp0E4M9leHLn/IpKpBcm+hXeodABzkjsnNI4bxQWqXYBiHTDcVts9JEeVmXoS+9tJrbEsMBiPy/I2RqoVcGNG5CMGhYEXE+QhXijnT1ogYm5h+M1QTCcKe6JoObTNcAUS+bzpyfe1dIKsAtOT6E0dsegidN4w0Yzax9W6wIde/MdWd3vdbFbzBACDlcEFAEIVuxoUwVvuSaZ/orPVOimADUaKVOmwoYDETMdactw6ABMK2o3SOTLK8QQAg6QETkvv2AEAik3YEhDq8xPtvEwCJwoYd5WvOKMcci+ltASCtAHOGv5c19UJERlbDJq2AYIsIxTUz34nI9GGTQ6TCvVgcpsk75yfKMSO7TVbYoFEAGgbNyVuaHkdc80uXlNikHOb2BDh5y7FDuX1M5LNWOrnaEOH4O+dMk/Nt9+2YgqpdE0x9IMHxdxXnm+7n0qbCPQRlwmRiGcwMO3/VCx+WPiyQCeEJIUOy3EVAzTcCtOD1db4tErh0e1SNAt0IWDHihRIZVef/RQIhS3nw/1b8xlcKUFm7YwhRqPmMkHnZkraMwz4AWJQ+FCRakVHKbhl+38fE/Qem35N06UFVNOm8G4yYUOf4fapbqGqsIHQ5UpHPOilA38YeArdWtkyIdQCiwK8Z2RY3+Y3QDOmwK5sNDYDlLUaETgrkwbCscAoAsrPjQJzfq345boIJVp6dr7wxQenFx8mT8yeqFXztB0yRjiaBmw8mz1iDct23xJPxj5N3biMAIwAjACMAd21/BRgAk6Xp4c7+81UAAAAASUVORK5CYII="
 
 /***/ },
-/* 37 */
+/* 53 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -48291,13 +49326,13 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(14);
+	var VideoCore = __webpack_require__(29);
 
-	var SightInteraction = __webpack_require__(38);
+	var SightInteraction = __webpack_require__(54);
 
-	var PathFollowerControl = __webpack_require__(40);
-	var MouseControl = __webpack_require__(42);
-	var VRControl = __webpack_require__(43);
+	var PathFollowerControl = __webpack_require__(56);
+	var MouseControl = __webpack_require__(58);
+	var VRControl = __webpack_require__(59);
 
 	/**
 	 * The ControlsCore singleton contains the
@@ -48570,7 +49605,7 @@ var Iconeezin =
 	module.exports = ControlsCore;
 
 /***/ },
-/* 38 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -48595,9 +49630,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(14);
-	var TrackingCore = __webpack_require__(39);
-	var ThreeAPI = __webpack_require__(11);
+	var VideoCore = __webpack_require__(29);
+	var TrackingCore = __webpack_require__(55);
+	var ThreeAPI = __webpack_require__(26);
 
 	const CENTER = new THREE.Vector2(0,0);
 
@@ -48797,7 +49832,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 39 */
+/* 55 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -49110,7 +50145,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 40 */
+/* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49136,7 +50171,7 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var BaseControl = __webpack_require__(41);
+	var BaseControl = __webpack_require__(57);
 
 	var zero = new THREE.Vector3(0,0,0);
 	var norm = new THREE.Vector3();
@@ -49255,7 +50290,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 41 */
+/* 57 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -49364,7 +50399,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 42 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49389,8 +50424,8 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(14);
-	var BaseControl = __webpack_require__(41);
+	var VideoCore = __webpack_require__(29);
+	var BaseControl = __webpack_require__(57);
 
 	const PI_2 = Math.PI / 2;
 	const RESET_NORMAL_SPEED = 0.01;
@@ -49583,7 +50618,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 43 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49608,9 +50643,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var BaseControl = __webpack_require__(41);
-	var Browser = __webpack_require__(17);
-	__webpack_require__(44);
+	var BaseControl = __webpack_require__(57);
+	var Browser = __webpack_require__(32);
+	__webpack_require__(60);
 
 	var vec = new THREE.Vector3();
 
@@ -49657,7 +50692,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 44 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -49817,7 +50852,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 45 */
+/* 61 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49842,13 +50877,13 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(14);
+	var VideoCore = __webpack_require__(29);
 	var AudioCore = __webpack_require__(4);
-	var ControlsCore = __webpack_require__(37);
-	var TrackingCore = __webpack_require__(39);
+	var ControlsCore = __webpack_require__(53);
+	var TrackingCore = __webpack_require__(55);
 
-	var Experiments = __webpack_require__(46);
-	var Loaders = __webpack_require__(47);
+	var Experiments = __webpack_require__(62);
+	var Loaders = __webpack_require__(63);
 
 	/**
 	 * Kernel core is the main logic that steers the runtime 
@@ -50020,7 +51055,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 46 */
+/* 62 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -50232,7 +51267,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 47 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50257,11 +51292,11 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var Config = __webpack_require__(13);
+	var Config = __webpack_require__(28);
 
-	var JBBLoader = __webpack_require__(48);
-	var JBBProfileThreeLoader = __webpack_require__(55);
-	var JBBProfileIconeezinLoader = __webpack_require__(57);
+	var JBBLoader = __webpack_require__(64);
+	var JBBProfileThreeLoader = __webpack_require__(71);
+	var JBBProfileIconeezinLoader = __webpack_require__(73);
 
 	/**
 	 * Loaders namespace contains all the different loading
@@ -50371,7 +51406,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 48 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {"use strict";
@@ -50395,10 +51430,10 @@ var Iconeezin =
 	 */
 
 	/* Imports */
-	var BinaryBundle = __webpack_require__(50);
-	var DecodeProfile = __webpack_require__(51);
-	var ProgressManager = __webpack_require__(52);
-	var Errors = __webpack_require__(53);
+	var BinaryBundle = __webpack_require__(66);
+	var DecodeProfile = __webpack_require__(67);
+	var ProgressManager = __webpack_require__(68);
+	var Errors = __webpack_require__(69);
 
 	/* Production optimisations and debug metadata flags */
 	if (typeof GULP_BUILD === "undefined") var GULP_BUILD = false;
@@ -50408,7 +51443,7 @@ var Iconeezin =
 
 	/* Additional includes on node builds */
 	if (IS_NODE) {
-		var fs = __webpack_require__(54);
+		var fs = __webpack_require__(70);
 	}
 
 	/* Size constants */
@@ -51711,10 +52746,10 @@ var Iconeezin =
 	// Export the binary loader
 	module.exports = BinaryLoader;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(49)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(65)))
 
 /***/ },
-/* 49 */
+/* 65 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -51814,7 +52849,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 50 */
+/* 66 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -52174,7 +53209,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 51 */
+/* 67 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -52291,7 +53326,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 52 */
+/* 68 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -52466,7 +53501,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 53 */
+/* 69 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -52565,13 +53600,13 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 54 */
+/* 70 */
 /***/ function(module, exports) {
 
 	
 
 /***/ },
-/* 55 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -52598,7 +53633,7 @@ var Iconeezin =
 	/* Generated source follows */
 
 	var THREE = __webpack_require__(1);
-	var MD2Character = __webpack_require__(56);
+	var MD2Character = __webpack_require__(72);
 
 	/**
 	 * Factory & Initializer of THREE.CubeTexture
@@ -54370,7 +55405,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 56 */
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -54634,7 +55669,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 57 */
+/* 73 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Iconeezin = Iconeezin || {}; Iconeezin["API"] = __webpack_require__(2);

@@ -23,6 +23,7 @@
 var THREE = require("three");
 var Label = require("./Label");
 var Browser = require("../util/Browser");
+var HUDStatus = require("./HUDStatus");
 
 // Modified version of example scripts
 // in order to work with Z-Up orientation
@@ -52,8 +53,9 @@ require("three/examples/js/shaders/HueSaturationShader");
 // for possible post-processing.
 require("./custom/postprocessing/VRPass");
 
-require("./custom/shaders/HUDShader");
-require("./custom/postprocessing/HUDPass");
+// require("./custom/shaders/HUDShader");
+// require("./custom/postprocessing/HUDPass");
+require("./custom/objects/HUD");
 
 /**
  * Our viewport is where everything gets rendered
@@ -100,6 +102,14 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.camera.position.set( 0.0, 0.0, 0.0 );
 	this.camera.rotation.set( Math.PI/2, 0, 0 );
 
+	// Create Heads-up Display
+	this.hud = new THREE.HUD();
+	this.camera.add( this.hud );
+
+	// Create a HUD display
+	this.hudStatus = new HUDStatus();
+	this.hud.addLayer( this.hudStatus );
+
 	/////////////////////////////////////////////////////////////
 	// Rendering
 	/////////////////////////////////////////////////////////////
@@ -108,17 +118,6 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.renderer = new THREE.WebGLRenderer({ antialias: true });
 	this.renderer.setPixelRatio( 1 );
 	this.viewportDOM.appendChild( this.renderer.domElement );
-
-	// Camera opacity
-	var black = new THREE.MeshBasicMaterial({
-		color: 0x00,
-		opacity: 0.5,
-		transparent: true
-	});
-	this.opacityQuad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), black );
-	this.opacityQuad.position.z = -0.25;
-	this.opacityQuad.visible = false;
-	this.camera.add( this.opacityQuad );
 
 	// Effect composer
 	this.effectComposer = new THREE.EffectComposer( this.renderer );
@@ -142,8 +141,8 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	// this.effectComposer.addPass( this.glitchPass );
 
 	// Add GUI
-	this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
-	this.hudPass.renderToScreen = true;
+	// this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
+	// this.hudPass.renderToScreen = true;
 	// this.effectComposer.addPass( this.hudPass );
 
 	// var cp = new THREE.ShaderPass( THREE.CopyShader );
@@ -188,34 +187,6 @@ var Viewport = function( viewportDOM, vrHMD ) {
 }
 
 /**
- * Render the HUD canvas
- */
-Viewport.prototype.renderHUD = function( ctx, width, height ) {
-	
-	// ctx.fillStyle = "green";
-	// ctx.fillRect( 0,0,128,128);
-
-	// ctx.fillStyle = "red";
-	// ctx.fillRect( 128,128,128,128);
-
-	ctx.fillStyle = "#000000";
-	ctx.fillRect( 64,110,128,28);
-
-	ctx.fillStyle = "white";
-	ctx.textAlign = 'center';
-	ctx.font = '12px Tahoma';
-	ctx.fillText( "Flat HUD", 128, 128 );
-
-}
-
-/**
- * Redraw hud
- */
-Viewport.prototype.redrawHUD = function() {
-	this.hudPass.needsUpdate = true;
-}
-
-/**
  * Enable or diable antialias pass
  */
 Viewport.prototype.setAntialias = function( enabled ) {
@@ -226,15 +197,7 @@ Viewport.prototype.setAntialias = function( enabled ) {
  * Resize viewport to fit new size
  */
 Viewport.prototype.setOpacity = function( value ) {
-	if (value <= 0) {
-		this.opacityQuad.visible = true;
-		this.opacityQuad.material.opacity = 1.0;
-	} else if (value >= 1) {
-		this.opacityQuad.visible = false;
-	} else {
-		this.opacityQuad.visible = true;
-		this.opacityQuad.material.opacity = 1.0 - value;
-	}
+	this.hud.setFadeoutOpacity( value );
 }
 
 /**
@@ -278,6 +241,9 @@ Viewport.prototype.setSize = function( width, height, pixelRatio, skipStyleUpdat
 	// Re-render if paused
 	if (this.paused)
 		this.render();
+
+	// Re-orient hud
+	this.hud.setSize( width, height );
 
 }
 
@@ -366,8 +332,7 @@ Viewport.prototype.setHMD = function( enabled ) {
 	this.useHMD = enabled;
 
 	// Enable HMD GUI Effect
-	this.hudPass.setHMD( enabled );
-
+	// this.hudPass.setHMD( enabled );
 }
 
 /**
