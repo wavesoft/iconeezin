@@ -152,6 +152,12 @@ Cursor.prototype.reset = function() {
 	this.confirmAnimation = 1.0;
 	this.confirmCursor.visible = false;
 
+	// Reset loading
+	this.animCursor.scale.setScalar( 1 );
+	this.cursor.scale.setScalar( 1 );
+	this.loadingSprite.material.opacity = 0;
+	this.loadingSprite.visible = false;
+
 }
 
 /**
