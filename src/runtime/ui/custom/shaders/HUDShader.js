@@ -6,27 +6,20 @@
 
 var THREE = require('three');
 
+const MAX_LAYERS = 5;
+
 THREE.HUDShader = {
 
 	uniforms: {
 
-		"black_fader"  : { value: 0.0 },
+		"black_fader" : { value: 0.0 },
+		"stereo"  	  : { value: false },
 
-		"layer1_pos"  : { value: new THREE.Vector2(0,0) },
-		"layer1_size" : { value: new THREE.Vector2(0,0) },
-		"layer1_tex"  : { value: null },
+		"size"  	  : { value: new THREE.Vector2(0,0) },
 
-		"layer2_pos"  : { value: new THREE.Vector2(0,0) },
-		"layer2_size" : { value: new THREE.Vector2(0,0) },
-		"layer2_tex"  : { value: null },
-
-		"layer3_pos"  : { value: new THREE.Vector2(0,0) },
-		"layer3_size" : { value: new THREE.Vector2(0,0) },
-		"layer3_tex"  : { value: null },
-
-		"layer4_pos"  : { value: new THREE.Vector2(0,0) },
-		"layer4_size" : { value: new THREE.Vector2(0,0) },
-		"layer4_tex"  : { value: null },
+		"layer_pos"	  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
+		"layer_size"  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
+		"layer_tex"   : { value: [ null, null, null, null, null ], type: "tv" }
 
 	},
 
@@ -42,22 +35,12 @@ THREE.HUDShader = {
 
 	fragmentShader: [
 
-		"uniform vec2 layer1_pos;",
-		"uniform vec2 layer1_size;",
-		"uniform sampler2D layer1_tex;",
+		"uniform vec2 layer_pos["+MAX_LAYERS+"];",
+		"uniform vec2 layer_size["+MAX_LAYERS+"];",
+		"uniform sampler2D layer_tex["+MAX_LAYERS+"];",
 
-		"uniform vec2 layer2_pos;",
-		"uniform vec2 layer2_size;",
-		"uniform sampler2D layer2_tex;",
-
-		"uniform vec2 layer3_pos;",
-		"uniform vec2 layer3_size;",
-		"uniform sampler2D layer3_tex;",
-
-		"uniform vec2 layer4_pos;",
-		"uniform vec2 layer4_size;",
-		"uniform sampler2D layer4_tex;",
-
+		"uniform vec2 size;",
+		"uniform bool stereo;",
 		"uniform float black_fader;",
 
 		"void renderLayer( vec2 pos, vec2 sz, sampler2D tex ) {",
@@ -73,20 +56,21 @@ THREE.HUDShader = {
 
 			"gl_FragColor = vec4( 0.0, 0.0, 0.0, 0.0 );",
 
-			"if (layer1_size.x > 0.0) {",
-				"renderLayer( layer1_pos, layer1_size, layer1_tex );",
-			"}",
-			"if (layer2_size.x > 0.0) {",
-				"renderLayer( layer2_pos, layer2_size, layer2_tex );",
-			"}",
-			"if (layer3_size.x > 0.0) {",
-				"renderLayer( layer3_pos, layer3_size, layer3_tex );",
-			"}",
-			"if (layer4_size.x > 0.0) {",
-				"renderLayer( layer4_pos, layer4_size, layer4_tex );",
+			"for (int i = 0; i<"+MAX_LAYERS+"; ++i) {",
+				"if (layer_size[i].x > 0.0) {",
+					"if (stereo) {",
+						"float ofs = (layer_pos[i].x / (size.x - layer_size[i].x)) * layer_size[i].x / 2.0;",
+						"float layer_mid = layer_pos[i].x / 2.0;",
+						"float screen_mid = size.x / 2.0;",
+						"renderLayer( vec2( layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
+						"renderLayer( vec2( screen_mid + layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
+					"} else {",
+						"renderLayer( layer_pos[i], layer_size[i], layer_tex[i] );",
+					"}",
+				"}",
 			"}",
 
-			"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), 1.0 - black_fader);",
+			"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), black_fader);",
 
 
 		"}"

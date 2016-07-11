@@ -142,6 +142,19 @@ var Cursor = function( viewport ) {
 }
 
 /**
+ * Reset cursor
+ */
+Cursor.prototype.reset = function() {
+
+	// Reset properties
+	this.setHighlight(0);
+	this.setProgressionAnimation(0);
+	this.confirmAnimation = 1.0;
+	this.confirmCursor.visible = false;
+
+}
+
+/**
  * Set progression animation
  */
 Cursor.prototype.setProgressionAnimation = function(v) {

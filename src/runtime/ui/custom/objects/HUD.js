@@ -7,7 +7,7 @@ require("../shaders/HUDShader");
 /**
  * Maximum number of layers allowed
  */
-const MAX_LAYERS = 4;
+const MAX_LAYERS = 5;
 
 /**
  * HUD object that is placed on the camera in the scene and
@@ -33,6 +33,9 @@ THREE.HUD = function () {
 
 	} );
 
+	// Move size vector as uniform
+	this.uniforms['size'].value = this.size;
+
 	// Create a quad that fills the screen
 	var quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), this.material );
 	quad.position.z = -0.25;
@@ -48,8 +51,8 @@ THREE.HUD.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), 
 
 		// Check for a free layer
 		var id = -1;
-		for (var i=1; i<=MAX_LAYERS; i++) {
-			if (this.uniforms['layer'+i+'_size'].value.x == 0) {
+		for (var i=0; i<MAX_LAYERS; i++) {
+			if (this.uniforms['layer_size'].value[i].x == 0) {
 				id = i;
 				break;
 			}
@@ -111,6 +114,13 @@ THREE.HUD.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), 
 
 	},
 
+	setStereo: function( enabled ) {
+
+		// Update size
+		this.uniforms['stereo'].value = enabled;
+
+	},
+
 });
 
 /**
@@ -153,9 +163,9 @@ THREE.HUDLayer.prototype = {
 		// Update uniforms
 		this.id = layer_id;
 		this.hud = hud;
-		this.hud.uniforms['layer'+layer_id+'_size'].value = this.uniforms.size;
-		this.hud.uniforms['layer'+layer_id+'_pos'].value = this.uniforms.pos;
-		this.hud.uniforms['layer'+layer_id+'_tex'].value = this.uniforms.tex;
+		this.hud.uniforms['layer_size'].value[this.id] = this.uniforms.size;
+		this.hud.uniforms['layer_pos'].value[this.id] = this.uniforms.pos;
+		this.hud.uniforms['layer_tex'].value[this.id] = this.uniforms.tex;
 
 		// Adapt pixel ratio from HUD
 		this.setPixelRatio( this.hud.pixelRatio );
@@ -169,9 +179,9 @@ THREE.HUDLayer.prototype = {
 	unregister: function() {
 
 		// Unregister
-		this.hud.uniforms['layer'+this.id+'_size'].value = new THREE.Vector2(0,0);
-		this.hud.uniforms['layer'+this.id+'_pos'].value = new THREE.Vector2(0,0);
-		this.hud.uniforms['layer'+this.id+'_tex'].value = null;
+		this.hud.uniforms['layer_size'].value[this.id] = new THREE.Vector2(0,0);
+		this.hud.uniforms['layer_pos'].value[this.id] = new THREE.Vector2(0,0);
+		this.hud.uniforms['layer_tex'].value[this.id] = null;
 		this.id = null;
 		this.hud = null;
 

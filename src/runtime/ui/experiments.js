@@ -102,6 +102,7 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 				this.previousExperiment.onHidden();
 				this.previousExperiment = null;
 				do_align();
+				
 			}).bind(this));
 		}).bind(this));
 	}).bind(this);

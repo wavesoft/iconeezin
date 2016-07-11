@@ -120,8 +120,11 @@ VideoCore.hasVR = Browser.hasVR;
  */
 VideoCore.reset = function() {
 
-	// Reset everything
+	// Reset viewport
 	this.viewport.reset();
+
+	// Reset cursor
+	this.cursor.reset();
 
 }
 

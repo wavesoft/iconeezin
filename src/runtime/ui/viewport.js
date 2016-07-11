@@ -55,6 +55,17 @@ require("./custom/postprocessing/VRPass");
 
 require("./custom/objects/HUD");
 
+// var HUDPixel = function( align ) { THREE.HUDLayer.call( this, 128, 128, align ) }
+// HUDPixel.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), {
+// 	constructor: HUDPixel,
+// 	onPaint: function(ctx,w,h) {
+// 		ctx.fillStyle = "red";
+// 		ctx.fillRect(0,0,w/2,h/2);
+// 		ctx.fillStyle = "blue";
+// 		ctx.fillRect(w/2,h/2,w/2,h/2);
+// 	}
+// });
+
 /**
  * Our viewport is where everything gets rendered
  */
@@ -144,15 +155,6 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.glitchPass.enabled = false;
 	// this.effectComposer.addPass( this.glitchPass );
 
-	// Add GUI
-	// this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
-	// this.hudPass.renderToScreen = true;
-	// this.effectComposer.addPass( this.hudPass );
-
-	// var cp = new THREE.ShaderPass( THREE.CopyShader );
-	// cp.renderToScreen = true;
-	// this.effectComposer.addPass( cp );
-
 	/////////////////////////////////////////////////////////////
 	// Environment
 	/////////////////////////////////////////////////////////////
@@ -201,7 +203,7 @@ Viewport.prototype.setAntialias = function( enabled ) {
  * Resize viewport to fit new size
  */
 Viewport.prototype.setOpacity = function( value ) {
-	this.hud.setFadeoutOpacity( value );
+	this.hud.setFadeoutOpacity( 1.0 - value );
 }
 
 /**
@@ -303,21 +305,9 @@ Viewport.prototype.render = function() {
 		}
 
 	}
-		
-	// // Render scene
-	// if (this.useHMD) {
-	// 	// Use HMD Effect for rendering the sterep image
-	// 	this.hmdEffect.render( this.scene, this.camera );
-	// } else {
-	// 	// Otherwise use classic renderer
-	// 	this.renderer.render( this.scene, this.camera );
-	// }
 
 	// Render composer
 	this.effectComposer.render( d );
-
-	// this.hmdEffect.vrHMD.submitFrame();
-	// this.vrComposerEffect.render( d );
 
 }
 
@@ -332,11 +322,13 @@ Viewport.prototype.setHMDDevice = function( device ) {
  * Enable or disable the Head-Mounted Display view
  */
 Viewport.prototype.setHMD = function( enabled ) {
+
 	// Set the HMD flag
 	this.useHMD = enabled;
 
-	// Enable HMD GUI Effect
-	// this.hudPass.setHMD( enabled );
+	// Enable stereo effect on HUD
+	this.hud.setStereo( enabled );
+
 }
 
 /**

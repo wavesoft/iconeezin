@@ -45031,8 +45031,11 @@ var Iconeezin =
 	 */
 	VideoCore.reset = function() {
 
-		// Reset everything
+		// Reset viewport
 		this.viewport.reset();
+
+		// Reset cursor
+		this.cursor.reset();
 
 	}
 
@@ -45253,6 +45256,17 @@ var Iconeezin =
 
 	__webpack_require__(34);
 
+	// var HUDPixel = function( align ) { THREE.HUDLayer.call( this, 128, 128, align ) }
+	// HUDPixel.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), {
+	// 	constructor: HUDPixel,
+	// 	onPaint: function(ctx,w,h) {
+	// 		ctx.fillStyle = "red";
+	// 		ctx.fillRect(0,0,w/2,h/2);
+	// 		ctx.fillStyle = "blue";
+	// 		ctx.fillRect(w/2,h/2,w/2,h/2);
+	// 	}
+	// });
+
 	/**
 	 * Our viewport is where everything gets rendered
 	 */
@@ -45342,15 +45356,6 @@ var Iconeezin =
 		this.glitchPass.enabled = false;
 		// this.effectComposer.addPass( this.glitchPass );
 
-		// Add GUI
-		// this.hudPass = new THREE.HUDPass( 256, 256, this.renderHUD.bind(this) );
-		// this.hudPass.renderToScreen = true;
-		// this.effectComposer.addPass( this.hudPass );
-
-		// var cp = new THREE.ShaderPass( THREE.CopyShader );
-		// cp.renderToScreen = true;
-		// this.effectComposer.addPass( cp );
-
 		/////////////////////////////////////////////////////////////
 		// Environment
 		/////////////////////////////////////////////////////////////
@@ -45399,7 +45404,7 @@ var Iconeezin =
 	 * Resize viewport to fit new size
 	 */
 	Viewport.prototype.setOpacity = function( value ) {
-		this.hud.setFadeoutOpacity( value );
+		this.hud.setFadeoutOpacity( 1.0 - value );
 	}
 
 	/**
@@ -45501,21 +45506,9 @@ var Iconeezin =
 			}
 
 		}
-			
-		// // Render scene
-		// if (this.useHMD) {
-		// 	// Use HMD Effect for rendering the sterep image
-		// 	this.hmdEffect.render( this.scene, this.camera );
-		// } else {
-		// 	// Otherwise use classic renderer
-		// 	this.renderer.render( this.scene, this.camera );
-		// }
 
 		// Render composer
 		this.effectComposer.render( d );
-
-		// this.hmdEffect.vrHMD.submitFrame();
-		// this.vrComposerEffect.render( d );
 
 	}
 
@@ -45530,11 +45523,13 @@ var Iconeezin =
 	 * Enable or disable the Head-Mounted Display view
 	 */
 	Viewport.prototype.setHMD = function( enabled ) {
+
 		// Set the HMD flag
 		this.useHMD = enabled;
 
-		// Enable HMD GUI Effect
-		// this.hudPass.setHMD( enabled );
+		// Enable stereo effect on HUD
+		this.hud.setStereo( enabled );
+
 	}
 
 	/**
@@ -46433,7 +46428,7 @@ var Iconeezin =
 	/**
 	 * Maximum number of layers allowed
 	 */
-	const MAX_LAYERS = 4;
+	const MAX_LAYERS = 5;
 
 	/**
 	 * HUD object that is placed on the camera in the scene and
@@ -46459,6 +46454,9 @@ var Iconeezin =
 
 		} );
 
+		// Move size vector as uniform
+		this.uniforms['size'].value = this.size;
+
 		// Create a quad that fills the screen
 		var quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), this.material );
 		quad.position.z = -0.25;
@@ -46474,8 +46472,8 @@ var Iconeezin =
 
 			// Check for a free layer
 			var id = -1;
-			for (var i=1; i<=MAX_LAYERS; i++) {
-				if (this.uniforms['layer'+i+'_size'].value.x == 0) {
+			for (var i=0; i<MAX_LAYERS; i++) {
+				if (this.uniforms['layer_size'].value[i].x == 0) {
 					id = i;
 					break;
 				}
@@ -46537,6 +46535,13 @@ var Iconeezin =
 
 		},
 
+		setStereo: function( enabled ) {
+
+			// Update size
+			this.uniforms['stereo'].value = enabled;
+
+		},
+
 	});
 
 	/**
@@ -46579,9 +46584,9 @@ var Iconeezin =
 			// Update uniforms
 			this.id = layer_id;
 			this.hud = hud;
-			this.hud.uniforms['layer'+layer_id+'_size'].value = this.uniforms.size;
-			this.hud.uniforms['layer'+layer_id+'_pos'].value = this.uniforms.pos;
-			this.hud.uniforms['layer'+layer_id+'_tex'].value = this.uniforms.tex;
+			this.hud.uniforms['layer_size'].value[this.id] = this.uniforms.size;
+			this.hud.uniforms['layer_pos'].value[this.id] = this.uniforms.pos;
+			this.hud.uniforms['layer_tex'].value[this.id] = this.uniforms.tex;
 
 			// Adapt pixel ratio from HUD
 			this.setPixelRatio( this.hud.pixelRatio );
@@ -46595,9 +46600,9 @@ var Iconeezin =
 		unregister: function() {
 
 			// Unregister
-			this.hud.uniforms['layer'+this.id+'_size'].value = new THREE.Vector2(0,0);
-			this.hud.uniforms['layer'+this.id+'_pos'].value = new THREE.Vector2(0,0);
-			this.hud.uniforms['layer'+this.id+'_tex'].value = null;
+			this.hud.uniforms['layer_size'].value[this.id] = new THREE.Vector2(0,0);
+			this.hud.uniforms['layer_pos'].value[this.id] = new THREE.Vector2(0,0);
+			this.hud.uniforms['layer_tex'].value[this.id] = null;
 			this.id = null;
 			this.hud = null;
 
@@ -46748,27 +46753,20 @@ var Iconeezin =
 
 	var THREE = __webpack_require__(1);
 
+	const MAX_LAYERS = 5;
+
 	THREE.HUDShader = {
 
 		uniforms: {
 
-			"black_fader"  : { value: 0.0 },
+			"black_fader" : { value: 0.0 },
+			"stereo"  	  : { value: false },
 
-			"layer1_pos"  : { value: new THREE.Vector2(0,0) },
-			"layer1_size" : { value: new THREE.Vector2(0,0) },
-			"layer1_tex"  : { value: null },
+			"size"  	  : { value: new THREE.Vector2(0,0) },
 
-			"layer2_pos"  : { value: new THREE.Vector2(0,0) },
-			"layer2_size" : { value: new THREE.Vector2(0,0) },
-			"layer2_tex"  : { value: null },
-
-			"layer3_pos"  : { value: new THREE.Vector2(0,0) },
-			"layer3_size" : { value: new THREE.Vector2(0,0) },
-			"layer3_tex"  : { value: null },
-
-			"layer4_pos"  : { value: new THREE.Vector2(0,0) },
-			"layer4_size" : { value: new THREE.Vector2(0,0) },
-			"layer4_tex"  : { value: null },
+			"layer_pos"	  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
+			"layer_size"  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
+			"layer_tex"   : { value: [ null, null, null, null, null ], type: "tv" }
 
 		},
 
@@ -46784,22 +46782,12 @@ var Iconeezin =
 
 		fragmentShader: [
 
-			"uniform vec2 layer1_pos;",
-			"uniform vec2 layer1_size;",
-			"uniform sampler2D layer1_tex;",
+			"uniform vec2 layer_pos["+MAX_LAYERS+"];",
+			"uniform vec2 layer_size["+MAX_LAYERS+"];",
+			"uniform sampler2D layer_tex["+MAX_LAYERS+"];",
 
-			"uniform vec2 layer2_pos;",
-			"uniform vec2 layer2_size;",
-			"uniform sampler2D layer2_tex;",
-
-			"uniform vec2 layer3_pos;",
-			"uniform vec2 layer3_size;",
-			"uniform sampler2D layer3_tex;",
-
-			"uniform vec2 layer4_pos;",
-			"uniform vec2 layer4_size;",
-			"uniform sampler2D layer4_tex;",
-
+			"uniform vec2 size;",
+			"uniform bool stereo;",
 			"uniform float black_fader;",
 
 			"void renderLayer( vec2 pos, vec2 sz, sampler2D tex ) {",
@@ -46815,20 +46803,21 @@ var Iconeezin =
 
 				"gl_FragColor = vec4( 0.0, 0.0, 0.0, 0.0 );",
 
-				"if (layer1_size.x > 0.0) {",
-					"renderLayer( layer1_pos, layer1_size, layer1_tex );",
-				"}",
-				"if (layer2_size.x > 0.0) {",
-					"renderLayer( layer2_pos, layer2_size, layer2_tex );",
-				"}",
-				"if (layer3_size.x > 0.0) {",
-					"renderLayer( layer3_pos, layer3_size, layer3_tex );",
-				"}",
-				"if (layer4_size.x > 0.0) {",
-					"renderLayer( layer4_pos, layer4_size, layer4_tex );",
+				"for (int i = 0; i<"+MAX_LAYERS+"; ++i) {",
+					"if (layer_size[i].x > 0.0) {",
+						"if (stereo) {",
+							"float ofs = (layer_pos[i].x / (size.x - layer_size[i].x)) * layer_size[i].x / 2.0;",
+							"float layer_mid = layer_pos[i].x / 2.0;",
+							"float screen_mid = size.x / 2.0;",
+							"renderLayer( vec2( layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
+							"renderLayer( vec2( screen_mid + layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
+						"} else {",
+							"renderLayer( layer_pos[i], layer_size[i], layer_tex[i] );",
+						"}",
+					"}",
 				"}",
 
-				"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), 1.0 - black_fader);",
+				"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), black_fader);",
 
 
 			"}"
@@ -49295,6 +49284,19 @@ var Iconeezin =
 	}
 
 	/**
+	 * Reset cursor
+	 */
+	Cursor.prototype.reset = function() {
+
+		// Reset properties
+		this.setHighlight(0);
+		this.setProgressionAnimation(0);
+		this.confirmAnimation = 1.0;
+		this.confirmCursor.visible = false;
+
+	}
+
+	/**
 	 * Set progression animation
 	 */
 	Cursor.prototype.setProgressionAnimation = function(v) {
@@ -51317,6 +51319,7 @@ var Iconeezin =
 					this.previousExperiment.onHidden();
 					this.previousExperiment = null;
 					do_align();
+					
 				}).bind(this));
 			}).bind(this));
 		}).bind(this);
@@ -52555,31 +52558,16 @@ var Iconeezin =
 		urls.forEach(function(url, index) {
 			// Request binary bundle
 			var req = new XMLHttpRequest(),
-				headReq = new XMLHttpRequest(),
 				contentLength = null,
 				scope = this;
-
-			// First place a HEAD request to get content length
-			headReq.open('HEAD', urls[index]);
-			headReq.send();
-			headReq.addEventListener('readystatechange', function() {
-				if (req.readyState !== 4) return;
-				if (req.status === 200) {
-					contentLength = headReq.getResponseHeader("X-Content-Length");
-				}
-			});
-
-			// Place request
-			req.open('GET', urls[index]);
-			req.responseType = "arraybuffer";
-			req.send();
 
 			// Listen for progress events & end updates
 			req.addEventListener('progress', function(e) {
 				if (e.lengthComputable) {
-					progressPart.update( req, e.position, e.total );
-				} else if (contentLength !== null) {
-					progressPart.update( req, e.position, contentLength );
+					progressPart.update( req, e.loaded, e.total );
+				} else {
+					var len = req.getResponseHeader("Content-Length")*2;
+					progressPart.update( req, e.loaded, Math.max(len, e.loaded+1) );
 				}
 			});
 
@@ -52601,6 +52589,12 @@ var Iconeezin =
 					callback( "Error loading "+urls[index]+": "+req.statusText );
 				}
 			});
+
+			// Place request
+			req.open('GET', urls[index]);
+			req.responseType = "arraybuffer";
+			req.send();
+
 		});
 
 		// Return pointer to buffers
