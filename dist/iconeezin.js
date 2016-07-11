@@ -81,11 +81,11 @@ var Iconeezin =
 	// Load components afterwards
 	var AudioCore = __webpack_require__(4);
 	var VideoCore = __webpack_require__(29);
-	var ControlsCore = __webpack_require__(53);
-	var TrackingCore = __webpack_require__(55);
-	var ExperimentsCore = __webpack_require__(61);
+	var ControlsCore = __webpack_require__(52);
+	var TrackingCore = __webpack_require__(54);
+	var ExperimentsCore = __webpack_require__(60);
 	var InteractionCore = __webpack_require__(27);
-	var BrowserUtil = __webpack_require__(32);
+	var BrowserUtil = __webpack_require__(31);
 
 	/**
 	 * Expose useful parts of the runtime API
@@ -44932,8 +44932,8 @@ var Iconeezin =
 	 */
 
 	var Viewport = __webpack_require__(30);
-	var Cursor = __webpack_require__(51);
-	var Browser = __webpack_require__(32);
+	var Cursor = __webpack_require__(50);
+	var Browser = __webpack_require__(31);
 
 	/**
 	 * Private properties
@@ -45222,39 +45222,38 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var Label = __webpack_require__(31);
-	var Browser = __webpack_require__(32);
-	var HUDStatus = __webpack_require__(33);
+	var Browser = __webpack_require__(31);
+	var HUDStatus = __webpack_require__(32);
 
 	// Modified version of example scripts
 	// in order to work with Z-Up orientation
-	__webpack_require__(36);
+	__webpack_require__(35);
 
 	// Effect composer complex
+	__webpack_require__(36);
 	__webpack_require__(37);
-	__webpack_require__(38);
 
+	__webpack_require__(38);
 	__webpack_require__(39);
 	__webpack_require__(40);
 	__webpack_require__(41);
+
 	__webpack_require__(42);
-
 	__webpack_require__(43);
+
 	__webpack_require__(44);
-
 	__webpack_require__(45);
+
 	__webpack_require__(46);
-
 	__webpack_require__(47);
-	__webpack_require__(48);
 
-	__webpack_require__(49);
+	__webpack_require__(48);
 
 	// Custom pass for rendering the HMD display in a texture
 	// for possible post-processing.
-	__webpack_require__(50);
+	__webpack_require__(49);
 
-	__webpack_require__(34);
+	__webpack_require__(33);
 
 	// var HUDPixel = function( align ) { THREE.HUDLayer.call( this, 128, 128, align ) }
 	// HUDPixel.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), {
@@ -45377,16 +45376,6 @@ var Iconeezin =
 		// Add axis on 0,0,0
 		var axisHelper = new THREE.AxisHelper( 5 );
 		this.scene.add( axisHelper );
-
-		/////////////////////////////////////////////////////////////
-		// Cursor label
-		/////////////////////////////////////////////////////////////
-
-		// Create label
-		this.label = new Label("");
-		this.label.position.set( 0, 0.3, -3.5 );
-		this.label.scale.set( 4, 4, 1 );
-		this.camera.add( this.label );
 
 		// Initialize the sizes (apply actual size)
 		this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
@@ -45651,241 +45640,6 @@ var Iconeezin =
 
 /***/ },
 /* 31 */
-/***/ function(module, exports, __webpack_require__) {
-
-	"use strict";
-	/**
-	 * Iconeez.in - A Web VR Platform for social experiments
-	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
-	 * This program is free software; you can redistribute it and/or modify
-	 * it under the terms of the GNU General Public License as published by
-	 * the Free Software Foundation; either version 2 of the License, or
-	 * (at your option) any later version.
-	 * 
-	 * This program is distributed in the hope that it will be useful,
-	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
-	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	 * GNU General Public License for more details.
-	 * 
-	 * You should have received a copy of the GNU General Public License along
-	 * with this program; if not, write to the Free Software Foundation, Inc.,
-	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-	 *
-	 * @author Ioannis Charalampidis / https://github.com/wavesoft
-	 */
-
-	var THREE = __webpack_require__(1);
-
-	/**
-	 * Sprite label
-	 */
-	var Label = function( text, color, bgColor ) {
-
-		// Create canvas
-		var canvas = document.createElement('canvas');
-		var textureSize = 512;
-		canvas.width = textureSize;
-		canvas.height = textureSize;
-
-		// Create context
-		var context = canvas.getContext('2d');
-		context.textAlign = 'start';
-
-		// Create texture
-		var amap = new THREE.Texture(canvas);
-
-		// Create sprite material
-		var mat = new THREE.SpriteMaterial({
-		    map: amap,
-		    transparent: false,
-		    color: 0xffffff
-		});
-
-		// Construct
-		var scope = this;
-		THREE.Sprite.call( this, mat );
-
-		// Prepare sprite properties
-		var text = text || "";
-		var color = new THREE.Color( color || 0xcccccc );
-		var bgColor = new THREE.Color( bgColor || 0x000000 );
-		var bgOpacity = 0.8;
-		var borderColor = new THREE.Color( color || 0xcccccc );
-		var borderWidth = 1;
-		var fontFamily = 'Tahoma';
-		var fontSize = 16;
-		var padding = {
-			'left': 10, 'top': 10, 'right': 10, 'bottom': 10
-		};
-
-		/**
-		 * Re-generate canvas
-		 */
-		var regenerate = function() {
-
-			// Apply font and measure text
-			context.font =  fontSize + 'px ' + fontFamily;
-			var sz = context.measureText( text ),
-				lineHeight = context.measureText('M').width;
-
-			// Calculate anchor and offset
-			var width = sz.width + padding.left + padding.right + borderWidth * 2,
-				height = lineHeight + padding.top + padding.bottom + borderWidth * 2,
-				x = (textureSize - width) / 2, y = (textureSize - height) / 2;
-
-			// Clear rect
-			context.clearRect(0, 0, textureSize, textureSize);
-
-			// Fill back
-			context.globalAlpha = bgOpacity;
-			context.fillStyle = '#' + bgColor.getHexString();
-			context.fillRect(x,y,width,height);
-			context.globalAlpha = 1.0;
-
-			// Fill border
-			if (borderWidth > 0) {
-				context.strokeStyle = '#' + borderColor.getHexString();
-				context.lineWidth = borderWidth;
-				context.strokeRect(x,y,width,height);
-			}
-
-			// Draw text
-			context.fillStyle = '#' + color.getHexString();
-			context.fillText( text, x+borderWidth+padding.left, 
-								    y+height/2+lineHeight/2-1 );
-
-			// Update map
-			amap.needsUpdate = true;
-
-			// Check hide conditions
-			scope.visible = !!text;
-
-		}
-
-		// Initial generate
-		regenerate();
-
-		/**
-		 * Define properties
-		 */
-		Object.defineProperties(this,{
-
-			'fontFamily': {
-				'get': function() {
-					return fontFamily;
-				},
-				'set': function( val ) {
-					fontFamily = val;
-					regenerate();
-				}
-			},
-
-			'fontSize': {
-				'get': function() {
-					return fontSize;
-				},
-				'set': function( val ) {
-					fontSize = val;
-					regenerate();
-				}
-			},
-
-			'color': {
-				'get': function() {
-					return color;
-				},
-				'set': function( val ) {
-					color.set( val );
-					regenerate();
-				}
-			},
-
-			'backgroundColor': {
-				'get': function() {
-					return bgColor;
-				},
-				'set': function( val ) {
-					bgColor.set( val );
-					regenerate();
-				}
-			},
-
-			'backgroundOpacity': {
-				'get': function() {
-					return bgOpacity;
-				},
-				'set': function( val ) {
-					bgOpacity = val;
-					regenerate();
-				}
-			},
-
-			'borderColor': {
-				'get': function() {
-					return borderColor;
-				},
-				'set': function( val ) {
-					borderColor.set( val );
-					regenerate();
-				}
-			},
-
-			'borderWidth': {
-				'get': function() {
-					return borderWidth;
-				},
-				'set': function( val ) {
-					borderWidth = val;
-					regenerate();
-				}
-			},
-
-			'text': {
-				'get': function() {
-					return text;
-				},
-				'set': function( val ) {
-					text = val;
-					regenerate();
-				}
-			},
-
-			'padding': {
-				'get': function() {
-					return padding;
-				},
-				'set': function( val ) {
-					if (typeof val === 'object') {
-						padding.left = val.left || padding.left;
-						padding.right = val.right || padding.right;
-						padding.top = val.top || padding.top;
-						padding.bottom = val.bottom || padding.bottom;
-						regenerate();
-
-					} else if (typeof val === 'number') {
-						padding.left = val;
-						padding.right = val;
-						padding.top = val;
-						padding.bottom = val;
-						regenerate();
-
-					}
-				}
-			}
-
-		});
-
-	};
-
-	// Subclass from sprite
-	Label.prototype = Object.create( THREE.Sprite.prototype );
-
-	// Export label
-	module.exports = Label;
-
-/***/ },
-/* 32 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -46240,7 +45994,7 @@ var Iconeezin =
 	module.exports = Browser;
 
 /***/ },
-/* 33 */
+/* 32 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -46267,7 +46021,7 @@ var Iconeezin =
 
 	var THREE = __webpack_require__(1);
 
-	__webpack_require__(34);
+	__webpack_require__(33);
 
 	/**
 	 * HUD Status component
@@ -46416,14 +46170,14 @@ var Iconeezin =
 	module.exports = HUDStatus;
 
 /***/ },
-/* 34 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
 	 * @author wavesoft / https://github.com/wavesoft
 	 */
 	var THREE = __webpack_require__(1);
-	__webpack_require__(35);
+	__webpack_require__(34);
 
 	/**
 	 * Maximum number of layers allowed
@@ -46742,7 +46496,7 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 35 */
+/* 34 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -46828,7 +46582,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 36 */
+/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -47100,7 +46854,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 37 */
+/* 36 */
 /***/ function(module, exports) {
 
 	/**
@@ -47152,7 +46906,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 38 */
+/* 37 */
 /***/ function(module, exports) {
 
 	/**
@@ -47246,7 +47000,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 39 */
+/* 38 */
 /***/ function(module, exports) {
 
 	/**
@@ -47427,7 +47181,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 40 */
+/* 39 */
 /***/ function(module, exports) {
 
 	/**
@@ -47486,7 +47240,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 41 */
+/* 40 */
 /***/ function(module, exports) {
 
 	/**
@@ -47589,7 +47343,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 42 */
+/* 41 */
 /***/ function(module, exports) {
 
 	/**
@@ -47661,7 +47415,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 43 */
+/* 42 */
 /***/ function(module, exports) {
 
 	/**
@@ -47770,7 +47524,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 44 */
+/* 43 */
 /***/ function(module, exports) {
 
 	/**
@@ -47891,7 +47645,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 45 */
+/* 44 */
 /***/ function(module, exports) {
 
 	/**
@@ -48013,7 +47767,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 46 */
+/* 45 */
 /***/ function(module, exports) {
 
 	/**
@@ -48121,7 +47875,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 47 */
+/* 46 */
 /***/ function(module, exports) {
 
 	/**
@@ -48589,7 +48343,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 48 */
+/* 47 */
 /***/ function(module, exports) {
 
 	/**
@@ -48759,7 +48513,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 49 */
+/* 48 */
 /***/ function(module, exports) {
 
 	/**
@@ -48834,7 +48588,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 50 */
+/* 49 */
 /***/ function(module, exports) {
 
 	/**
@@ -49137,7 +48891,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 51 */
+/* 50 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49264,7 +49018,7 @@ var Iconeezin =
 
 		// Create a spinner sprite
 		var loader = new THREE.TextureLoader();
-		loader.load( __webpack_require__(52), (function( texture ) {
+		loader.load( __webpack_require__(51), (function( texture ) {
 
 			// Set material map
 			mat.map = texture;
@@ -49456,13 +49210,13 @@ var Iconeezin =
 
 
 /***/ },
-/* 52 */
+/* 51 */
 /***/ function(module, exports) {
 
 	module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA8pJREFUeNrsW8uR2kAQFS7fRQbLRoAyQI7AcgSwF67GEVhEYO11L8tGYIUgMoAILDJAEeCercY122795isKdZVKhWo0mn7T3fPeSEwul0twz/YpuHMbARgBGAEYAbhr+2yqo5eXlwhOCRziPLU45jMcBzjy9Xp90O1sossDwHHhbA7HwsME7gXoAMTZCwDofAHH3GMUH+GIVUHQrQG5Z+cDfH7mPAJg9mdw+jOgevYIUVC6jIBkYAVdaTw6q8CUycWzQ4enJP2mrgGgtoMQzFx5Dym4gtOrTyJUtkSEbZv5ZoKljQFppGDpG4DYMQD0eUqsUJcICRAepEtfoA4UNfkqrOiyVOES++4gtN91WIIraOelCAoi9F36vUFmSAf7Kv2+UtjrrJ0xnCO8tiD3c6ClzDi8qEE6O19hwDEjXipybYGHAO8nnheMnqjo0oqia9kyDjcAoBrb08GgRri2EQ6sFB+xkjk+9kud3XNp53I/YEN+i5pQEBBEiD737PcZ72vTHhuvchhnJsVQblRp0E4M9leHLn/IpKpBcm+hXeodABzkjsnNI4bxQWqXYBiHTDcVts9JEeVmXoS+9tJrbEsMBiPy/I2RqoVcGNG5CMGhYEXE+QhXijnT1ogYm5h+M1QTCcKe6JoObTNcAUS+bzpyfe1dIKsAtOT6E0dsegidN4w0Yzax9W6wIde/MdWd3vdbFbzBACDlcEFAEIVuxoUwVvuSaZ/orPVOimADUaKVOmwoYDETMdactw6ABMK2o3SOTLK8QQAg6QETkvv2AEAik3YEhDq8xPtvEwCJwoYd5WvOKMcci+ltASCtAHOGv5c19UJERlbDJq2AYIsIxTUz34nI9GGTQ6TCvVgcpsk75yfKMSO7TVbYoFEAGgbNyVuaHkdc80uXlNikHOb2BDh5y7FDuX1M5LNWOrnaEOH4O+dMk/Nt9+2YgqpdE0x9IMHxdxXnm+7n0qbCPQRlwmRiGcwMO3/VCx+WPiyQCeEJIUOy3EVAzTcCtOD1db4tErh0e1SNAt0IWDHihRIZVef/RQIhS3nw/1b8xlcKUFm7YwhRqPmMkHnZkraMwz4AWJQ+FCRakVHKbhl+38fE/Qem35N06UFVNOm8G4yYUOf4fapbqGqsIHQ5UpHPOilA38YeArdWtkyIdQCiwK8Z2RY3+Y3QDOmwK5sNDYDlLUaETgrkwbCscAoAsrPjQJzfq345boIJVp6dr7wxQenFx8mT8yeqFXztB0yRjiaBmw8mz1iDct23xJPxj5N3biMAIwAjACMAd21/BRgAk6Xp4c7+81UAAAAASUVORK5CYII="
 
 /***/ },
-/* 53 */
+/* 52 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49489,11 +49243,11 @@ var Iconeezin =
 
 	var VideoCore = __webpack_require__(29);
 
-	var SightInteraction = __webpack_require__(54);
+	var SightInteraction = __webpack_require__(53);
 
-	var PathFollowerControl = __webpack_require__(56);
-	var MouseControl = __webpack_require__(58);
-	var VRControl = __webpack_require__(59);
+	var PathFollowerControl = __webpack_require__(55);
+	var MouseControl = __webpack_require__(57);
+	var VRControl = __webpack_require__(58);
 
 	/**
 	 * The ControlsCore singleton contains the
@@ -49766,7 +49520,7 @@ var Iconeezin =
 	module.exports = ControlsCore;
 
 /***/ },
-/* 54 */
+/* 53 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49792,7 +49546,7 @@ var Iconeezin =
 	 */
 
 	var VideoCore = __webpack_require__(29);
-	var TrackingCore = __webpack_require__(55);
+	var TrackingCore = __webpack_require__(54);
 	var ThreeAPI = __webpack_require__(26);
 
 	const CENTER = new THREE.Vector2(0,0);
@@ -49993,7 +49747,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 55 */
+/* 54 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -50306,7 +50060,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 56 */
+/* 55 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50332,7 +50086,7 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var BaseControl = __webpack_require__(57);
+	var BaseControl = __webpack_require__(56);
 
 	var zero = new THREE.Vector3(0,0,0);
 	var norm = new THREE.Vector3();
@@ -50451,7 +50205,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 57 */
+/* 56 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -50560,7 +50314,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 58 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50586,7 +50340,7 @@ var Iconeezin =
 	 */
 
 	var VideoCore = __webpack_require__(29);
-	var BaseControl = __webpack_require__(57);
+	var BaseControl = __webpack_require__(56);
 
 	const PI_2 = Math.PI / 2;
 	const RESET_NORMAL_SPEED = 0.01;
@@ -50779,7 +50533,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 59 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50804,9 +50558,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var BaseControl = __webpack_require__(57);
-	var Browser = __webpack_require__(32);
-	__webpack_require__(60);
+	var BaseControl = __webpack_require__(56);
+	var Browser = __webpack_require__(31);
+	__webpack_require__(59);
 
 	var vec = new THREE.Vector3();
 
@@ -50853,7 +50607,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 60 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -51013,7 +50767,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 61 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51040,11 +50794,11 @@ var Iconeezin =
 
 	var VideoCore = __webpack_require__(29);
 	var AudioCore = __webpack_require__(4);
-	var ControlsCore = __webpack_require__(53);
-	var TrackingCore = __webpack_require__(55);
+	var ControlsCore = __webpack_require__(52);
+	var TrackingCore = __webpack_require__(54);
 
-	var Experiments = __webpack_require__(62);
-	var Loaders = __webpack_require__(63);
+	var Experiments = __webpack_require__(61);
+	var Loaders = __webpack_require__(62);
 
 	/**
 	 * Kernel core is the main logic that steers the runtime 
@@ -51218,7 +50972,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 62 */
+/* 61 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -51431,7 +51185,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 63 */
+/* 62 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51458,9 +51212,9 @@ var Iconeezin =
 
 	var Config = __webpack_require__(28);
 
-	var JBBLoader = __webpack_require__(64);
-	var JBBProfileThreeLoader = __webpack_require__(71);
-	var JBBProfileIconeezinLoader = __webpack_require__(73);
+	var JBBLoader = __webpack_require__(63);
+	var JBBProfileThreeLoader = __webpack_require__(70);
+	var JBBProfileIconeezinLoader = __webpack_require__(72);
 
 	/**
 	 * Loaders namespace contains all the different loading
@@ -51570,7 +51324,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 64 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {"use strict";
@@ -51594,10 +51348,10 @@ var Iconeezin =
 	 */
 
 	/* Imports */
-	var BinaryBundle = __webpack_require__(66);
-	var DecodeProfile = __webpack_require__(67);
-	var ProgressManager = __webpack_require__(68);
-	var Errors = __webpack_require__(69);
+	var BinaryBundle = __webpack_require__(65);
+	var DecodeProfile = __webpack_require__(66);
+	var ProgressManager = __webpack_require__(67);
+	var Errors = __webpack_require__(68);
 
 	/* Production optimisations and debug metadata flags */
 	if (typeof GULP_BUILD === "undefined") var GULP_BUILD = false;
@@ -51607,7 +51361,7 @@ var Iconeezin =
 
 	/* Additional includes on node builds */
 	if (IS_NODE) {
-		var fs = __webpack_require__(70);
+		var fs = __webpack_require__(69);
 	}
 
 	/* Size constants */
@@ -52901,10 +52655,10 @@ var Iconeezin =
 	// Export the binary loader
 	module.exports = BinaryLoader;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(65)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
 
 /***/ },
-/* 65 */
+/* 64 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -53004,7 +52758,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 66 */
+/* 65 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53364,7 +53118,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 67 */
+/* 66 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53481,7 +53235,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 68 */
+/* 67 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53656,7 +53410,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 69 */
+/* 68 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53755,13 +53509,13 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 70 */
+/* 69 */
 /***/ function(module, exports) {
 
 	
 
 /***/ },
-/* 71 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -53788,7 +53542,7 @@ var Iconeezin =
 	/* Generated source follows */
 
 	var THREE = __webpack_require__(1);
-	var MD2Character = __webpack_require__(72);
+	var MD2Character = __webpack_require__(71);
 
 	/**
 	 * Factory & Initializer of THREE.CubeTexture
@@ -55560,7 +55314,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 72 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -55824,7 +55578,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 73 */
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Iconeezin = Iconeezin || {}; Iconeezin["API"] = __webpack_require__(2);

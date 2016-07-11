@@ -21,7 +21,6 @@
  */
 
 var THREE = require("three");
-var Label = require("./Label");
 var Browser = require("../util/Browser");
 var HUDStatus = require("./HUDStatus");
 
@@ -176,16 +175,6 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	// Add axis on 0,0,0
 	var axisHelper = new THREE.AxisHelper( 5 );
 	this.scene.add( axisHelper );
-
-	/////////////////////////////////////////////////////////////
-	// Cursor label
-	/////////////////////////////////////////////////////////////
-
-	// Create label
-	this.label = new Label("");
-	this.label.position.set( 0, 0.3, -3.5 );
-	this.label.scale.set( 4, 4, 1 );
-	this.camera.add( this.label );
 
 	// Initialize the sizes (apply actual size)
 	this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
