@@ -45185,8 +45185,8 @@ var Iconeezin =
 	/**
 	 * Show an interaction label
 	 */
-	VideoCore.showProgress = function( value ) {
-		VideoCore.viewport.hudStatus.setProgress( value );
+	VideoCore.showProgress = function( value, reason ) {
+		VideoCore.viewport.hudStatus.setProgress( value, reason );
 	}
 
 	// Export
@@ -46286,6 +46286,7 @@ var Iconeezin =
 
 		// Progress
 		this.progress = 0.0;
+		this.progressText = "";
 		this.progressOpacity = 0.0;
 
 	};
@@ -46309,7 +46310,9 @@ var Iconeezin =
 
 		},
 
-		setProgress: function ( value ) {
+		setProgress: function ( value, text ) {
+
+			this.progressText = text;
 
 			// Fade-in
 			this.viewport.runTween( 1000, (function(tweenProgress) {
@@ -46382,22 +46385,27 @@ var Iconeezin =
 				ctx.lineCap = "round"
 				ctx.lineWidth = 25;
 				ctx.beginPath();
-				ctx.moveTo( 32, height - 20 );
-				ctx.lineTo( width - 32, height - 20 );
+				ctx.moveTo( 32, height - 16 );
+				ctx.lineTo( width - 32, height - 16 );
 				ctx.stroke();
 
-				if (this.progress > 0.0) {
+				// Progress bar
+				var w = (width - 64) * Math.min( 1.0, this.progress );
+				ctx.strokeStyle = '#0066ff';
+				ctx.lineWidth = 18;
+				ctx.beginPath();
+				ctx.moveTo( 32, height - 16 );
+				ctx.lineTo( 32 + w, height - 16 );
+				ctx.stroke();
 
-					var w = (width - 64) * this.progress;
-
-					// Progress bar
-					ctx.strokeStyle = '#000000';
-					ctx.lineWidth = 18;
-					ctx.beginPath();
-					ctx.moveTo( 32, height - 20 );
-					ctx.lineTo( 32 + w, height - 20 );
-					ctx.stroke();
-
+				// Text
+				if (this.progressText) {
+					ctx.textAlign = "center";
+					ctx.font = "14px Tahoma";
+					ctx.fillStyle = "#000000";
+					ctx.fillText( this.progressText, width/2+1, height - 34+1);
+					ctx.fillStyle = "#FFFFFF";
+					ctx.fillText( this.progressText, width/2, height - 34);
 				}
 
 				ctx.globalAlpha = 1.0;
@@ -46473,7 +46481,7 @@ var Iconeezin =
 				}
 			}
 			if (id < 0) {
-				console.warn("THREE.HUD: you can create up to "+MAX_LAYERS+" layers in the HUD.");
+				console.warn("THREE.HUD: you can add up to "+MAX_LAYERS+" layers in the HUD.");
 				return;
 			}
 
@@ -46481,6 +46489,19 @@ var Iconeezin =
 			layer.register( this, id );
 			this.hudLayers.push( layer );
 
+			return this;
+
+		},
+
+		removeLayer: function( layer ) {
+
+			// Get layer
+			var i = this.hudLayers.indexOf( layer );
+			if (i === -1) return;
+
+			// Unregister and remove
+			layer.unregister();
+			this.hudLayers.splice(i,1);
 			return this;
 
 		},
@@ -46574,11 +46595,11 @@ var Iconeezin =
 		unregister: function() {
 
 			// Unregister
+			this.hud.uniforms['layer'+this.id+'_size'].value = new THREE.Vector2(0,0);
+			this.hud.uniforms['layer'+this.id+'_pos'].value = new THREE.Vector2(0,0);
+			this.hud.uniforms['layer'+this.id+'_tex'].value = null;
 			this.id = null;
 			this.hud = null;
-			this.hud.uniforms['layer'+layer_id+'_size'].value = new THREE.Vector2(0,0);
-			this.hud.uniforms['layer'+layer_id+'_pos'].value = new THREE.Vector2(0,0);
-			this.hud.uniforms['layer'+layer_id+'_tex'].value = null;
 
 		},
 

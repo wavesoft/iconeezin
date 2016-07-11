@@ -274,8 +274,8 @@ VideoCore.hideInteractionLabel = function() {
 /**
  * Show an interaction label
  */
-VideoCore.showProgress = function( value ) {
-	VideoCore.viewport.hudStatus.setProgress( value );
+VideoCore.showProgress = function( value, reason ) {
+	VideoCore.viewport.hudStatus.setProgress( value, reason );
 }
 
 // Export

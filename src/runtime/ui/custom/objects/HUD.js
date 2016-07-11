@@ -55,7 +55,7 @@ THREE.HUD.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), 
 			}
 		}
 		if (id < 0) {
-			console.warn("THREE.HUD: you can create up to "+MAX_LAYERS+" layers in the HUD.");
+			console.warn("THREE.HUD: you can add up to "+MAX_LAYERS+" layers in the HUD.");
 			return;
 		}
 
@@ -63,6 +63,19 @@ THREE.HUD.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), 
 		layer.register( this, id );
 		this.hudLayers.push( layer );
 
+		return this;
+
+	},
+
+	removeLayer: function( layer ) {
+
+		// Get layer
+		var i = this.hudLayers.indexOf( layer );
+		if (i === -1) return;
+
+		// Unregister and remove
+		layer.unregister();
+		this.hudLayers.splice(i,1);
 		return this;
 
 	},
@@ -156,11 +169,11 @@ THREE.HUDLayer.prototype = {
 	unregister: function() {
 
 		// Unregister
+		this.hud.uniforms['layer'+this.id+'_size'].value = new THREE.Vector2(0,0);
+		this.hud.uniforms['layer'+this.id+'_pos'].value = new THREE.Vector2(0,0);
+		this.hud.uniforms['layer'+this.id+'_tex'].value = null;
 		this.id = null;
 		this.hud = null;
-		this.hud.uniforms['layer'+layer_id+'_size'].value = new THREE.Vector2(0,0);
-		this.hud.uniforms['layer'+layer_id+'_pos'].value = new THREE.Vector2(0,0);
-		this.hud.uniforms['layer'+layer_id+'_tex'].value = null;
 
 	},
 
