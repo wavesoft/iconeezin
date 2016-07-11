@@ -247,14 +247,16 @@ THREE.HUDLayer.prototype = {
 				break;
 		}
 
+		//
 		// Round position
+		//
 		this.uniforms.pos.set(
-				Math.round(this.uniforms.pos.x),
-				Math.round(this.uniforms.pos.y)
-			);
+			Math.round(this.uniforms.pos.x),
+			Math.round(this.uniforms.pos.y)
+		);
 
-		console.log("HUD Layer",this.id,"at (",this.uniforms.pos.x,",",this.uniforms.pos.y,") size=(",
-			this.uniforms.size.x,",",this.uniforms.size.y,") with HUD=(",this.hud.size.x,",",this.hud.size.y,")");
+		// console.log("HUD Layer",this.id,"at (",this.uniforms.pos.x,",",this.uniforms.pos.y,") size=(",
+		// 	this.uniforms.size.x,",",this.uniforms.size.y,") with HUD=(",this.hud.size.x,",",this.hud.size.y,")");
 
 	},
 

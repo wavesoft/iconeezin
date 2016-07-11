@@ -132,6 +132,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 				// Reset controls core only when it's not visible
 				ControlsCore.reset();
+				VideoCore.reset();
 
 			} );
 
@@ -162,6 +163,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 						
 						// Reset controls core only when it's not visible
 						ControlsCore.reset();
+						VideoCore.reset();
 
 					});
 				}).bind(this));

@@ -21,16 +21,23 @@
  */
 
 var THREE = require("three");
+
 require("./custom/objects/HUD");
 
 /**
  * HUD Status component
  */
-var HUDStatus = function() {
+var HUDStatus = function( viewport ) {
 	THREE.HUDLayer.call(this, 256, 128, 'cc');
 
 	// Label text
+	this.viewport = viewport;
 	this.labelText = "";
+
+	// Progress
+	this.progress = 0.0;
+	this.progressOpacity = 0.0;
+
 };
 
 // Subclass from sprite
@@ -38,10 +45,57 @@ HUDStatus.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), 
 
 	constructor: HUDStatus,
 
+	reset: function() {
+		this.progress = 0.0;
+		this.progressOpacity = 0.0;
+		this.labelText = "";
+		this.redraw();
+	},
+
 	setLabel: function( text ) {
 
 		this.labelText = text;
 		this.redraw();
+
+	},
+
+	setProgress: function ( value ) {
+
+		// Fade-in
+		this.viewport.runTween( 1000, (function(tweenProgress) {
+
+			// Fade in
+			this.progressOpacity = tweenProgress;
+			this.redraw();
+
+		}).bind(this), (function() {
+
+			var v_prev = this.progress,
+				v_new = value;
+
+			// Change value
+			this.viewport.runTween( 1000, (function(tweenProgress) {
+
+				// Cross-fade value
+				this.progress = v_prev + (v_new - v_prev) * tweenProgress;
+				this.redraw();
+
+			}).bind(this), (function() {
+
+				// Delay for a while
+				this.viewport.runTween( 1000, null, (function() {
+
+					// Fade-in
+					this.viewport.runTween( 1000, (function(tweenProgress) {
+						this.progressOpacity = 1.0 - tweenProgress;
+						this.redraw();
+					}).bind(this));
+
+				}).bind(this));
+
+			}).bind(this));
+
+		}).bind(this));
 
 	},
 
@@ -52,17 +106,54 @@ HUDStatus.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), 
 		//
 		if (this.labelText) {
 
+			// Background
 			ctx.fillStyle = "#000000";
 			ctx.globalAlpha = 0.8;
 			ctx.fillRect( 2, 2, width-4, 30 );
 			ctx.globalAlpha = 1.0;
 
+			// Text
 			ctx.textAlign = "center";
 			ctx.font = "16px Tahoma";
 			ctx.fillStyle = "#FFFFFF";
 			ctx.fillText( this.labelText, width/2, 24);
 
 		}
+
+		//
+		// Draw progress bar
+		//
+		if (this.progressOpacity > 0.0) {
+
+			ctx.globalAlpha = this.progressOpacity;
+
+			// Background
+			ctx.strokeStyle = '#FFFFFF';
+			ctx.lineCap = "round"
+			ctx.lineWidth = 25;
+			ctx.beginPath();
+			ctx.moveTo( 32, height - 20 );
+			ctx.lineTo( width - 32, height - 20 );
+			ctx.stroke();
+
+			if (this.progress > 0.0) {
+
+				var w = (width - 64) * this.progress;
+
+				// Progress bar
+				ctx.strokeStyle = '#000000';
+				ctx.lineWidth = 18;
+				ctx.beginPath();
+				ctx.moveTo( 32, height - 20 );
+				ctx.lineTo( 32 + w, height - 20 );
+				ctx.stroke();
+
+			}
+
+			ctx.globalAlpha = 1.0;
+
+		}
+
 
 	},
 

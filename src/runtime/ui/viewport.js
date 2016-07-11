@@ -53,8 +53,6 @@ require("three/examples/js/shaders/HueSaturationShader");
 // for possible post-processing.
 require("./custom/postprocessing/VRPass");
 
-// require("./custom/shaders/HUDShader");
-// require("./custom/postprocessing/HUDPass");
 require("./custom/objects/HUD");
 
 /**
@@ -71,6 +69,12 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	 * @property
 	 */
 	this.renderListeners = [];
+
+	/**
+	 * Currently active tween functions
+	 * @property
+	 */
+	this.tweenFunctions = [];
 
 	/////////////////////////////////////////////////////////////
 	// Constructor
@@ -107,7 +111,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.camera.add( this.hud );
 
 	// Create a HUD display
-	this.hudStatus = new HUDStatus();
+	this.hudStatus = new HUDStatus( this );
 	this.hud.addLayer( this.hudStatus );
 
 	/////////////////////////////////////////////////////////////
@@ -416,6 +420,8 @@ Viewport.prototype.runTween = function( duration, fn, cb ) {
 		// Handle termination
 		if (tweenProgress == 1.0) {
 			scope.removeRenderListener( tweenFunction );
+			var i = scope.tweenFunctions.indexOf( tweenFunction );
+			scope.tweenFunctions.splice(i,1);
 			if (cb) cb();
 		}
 
@@ -426,6 +432,22 @@ Viewport.prototype.runTween = function( duration, fn, cb ) {
 
 	// Register tween function
 	this.addRenderListener( tweenFunction );
+	this.tweenFunctions.push( tweenFunction );
+
+}
+
+/**
+ * Reset everything
+ */
+Viewport.prototype.reset = function( ) {
+
+	// Remove all active tweens
+	for (var i=0; i<this.tweenFunctions.length; i++) {
+		this.removeRenderListener(this.tweenFunctions[i]);
+	}
+
+	// Reset HUD
+	this.hudStatus.reset();
 
 }
 

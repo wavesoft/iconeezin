@@ -115,6 +115,15 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
  */
 VideoCore.hasVR = Browser.hasVR;
 
+/**
+ * Reset video core for transition
+ */
+VideoCore.reset = function() {
+
+	// Reset everything
+	this.viewport.reset();
+
+}
 
 /**
  * Fade-in from black
@@ -260,6 +269,13 @@ VideoCore.showInteractionLabel = function( label ) {
  */
 VideoCore.hideInteractionLabel = function() {
 	VideoCore.viewport.hudStatus.setLabel( null );
+}
+
+/**
+ * Show an interaction label
+ */
+VideoCore.showProgress = function( value ) {
+	VideoCore.viewport.hudStatus.setProgress( value );
 }
 
 // Export

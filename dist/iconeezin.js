@@ -45026,6 +45026,15 @@ var Iconeezin =
 	 */
 	VideoCore.hasVR = Browser.hasVR;
 
+	/**
+	 * Reset video core for transition
+	 */
+	VideoCore.reset = function() {
+
+		// Reset everything
+		this.viewport.reset();
+
+	}
 
 	/**
 	 * Fade-in from black
@@ -45173,6 +45182,13 @@ var Iconeezin =
 		VideoCore.viewport.hudStatus.setLabel( null );
 	}
 
+	/**
+	 * Show an interaction label
+	 */
+	VideoCore.showProgress = function( value ) {
+		VideoCore.viewport.hudStatus.setProgress( value );
+	}
+
 	// Export
 	module.exports = VideoCore;
 
@@ -45235,8 +45251,6 @@ var Iconeezin =
 	// for possible post-processing.
 	__webpack_require__(50);
 
-	// require("./custom/shaders/HUDShader");
-	// require("./custom/postprocessing/HUDPass");
 	__webpack_require__(34);
 
 	/**
@@ -45253,6 +45267,12 @@ var Iconeezin =
 		 * @property
 		 */
 		this.renderListeners = [];
+
+		/**
+		 * Currently active tween functions
+		 * @property
+		 */
+		this.tweenFunctions = [];
 
 		/////////////////////////////////////////////////////////////
 		// Constructor
@@ -45289,7 +45309,7 @@ var Iconeezin =
 		this.camera.add( this.hud );
 
 		// Create a HUD display
-		this.hudStatus = new HUDStatus();
+		this.hudStatus = new HUDStatus( this );
 		this.hud.addLayer( this.hudStatus );
 
 		/////////////////////////////////////////////////////////////
@@ -45598,6 +45618,8 @@ var Iconeezin =
 			// Handle termination
 			if (tweenProgress == 1.0) {
 				scope.removeRenderListener( tweenFunction );
+				var i = scope.tweenFunctions.indexOf( tweenFunction );
+				scope.tweenFunctions.splice(i,1);
 				if (cb) cb();
 			}
 
@@ -45608,6 +45630,22 @@ var Iconeezin =
 
 		// Register tween function
 		this.addRenderListener( tweenFunction );
+		this.tweenFunctions.push( tweenFunction );
+
+	}
+
+	/**
+	 * Reset everything
+	 */
+	Viewport.prototype.reset = function( ) {
+
+		// Remove all active tweens
+		for (var i=0; i<this.tweenFunctions.length; i++) {
+			this.removeRenderListener(this.tweenFunctions[i]);
+		}
+
+		// Reset HUD
+		this.hudStatus.reset();
 
 	}
 
@@ -46233,16 +46271,23 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
+
 	__webpack_require__(34);
 
 	/**
 	 * HUD Status component
 	 */
-	var HUDStatus = function() {
+	var HUDStatus = function( viewport ) {
 		THREE.HUDLayer.call(this, 256, 128, 'cc');
 
 		// Label text
+		this.viewport = viewport;
 		this.labelText = "";
+
+		// Progress
+		this.progress = 0.0;
+		this.progressOpacity = 0.0;
+
 	};
 
 	// Subclass from sprite
@@ -46250,10 +46295,57 @@ var Iconeezin =
 
 		constructor: HUDStatus,
 
+		reset: function() {
+			this.progress = 0.0;
+			this.progressOpacity = 0.0;
+			this.labelText = "";
+			this.redraw();
+		},
+
 		setLabel: function( text ) {
 
 			this.labelText = text;
 			this.redraw();
+
+		},
+
+		setProgress: function ( value ) {
+
+			// Fade-in
+			this.viewport.runTween( 1000, (function(tweenProgress) {
+
+				// Fade in
+				this.progressOpacity = tweenProgress;
+				this.redraw();
+
+			}).bind(this), (function() {
+
+				var v_prev = this.progress,
+					v_new = value;
+
+				// Change value
+				this.viewport.runTween( 1000, (function(tweenProgress) {
+
+					// Cross-fade value
+					this.progress = v_prev + (v_new - v_prev) * tweenProgress;
+					this.redraw();
+
+				}).bind(this), (function() {
+
+					// Delay for a while
+					this.viewport.runTween( 1000, null, (function() {
+
+						// Fade-in
+						this.viewport.runTween( 1000, (function(tweenProgress) {
+							this.progressOpacity = 1.0 - tweenProgress;
+							this.redraw();
+						}).bind(this));
+
+					}).bind(this));
+
+				}).bind(this));
+
+			}).bind(this));
 
 		},
 
@@ -46264,17 +46356,54 @@ var Iconeezin =
 			//
 			if (this.labelText) {
 
+				// Background
 				ctx.fillStyle = "#000000";
 				ctx.globalAlpha = 0.8;
 				ctx.fillRect( 2, 2, width-4, 30 );
 				ctx.globalAlpha = 1.0;
 
+				// Text
 				ctx.textAlign = "center";
 				ctx.font = "16px Tahoma";
 				ctx.fillStyle = "#FFFFFF";
 				ctx.fillText( this.labelText, width/2, 24);
 
 			}
+
+			//
+			// Draw progress bar
+			//
+			if (this.progressOpacity > 0.0) {
+
+				ctx.globalAlpha = this.progressOpacity;
+
+				// Background
+				ctx.strokeStyle = '#FFFFFF';
+				ctx.lineCap = "round"
+				ctx.lineWidth = 25;
+				ctx.beginPath();
+				ctx.moveTo( 32, height - 20 );
+				ctx.lineTo( width - 32, height - 20 );
+				ctx.stroke();
+
+				if (this.progress > 0.0) {
+
+					var w = (width - 64) * this.progress;
+
+					// Progress bar
+					ctx.strokeStyle = '#000000';
+					ctx.lineWidth = 18;
+					ctx.beginPath();
+					ctx.moveTo( 32, height - 20 );
+					ctx.lineTo( 32 + w, height - 20 );
+					ctx.stroke();
+
+				}
+
+				ctx.globalAlpha = 1.0;
+
+			}
+
 
 		},
 
@@ -46536,14 +46665,16 @@ var Iconeezin =
 					break;
 			}
 
+			//
 			// Round position
+			//
 			this.uniforms.pos.set(
-					Math.round(this.uniforms.pos.x),
-					Math.round(this.uniforms.pos.y)
-				);
+				Math.round(this.uniforms.pos.x),
+				Math.round(this.uniforms.pos.y)
+			);
 
-			console.log("HUD Layer",this.id,"at (",this.uniforms.pos.x,",",this.uniforms.pos.y,") size=(",
-				this.uniforms.size.x,",",this.uniforms.size.y,") with HUD=(",this.hud.size.x,",",this.hud.size.y,")");
+			// console.log("HUD Layer",this.id,"at (",this.uniforms.pos.x,",",this.uniforms.pos.y,") size=(",
+			// 	this.uniforms.size.x,",",this.uniforms.size.y,") with HUD=(",this.hud.size.x,",",this.hud.size.y,")");
 
 		},
 
@@ -50990,6 +51121,7 @@ var Iconeezin =
 
 					// Reset controls core only when it's not visible
 					ControlsCore.reset();
+					VideoCore.reset();
 
 				} );
 
@@ -51020,6 +51152,7 @@ var Iconeezin =
 							
 							// Reset controls core only when it's not visible
 							ControlsCore.reset();
+							VideoCore.reset();
 
 						});
 					}).bind(this));
