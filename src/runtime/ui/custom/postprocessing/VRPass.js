@@ -1,6 +1,7 @@
 /**
  * @author dmarcos / https://github.com/dmarcos
  * @author mrdoob / http://mrdoob.com
+ * @author wavesoft / https://github.com/wavesoft
  *
  * WebVR Spec: http://mozvr.github.io/webvr-spec/webvr.html
  *

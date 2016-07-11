@@ -2,7 +2,7 @@
  * @author wavesoft / https://github.com/wavesoft
  */
 var THREE = require('three');
-require("../shaders/HUDShaderQuad");
+require("../shaders/HUDShader");
 
 /**
  * Maximum number of layers allowed
@@ -22,13 +22,13 @@ THREE.HUD = function () {
 	this.pixelRatio = 1.0;
 
 	// Initialize the shader material
-	this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShaderQuad.uniforms );
+	this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShader.uniforms );
 	this.material = new THREE.ShaderMaterial( {
 
-		defines: THREE.HUDShaderQuad.defines || {},
+		defines: THREE.HUDShader.defines || {},
 		uniforms: this.uniforms,
-		vertexShader: THREE.HUDShaderQuad.vertexShader,
-		fragmentShader: THREE.HUDShaderQuad.fragmentShader,
+		vertexShader: THREE.HUDShader.vertexShader,
+		fragmentShader: THREE.HUDShader.fragmentShader,
 		transparent: true
 
 	} );

@@ -10,31 +10,30 @@ THREE.HUDShader = {
 
 	uniforms: {
 
-		// Front and back buffers
-		"tBack": { value: null },
-		"tFront": { value: null },
+		"black_fader"  : { value: 0.0 },
 
-		// Normalized size of the centered block
-		"size":  { value: new THREE.Vector2(1,1) },
+		"layer1_pos"  : { value: new THREE.Vector2(0,0) },
+		"layer1_size" : { value: new THREE.Vector2(0,0) },
+		"layer1_tex"  : { value: null },
 
-		// Left eye matrix
-		"eyeL_offset" : { value: new THREE.Vector2(-0.225,0) },
-		"eyeR_offset" : { value: new THREE.Vector2(0.225,0) },
-		"eyeL_scale"  : { value: new THREE.Vector2(1,1) },
-		"eyeR_scale"  : { value: new THREE.Vector2(1,1) },
+		"layer2_pos"  : { value: new THREE.Vector2(0,0) },
+		"layer2_size" : { value: new THREE.Vector2(0,0) },
+		"layer2_tex"  : { value: null },
 
-		// Enable or disable HMD
-		"hmd": { value: false },
+		"layer3_pos"  : { value: new THREE.Vector2(0,0) },
+		"layer3_size" : { value: new THREE.Vector2(0,0) },
+		"layer3_tex"  : { value: null },
+
+		"layer4_pos"  : { value: new THREE.Vector2(0,0) },
+		"layer4_size" : { value: new THREE.Vector2(0,0) },
+		"layer4_tex"  : { value: null },
 
 	},
 
 	vertexShader: [
 
-		"varying vec2 vUv;",
-
 		"void main() {",
 
-			"vUv = uv;",
 			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
 
 		"}"
@@ -43,40 +42,52 @@ THREE.HUDShader = {
 
 	fragmentShader: [
 
-		"uniform sampler2D tBack;",
-		"uniform sampler2D tFront;",
-		"uniform vec2 size;",
-		"uniform vec2 eyeL_offset;",
-		"uniform vec2 eyeR_offset;",
-		"uniform vec2 eyeL_scale;",
-		"uniform vec2 eyeR_scale;",
-		"uniform bool hmd;",
+		"uniform vec2 layer1_pos;",
+		"uniform vec2 layer1_size;",
+		"uniform sampler2D layer1_tex;",
 
-		"varying vec2 vUv;",
+		"uniform vec2 layer2_pos;",
+		"uniform vec2 layer2_size;",
+		"uniform sampler2D layer2_tex;",
 
-		"const vec2 CENTER = vec2(0.5, 0.5);",
-		"const vec2 ZERO = vec2(0.0, 0.0);",
-		"const vec2 ONE = vec2(1.0, 1.0);",
+		"uniform vec2 layer3_pos;",
+		"uniform vec2 layer3_size;",
+		"uniform sampler2D layer3_tex;",
 
-		"void renderAt( vec2 center, vec2 scale ) {",
-			"vec2 lUv = vUv - center + (size * scale / 2.0);",
-			"if ( all(greaterThan(lUv, ZERO)) && all(lessThan(lUv, size * scale)) ) {",
-				"lUv /= size * scale;",
-				"vec4 c_front = texture2D(tFront, lUv);",
-				"gl_FragColor = mix(gl_FragColor, c_front, c_front.a);",
+		"uniform vec2 layer4_pos;",
+		"uniform vec2 layer4_size;",
+		"uniform sampler2D layer4_tex;",
+
+		"uniform float black_fader;",
+
+		"void renderLayer( vec2 pos, vec2 sz, sampler2D tex ) {",
+			"vec4 col;",
+			"if ((gl_FragCoord.x > pos.x + 1.0) && (gl_FragCoord.y > pos.y + 1.0) &&",
+				"(gl_FragCoord.x < pos.x + sz.x - 2.0) && (gl_FragCoord.y < pos.y + sz.y - 2.0)) {",
+				"col = texture2D(tex, (gl_FragCoord.xy - pos) / sz);",
+				"gl_FragColor = mix(gl_FragColor, col, col.a);",
 			"}",
 		"}",
 
 		"void main() {",
 
-			"gl_FragColor = texture2D(tBack, vUv);",
+			"gl_FragColor = vec4( 0.0, 0.0, 0.0, 0.0 );",
 
-			"if (hmd) {",
-				"renderAt( CENTER + eyeL_offset, eyeL_scale );",
-				"renderAt( CENTER + eyeR_offset, eyeR_scale );",
-			"} else {",
-				"renderAt( CENTER, ONE );",
+			"if (layer1_size.x > 0.0) {",
+				"renderLayer( layer1_pos, layer1_size, layer1_tex );",
 			"}",
+			"if (layer2_size.x > 0.0) {",
+				"renderLayer( layer2_pos, layer2_size, layer2_tex );",
+			"}",
+			"if (layer3_size.x > 0.0) {",
+				"renderLayer( layer3_pos, layer3_size, layer3_tex );",
+			"}",
+			"if (layer4_size.x > 0.0) {",
+				"renderLayer( layer4_pos, layer4_size, layer4_tex );",
+			"}",
+
+			"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), 1.0 - black_fader);",
+
 
 		"}"
 

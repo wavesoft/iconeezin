@@ -46311,13 +46311,13 @@ var Iconeezin =
 		this.pixelRatio = 1.0;
 
 		// Initialize the shader material
-		this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShaderQuad.uniforms );
+		this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShader.uniforms );
 		this.material = new THREE.ShaderMaterial( {
 
-			defines: THREE.HUDShaderQuad.defines || {},
+			defines: THREE.HUDShader.defines || {},
 			uniforms: this.uniforms,
-			vertexShader: THREE.HUDShaderQuad.vertexShader,
-			fragmentShader: THREE.HUDShaderQuad.fragmentShader,
+			vertexShader: THREE.HUDShader.vertexShader,
+			fragmentShader: THREE.HUDShader.fragmentShader,
 			transparent: true
 
 		} );
@@ -46596,7 +46596,7 @@ var Iconeezin =
 
 	var THREE = __webpack_require__(1);
 
-	THREE.HUDShaderQuad = {
+	THREE.HUDShader = {
 
 		uniforms: {
 
@@ -48699,6 +48699,7 @@ var Iconeezin =
 	/**
 	 * @author dmarcos / https://github.com/dmarcos
 	 * @author mrdoob / http://mrdoob.com
+	 * @author wavesoft / https://github.com/wavesoft
 	 *
 	 * WebVR Spec: http://mozvr.github.io/webvr-spec/webvr.html
 	 *
