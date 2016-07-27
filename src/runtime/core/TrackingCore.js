@@ -46,6 +46,7 @@ TrackingCore.initialize = function( trackingID ) {
 	this.activeExperimentMeta = { };
 	this.activeTaskMeta = { };
 	this.activeTaskName = "";
+	this.activeTaskID = -1;
 
 }
 
@@ -98,39 +99,87 @@ TrackingCore.trackEvent = function( name, properties ) {
 /**
  * Download experiment metadata
  */
-TrackingCore.queryExperimentMeta = function( name, callback ) {
+// TrackingCore.queryExperimentMeta = function( name, callback ) {
 
-	//////////////////////////////////////////
-	console.log("Querying Experiment:", name);
-	//////////////////////////////////////////
+// 	//////////////////////////////////////////
+// 	console.log("Querying Experiment:", name);
+// 	//////////////////////////////////////////
 
-	// Keep downloaded experiment metadata
-	this.activeExperimentMeta = 
-		{
-			'tasks': { }
-		};
+// 	// Keep downloaded experiment metadata
+// 	this.activeExperimentMeta = 
+// 		{
+// 			'tasks': { }
+// 		};
 
-	// Trigger callback
-	if (callback)
-		callback( this.activeExperimentMeta );
+// 	// Trigger callback
+// 	if (callback)
+// 		callback( this.activeExperimentMeta );
 
-}
+// }
 
 /**
  * Download task metadata
  */
-TrackingCore.queryTaskMeta = function( name, properties, callback ) {
+TrackingCore.queryNamedTaskMeta = function( name, properties, callback ) {
 
 	//////////////////////////////////////////
-	console.log("Querying Task:", name, properties);
+	console.log("Querying Named Task:", name, properties);
 	//////////////////////////////////////////
 
-	// Get task metadata
-	this.activeTaskMeta = (this.activeExperimentMeta.tasks || {})[name] || {};
+	// Get tasks
+	var id = -1, meta = null;
+	var tasks = this.activeExperimentMeta.tasks || [];
+	for (var i=0,l=tasks.length; i<l; ++i) {
+		if (tasks[i].name === name) {
+			id = i;
+			meta = tasks[i];
+			break;
+		}
+	}
+
+	// Check for failed
+	if (!meta) {
+		if (callback) callback( -1, null, null );
+		return;
+	}
+
+	// Update local properties
+	this.activeTaskMeta = meta;
+	this.activeTaskName = name;
+	this.activeTaskID = id;
 
 	// Callback with the data
-	if (callback)
-		callback( this.activeTaskMeta );
+	if (callback) callback( id, name, meta );
+
+}
+
+/**
+ * Download next task metadata
+ */
+TrackingCore.queryNextTaskMeta = function( properties, callback ) {
+
+	//////////////////////////////////////////
+	console.log("Querying Next Task:", properties);
+	//////////////////////////////////////////
+
+	// Get tasks
+	var tasks = this.activeExperimentMeta.tasks || [];
+	var meta = tasks[ this.activeTaskID + 1 ];
+
+	// Check for failed
+	if (!meta) {
+		if (callback) callback( -1, null, null );
+		return;
+	}
+
+	// Update local properties
+	this.activeTaskMeta = meta;
+	this.activeTaskName = meta.name;
+	this.activeTaskID += 1;
+	console.log("next=",this.activeTaskID,", meta=",meta);
+
+	// Callback with the data
+	if (callback) callback( this.activeTaskID, meta.name, meta );
 
 }
 
@@ -218,7 +267,7 @@ TrackingCore.stopTimer = function(name) {
 /**
  * Start an experiment (called by core)
  */
-TrackingCore.startExperiment = function( name, callback ) {
+TrackingCore.startExperiment = function( name, meta, callback ) {
 
 	// Complete previous experiment
 	if (this.activeExperimentName) {
@@ -226,11 +275,17 @@ TrackingCore.startExperiment = function( name, callback ) {
 	}
 
 	// Query experiment metadata
-	this.queryExperimentMeta(name, (function(meta) {
+	// this.queryExperimentMeta(name, (function(meta) {
 
 		// Activate experiment
 		this.activeExperimentName = name;
+		this.activeExperimentMeta = meta;
 		this.restartTimer("internal.experiment");
+
+		// Prepare for first task
+		this.activeTaskID = -1;
+		this.activeTaskName = "";
+		this.activeTaskMeta = {};
 
 		// Set experiment tracking data
 		this.setGlobal("experiment", name);
@@ -239,7 +294,7 @@ TrackingCore.startExperiment = function( name, callback ) {
 		// Callback with experiment metadata
 		if (callback) callback(meta);
 
-	}).bind(this));
+	// }).bind(this));
 }
 
 /**
@@ -258,9 +313,9 @@ TrackingCore.completeExperiment = function() {
 }
 
 /**
- * Start an experiment trask (called by the experiment)
+ * Start a named experiment task (called by the experiment)
  */
-TrackingCore.startTask = function( name, properties, callback ) {
+TrackingCore.startNamedTask = function( name, properties, callback ) {
 
 	// Fill missing gaps
 	if (typeof properties === 'function') {
@@ -269,19 +324,43 @@ TrackingCore.startTask = function( name, properties, callback ) {
 	}
 
 	// Obtain task metadata
-	this.queryTaskMeta( name, properties, (function(meta) {
-
-		// Keep properties
-		this.activeTaskName = name;
+	this.queryNamedTaskMeta( name, properties, (function( id, name, meta ) {
 
 		// Track event
-		this.trackEvent("experiment.task.started", { 'task': name });
+		this.trackEvent("experiment.task.started", { 'task': name, 'id': id });
 
 		// Start task timer
 		this.restartTimer("internal.task");
 
 		// Callback with task metadata
-		if (callback) callback( meta );
+		if (callback) callback( meta, (id+1)/(this.activeExperimentMeta.tasks || []).length );
+
+	}).bind(this));
+
+}
+
+/**
+ * Start next experiment stack in a row
+ */
+TrackingCore.startNextTask = function( properties, callback ) {
+
+	// Fill missing gaps
+	if (typeof properties === 'function') {
+		callback = properties;
+		properties = {};
+	}
+
+	// Obtain task metadata
+	this.queryNextTaskMeta( properties, (function( id, name, meta ) {
+
+		// Track event
+		this.trackEvent("experiment.task.started", { 'task': name, 'id': id });
+
+		// Start task timer
+		this.restartTimer("internal.task");
+
+		// Callback with task metadata
+		if (callback) callback( meta, (id+1)/(this.activeExperimentMeta.tasks || []).length );
 
 	}).bind(this));
 
@@ -296,10 +375,6 @@ TrackingCore.completeTask = function( results ) {
 	this.trackEvent("experiment.task.completed", Object.assign({ 
 		'task': this.activeTaskName, 'duration': this.stopTimer("internal.task") }, results
 	));
-
-	// Reset active task
-	this.activeTaskMeta = {};
-	this.activeTaskName = "";
 
 }
 

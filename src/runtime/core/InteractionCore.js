@@ -60,6 +60,7 @@ InteractionCore.makeInteractive = function( object, options ) {
 		opt.gaze = (options.gaze === undefined) ? true : options.gaze;
 		opt.color = options.color || new THREE.Color( 0x0066ff );
 		opt.title = options.title;
+		opt.debounce = options.debounce || 0.0;
 		opt.trackID = options.trackID;
 
 	} else {

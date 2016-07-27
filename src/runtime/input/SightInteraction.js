@@ -63,6 +63,13 @@ var SightInteraction = function( cursor, viewport ) {
 }
 
 /**
+ * Reset interactions
+ */
+SightInteraction.prototype.reset = function() {
+	this.interactiveObjects = [];
+}
+
+/**
  * Traverse scene and collect interesting objects
  */
 SightInteraction.prototype.updateFromScene = function() {
@@ -121,8 +128,17 @@ SightInteraction.prototype.onRender = function( delta ) {
 			if (this.hoverObject) {
 
 				// Hadle mouse out
-				if (this.hoverInteraction.onMouseOut)
-					this.hoverInteraction.onMouseOut();
+				if (this.hoverInteraction.onMouseOut) {
+					if (this.hoverInteraction.debounce === 0.0) {
+						this.hoverInteraction.onMouseOut();
+						return;
+					}
+
+					// Reschedule debounce timer
+					clearTimeout(this.hoverInteraction._debounceTimer);
+					this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut, 
+						this.hoverInteraction.debounce);
+				}
 
 				// Stop tracking
 				if (this.hoverInteraction.trackID) {
@@ -142,6 +158,9 @@ SightInteraction.prototype.onRender = function( delta ) {
 			this.hoverInteraction = this.hoverObject.__interact__;
 
 			// Handle mouse over
+			if (this.hoverInteraction._debounceTimer) {
+				clearTimeout(this.hoverInteraction._debounceTimer);
+			}
 			if (this.hoverInteraction.onMouseOver)
 				this.hoverInteraction.onMouseOver();
 
@@ -196,8 +215,17 @@ SightInteraction.prototype.onRender = function( delta ) {
 		if (this.hoverObject) {
 
 			// Hadle mouse out
-			if (this.hoverInteraction.onMouseOut)
-				this.hoverInteraction.onMouseOut();
+			if (this.hoverInteraction.onMouseOut) {
+				if (this.hoverInteraction.debounce === 0.0) {
+					this.hoverInteraction.onMouseOut();
+					return;
+				}
+
+				// Reschedule debounce timer
+				clearTimeout(this.hoverInteraction._debounceTimer);
+				this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut, 
+					this.hoverInteraction.debounce);
+			}
 
 			// Stop tracking
 			if (this.hoverInteraction.trackID) {
@@ -206,6 +234,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 			// Reset properties
 			this.hoverObject = null;
+			this.hoverInteraction = null;
 			this.gazeTimer = 0;
 			this.cursor.setHighlight(0);
 

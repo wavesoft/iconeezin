@@ -25,8 +25,13 @@ var AudioCore = require("./AudioCore");
 var ControlsCore = require("./ControlsCore");
 var TrackingCore = require("./TrackingCore");
 
+var ResultsRoom = require("../ui/ResultsRoom");
 var Experiments = require("../ui/Experiments");
+
+var Config = require("../../config");
 var Loaders = require("../io/Loaders");
+
+var StopableTimers = require("../util/StopableTimers");
 
 /**
  * Kernel core is the main logic that steers the runtime 
@@ -51,10 +56,17 @@ ExperimentsCore.initialize = function() {
 	// Dictionary of active experiments
 	this.loadedExperiments = {};
 	this.activeExperimentName = "";
+	this.activeExperimentId = 0;
 
 	// Paused state properties
 	this.paused = true;
 	this.pendingExperimentName = "";
+
+	// Results room instance
+	this.resultsRoom = new ResultsRoom({ });
+
+	// Metadata
+	this.meta = {};
 
 	// Register listener for hash change events
 	window.addEventListener('hashchange', (function() {
@@ -66,13 +78,53 @@ ExperimentsCore.initialize = function() {
 
 	}).bind(this));
 
-	// Load default experiment if hash missing
-	var hash = String(window.location.hash).substr(1);
-	if (!hash) {
-		this.showExperiment("introduction");
-	} else {
-		this.showExperiment(hash);
-	}
+	// Load metadata
+	this.loadMetadata((function(error) {
+
+		// Display error
+		if (error) {
+			console.error("Error loading experiment metadata:", error);
+			return;
+		}
+
+		// Load default experiment if hash missing
+		var hash = String(window.location.hash).substr(1);
+		if (!hash) {
+			this.showExperiment( this.meta.experiments[ this.activeExperimentId ].name );
+		} else {
+			this.showExperiment(hash);
+		}
+
+	}).bind(this));
+
+}
+
+/**
+ * Set paused state
+ */
+ExperimentsCore.loadMetadata = function( callback ) {
+
+	// Request binary bundle
+	var req = new XMLHttpRequest();
+
+	// Wait until the bundle is loaded
+	req.addEventListener('readystatechange', (function () {
+		if (req.readyState !== 4) return;
+		if (req.status === 200) {  
+			try {
+				this.meta = JSON.parse(req.responseText);
+				callback( null );
+			} catch (e) {
+				callback( e.toString() );
+			}
+		} else {
+			callback( req.statusText );
+		}
+	}).bind(this));
+
+	// Place request
+	req.open('GET', Config.path.metadata);
+	req.send();
 
 }
 
@@ -89,6 +141,30 @@ ExperimentsCore.setPaused = function( paused ) {
 		this.showExperiment( this.pendingExperimentName );
 		this.pendingExperimentName = "";
 	}
+
+}
+
+/**
+ * Pass metadata to the results screen and render
+ */
+ExperimentsCore.showResults = function( meta ) {
+
+	// Reset all stopable timers
+	StopableTimers.reset();
+
+	// Focus to results room
+	this.experiments.focusExperiment( this.resultsRoom, 
+		function() {
+			// Update interactions
+			ControlsCore.updateInteractions();
+		},
+		function() {
+			// Reset controls core only when it's not visible
+			AudioCore.reset();
+			ControlsCore.reset();
+			VideoCore.reset();
+		}
+	);
 
 }
 
@@ -110,6 +186,24 @@ ExperimentsCore.showExperiment = function( experiment ) {
 	// Mark experiment as active
 	this.activeExperimentName = experiment;
 
+	// Find the ID that corresponds to this experiment
+	this.activeExperimentId = -1;
+	var meta;
+	for (var i=0; i<this.meta.experiments.length; i++) {
+		var e = this.meta.experiments[i];
+		if (e.name == experiment) {
+			this.activeExperimentId = i;
+			meta = e;
+			break;
+		}
+	}
+
+	// Check for mismatch
+	if (this.activeExperimentId == -1) {
+		console.error("Iconeezin: Experiment '"+experiment+"' was not found in the metadata table.");
+		return;
+	}
+
 	// Update location hash
 	window.location.hash = experiment;
 
@@ -123,9 +217,10 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 		// Reset other cores
 		AudioCore.reset();
-	
+		StopableTimers.reset();
+
 		// Ask TrackingCore to prepare for the experiment
-		TrackingCore.startExperiment( experiment, (function() {
+		TrackingCore.startExperiment( experiment, meta, (function() {
 
 			// Focus to the given experiment instance on the viewport
 			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible, function() {
@@ -134,11 +229,14 @@ ExperimentsCore.showExperiment = function( experiment ) {
 				ControlsCore.reset();
 				VideoCore.reset();
 
-			} );
+			});
 
 		}).bind(this));
 
 	} else {
+
+		// Reset all stopable timers
+		StopableTimers.reset();
 
 		// Load experiment
 		Loaders.loadExperiment( experiment, (function ( err, inst ) {
@@ -158,7 +256,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 				this.loadedExperiments[experiment] = inst;
 
 				// Ask TrackingCore to prepare for the experiment
-				TrackingCore.startExperiment( experiment, (function() {
+				TrackingCore.startExperiment( experiment, meta, (function() {
 					this.experiments.focusExperiment( inst, handleExperimentVisible, function() {
 						
 						// Reset controls core only when it's not visible
@@ -192,7 +290,19 @@ ExperimentsCore.showExperiment = function( experiment ) {
  *
  */
 ExperimentsCore.experimentCompleted = function() {
+	var next = this.meta.experiments[this.activeExperimentId+1];
+	if (!next) {
+		alert('done!');
 
+	} else {
+
+		// Complete tracking this experiment
+		TrackingCore.completeExperiment();
+
+		// Forward to next
+		this.showExperiment( next.name );
+
+	}
 }
 
 // Export regitry

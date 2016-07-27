@@ -39,6 +39,7 @@ var TrackingCore = require("./src/runtime/core/TrackingCore");
 var ExperimentsCore = require("./src/runtime/core/ExperimentsCore");
 var InteractionCore = require("./src/runtime/core/InteractionCore");
 var BrowserUtil = require("./src/runtime/util/Browser");
+var StopableTimers = require("./src/runtime/util/StopableTimers");
 
 /**
  * Expose useful parts of the runtime API
@@ -107,6 +108,21 @@ module.exports = {
 			ControlsCore.setPaused( enabled );
 			TrackingCore.setPaused( enabled );
 			ExperimentsCore.setPaused( enabled );
+			StopableTimers.setPaused( enabled );
+		},
+
+		// Stoppable timers
+		'setTimeout': function( fn, delay ) {
+			return StopableTimers.setTimeout( fn, delay );
+		},
+		'setInterval': function( fn, delay ) {
+			return StopableTimers.setInterval( fn, delay );
+		},
+		'clearTimeout': function( id ) {
+			return StopableTimers.clearTimeout( id );
+		},
+		'clearInterval': function( id ) {
+			return StopableTimers.clearInterval( id );
 		},
 
 	},

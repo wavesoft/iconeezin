@@ -53,6 +53,13 @@ var Experiment = function( database ) {
 		direction: new THREE.Vector3(0,1,0)
 	}
 
+	// Gizmo that remains at camera 0,0,0
+	// Useful for storing cubemaps or other environment effects
+	this.world = new THREE.Object3D();
+
+	// Flag that denotes if the experiment is active
+	this.isActive = false;
+
 	// Experiment features 
 	this.features = {
 

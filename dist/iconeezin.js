@@ -81,11 +81,12 @@ var Iconeezin =
 	// Load components afterwards
 	var AudioCore = __webpack_require__(4);
 	var VideoCore = __webpack_require__(29);
-	var ControlsCore = __webpack_require__(52);
-	var TrackingCore = __webpack_require__(54);
-	var ExperimentsCore = __webpack_require__(60);
+	var ControlsCore = __webpack_require__(56);
+	var TrackingCore = __webpack_require__(58);
+	var ExperimentsCore = __webpack_require__(64);
 	var InteractionCore = __webpack_require__(27);
 	var BrowserUtil = __webpack_require__(31);
+	var StopableTimers = __webpack_require__(80);
 
 	/**
 	 * Expose useful parts of the runtime API
@@ -154,6 +155,21 @@ var Iconeezin =
 				ControlsCore.setPaused( enabled );
 				TrackingCore.setPaused( enabled );
 				ExperimentsCore.setPaused( enabled );
+				StopableTimers.setPaused( enabled );
+			},
+
+			// Stoppable timers
+			'setTimeout': function( fn, delay ) {
+				return StopableTimers.setTimeout( fn, delay );
+			},
+			'setInterval': function( fn, delay ) {
+				return StopableTimers.setInterval( fn, delay );
+			},
+			'clearTimeout': function( id ) {
+				return StopableTimers.clearTimeout( id );
+			},
+			'clearInterval': function( id ) {
+				return StopableTimers.clearInterval( id );
 			},
 
 		},
@@ -43115,7 +43131,7 @@ var Iconeezin =
 		// }).bind(this);
 
 		// Configure
-		this.recognition.lang = 'el-GR';
+		// this.recognition.lang = 'el-GR';
 		this.recognition.continuous = false;
 		this.recognition.interimResults = true;
 
@@ -44513,6 +44529,13 @@ var Iconeezin =
 			direction: new THREE.Vector3(0,1,0)
 		}
 
+		// Gizmo that remains at camera 0,0,0
+		// Useful for storing cubemaps or other environment effects
+		this.world = new THREE.Object3D();
+
+		// Flag that denotes if the experiment is active
+		this.isActive = false;
+
 		// Experiment features 
 		this.features = {
 
@@ -44795,6 +44818,7 @@ var Iconeezin =
 			opt.gaze = (options.gaze === undefined) ? true : options.gaze;
 			opt.color = options.color || new THREE.Color( 0x0066ff );
 			opt.title = options.title;
+			opt.debounce = options.debounce || 0.0;
 			opt.trackID = options.trackID;
 
 		} else {
@@ -44868,7 +44892,7 @@ var Iconeezin =
 			/**
 			 * Path to experiments metadata
 			 */
-			'metadata': 'experiments/meta.json'
+			'metadata': 'experiments/specs.json'
 
 		},
 
@@ -44932,7 +44956,7 @@ var Iconeezin =
 	 */
 
 	var Viewport = __webpack_require__(30);
-	var Cursor = __webpack_require__(50);
+	var Cursor = __webpack_require__(54);
 	var Browser = __webpack_require__(31);
 
 	/**
@@ -44952,6 +44976,11 @@ var Iconeezin =
 	 * global video management API.
 	 */
 	var VideoCore = {};
+
+	/**
+	 * Video effect constants
+	 */
+	VideoCore.EFFECT_SEPIA = 1;
 
 	/**
 	 * Initialize the video core
@@ -45192,6 +45221,16 @@ var Iconeezin =
 		VideoCore.viewport.hudStatus.setProgress( value, reason );
 	}
 
+	/**
+	 * Glitch the video with some duration
+	 */
+	VideoCore.glitch = function( duration ) {
+		VideoCore.viewport.setEffect( 1 ); // Enable glitch effect
+		setTimeout(function() {
+			VideoCore.viewport.setEffect( 0 );
+		}, duration);
+	}
+
 	// Export
 	module.exports = VideoCore;
 
@@ -45248,23 +45287,16 @@ var Iconeezin =
 	__webpack_require__(47);
 
 	__webpack_require__(48);
-
-	// Custom pass for rendering the HMD display in a texture
-	// for possible post-processing.
 	__webpack_require__(49);
 
-	__webpack_require__(33);
+	__webpack_require__(50);
+	__webpack_require__(51);
 
-	// var HUDPixel = function( align ) { THREE.HUDLayer.call( this, 128, 128, align ) }
-	// HUDPixel.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), {
-	// 	constructor: HUDPixel,
-	// 	onPaint: function(ctx,w,h) {
-	// 		ctx.fillStyle = "red";
-	// 		ctx.fillRect(0,0,w/2,h/2);
-	// 		ctx.fillStyle = "blue";
-	// 		ctx.fillRect(w/2,h/2,w/2,h/2);
-	// 	}
-	// });
+	__webpack_require__(52);
+
+	// VR Pass and HUD
+	__webpack_require__(53);
+	__webpack_require__(33);
 
 	/**
 	 * Our viewport is where everything gets rendered
@@ -45331,6 +45363,8 @@ var Iconeezin =
 
 		// Initialize the renderer
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
+		this.renderer.autoClear = false;
+		this.renderer.shadowMap.enabled = true;
 		this.renderer.setPixelRatio( 1 );
 		this.viewportDOM.appendChild( this.renderer.domElement );
 
@@ -45342,18 +45376,33 @@ var Iconeezin =
 		this.renderPass.renderToScreen = true;
 		this.effectComposer.addPass( this.renderPass );
 
+		// Glitch pass
+		this.glitchPass = new THREE.GlitchPass();
+		this.glitchPass.goWild = true;
+		this.glitchPass.renderToScreen = true;
+		this.glitchPass.enabled = false;
+		this.effectComposer.addPass( this.glitchPass );
+
+		// Bloom pass
+		this.bloomPass = new THREE.BloomPass();
+		this.bloomPass.renderToScreen = true;
+		this.bloomPass.enabled = false;
+		this.effectComposer.addPass( this.bloomPass );
+
+		// Bloom pass
+		this.filmPass = new THREE.FilmPass();
+		this.filmPass.renderToScreen = true;
+		this.filmPass.enabled = false;
+		this.effectComposer.addPass( this.filmPass );
+
 		// FXAA anti-alias pass
 		this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
 		this.antialiasPass.setSize = (function( w, h ) {
 			this.uniforms['resolution'].value.set( 1/w, 1/h );
 		}).bind(this.antialiasPass)
-		// this.effectComposer.addPass( this.antialiasPass );
-
-		// Glitch pass
-		this.glitchPass = new THREE.GlitchPass();
-		this.glitchPass.goWild = true;
-		this.glitchPass.enabled = false;
-		// this.effectComposer.addPass( this.glitchPass );
+		this.antialiasPass.enabled = false;
+		this.antialiasPass.renderToScreen = true;
+		this.effectComposer.addPass( this.antialiasPass );
 
 		/////////////////////////////////////////////////////////////
 		// Environment
@@ -45383,10 +45432,69 @@ var Iconeezin =
 	}
 
 	/**
+	 * Enable a pass by it's ID
+	 */
+	Viewport.prototype.setEffect = function( id, parameters ) {
+
+		// Enable appropriate effect
+		this.glitchPass.enabled = (id === 1);
+		this.bloomPass.enabled = (id === 2);
+		this.filmPass.enabled = (id === 3);
+
+		// Hackfix for bloom bug
+		this.antialiasPass.enabled = (id === 2);
+
+		// Configure appropriate effect
+		if (!parameters)
+			parameters = {};
+
+		// Use default value
+		if (typeof parameters !== 'object')
+			parameters = { 'value': parameters };
+
+		// Handle effect parameters
+		switch (id) {
+			case 1:
+				// [Glitch]
+				this.glitchPass.goWild = !parameters['value'];
+				break;
+			case 2:
+				// [Bloom]
+				break;
+			case 3:
+				// [Film]
+				if (parameters['value']) {
+					if (parameters['value'] === 0) {
+						this.filmPass.uniforms['nIntensity'].value = 0;
+						this.filmPass.uniforms['sIntensity'].value = 0;
+						this.filmPass.uniforms['sCount'].value = 0;
+					} else {
+						this.filmPass.uniforms['nIntensity'].value = parameters['value'] || 0.5;
+						this.filmPass.uniforms['sIntensity'].value = Math.pow( parameters['value'], 4);
+						this.filmPass.uniforms['sCount'].value = parseInt( 4096 * parameters['value'] );
+					}
+				} else {
+					this.filmPass.uniforms['nIntensity'].value = parameters['nIntensity'] || 0.5;
+					this.filmPass.uniforms['sIntensity'].value = parameters['sIntensity'] || 0.05;
+					this.filmPass.uniforms['sCount'].value = parameters['sCount'] || 4096;
+				}
+				this.filmPass.uniforms['grayscale'].value = parameters['grayscale'] || 0;
+				break;
+		}
+
+		// Disable render pass if an effect i active
+		this.renderPass.renderToScreen = !(
+			this.glitchPass.enabled || 
+			this.bloomPass.enabled ||
+			this.filmPass.enabled
+		);
+	}
+
+	/**
 	 * Enable or diable antialias pass
 	 */
 	Viewport.prototype.setAntialias = function( enabled ) {
-		this.antialiasPass.enabled = enabled;
+		// this.antialiasPass.enabled = enabled;
 	}
 
 	/**
@@ -45497,6 +45605,7 @@ var Iconeezin =
 		}
 
 		// Render composer
+		this.renderer.clear(); 
 		this.effectComposer.render( d );
 
 	}
@@ -45537,42 +45646,6 @@ var Iconeezin =
 			this.paused = true;
 
 		}
-
-	}
-
-	/**
-	 * Add an experiment to the viewport
-	 *
-	 * @param {ExperimentBase} experiment - The experiment to add
-	 */
-	Viewport.prototype.addExperiment = function( experiment ) {
-
-		// Store experiment in registry
-		this.experiments.push( experiment );
-
-		// Add objects
-		this.scene.add( experiment.scene );
-
-		// Separate lignts from the scene
-		var lights = [];
-		experiment.scene.traverse(function(obj) {
-			if (obj instanceof THREE.Light) {
-				lights.push( obj );
-			}
-		});
-		experiment._lights = lights;
-
-		// Turn off the lights
-		for (var i=0; i<lights.length; i++) {
-
-			// Keep original color & Turn light off
-			lights[i]._originalColor = lights[i].color.getHex();
-			lights[i].color.setHex( 0x000000 );
-
-		}
-
-		// If we had no active experiment so far, activate it too
-		this.activateExperiment( experiment );
 
 	}
 
@@ -45630,6 +45703,7 @@ var Iconeezin =
 
 		// Reset HUD
 		this.hudStatus.reset();
+		this.setEffect(0);
 
 	}
 
@@ -48517,6 +48591,411 @@ var Iconeezin =
 /***/ function(module, exports) {
 
 	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 *
+	 * Film grain & scanlines shader
+	 *
+	 * - ported from HLSL to WebGL / GLSL
+	 * http://www.truevision3d.com/forums/showcase/staticnoise_colorblackwhite_scanline_shaders-t18698.0.html
+	 *
+	 * Screen Space Static Postprocessor
+	 *
+	 * Produces an analogue noise overlay similar to a film grain / TV static
+	 *
+	 * Original implementation and noise algorithm
+	 * Pat 'Hawthorne' Shearon
+	 *
+	 * Optimized scanlines + noise version with intensity scaling
+	 * Georg 'Leviathan' Steinrohder
+	 *
+	 * This version is provided under a Creative Commons Attribution 3.0 License
+	 * http://creativecommons.org/licenses/by/3.0/
+	 */
+
+	THREE.FilmShader = {
+
+		uniforms: {
+
+			"tDiffuse":   { value: null },
+			"time":       { value: 0.0 },
+			"nIntensity": { value: 0.5 },
+			"sIntensity": { value: 0.05 },
+			"sCount":     { value: 4096 },
+			"grayscale":  { value: 1 }
+
+		},
+
+		vertexShader: [
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"#include <common>",
+			
+			// control parameter
+			"uniform float time;",
+
+			"uniform bool grayscale;",
+
+			// noise effect intensity value (0 = no effect, 1 = full effect)
+			"uniform float nIntensity;",
+
+			// scanlines effect intensity value (0 = no effect, 1 = full effect)
+			"uniform float sIntensity;",
+
+			// scanlines effect count value (0 = no effect, 4096 = full effect)
+			"uniform float sCount;",
+
+			"uniform sampler2D tDiffuse;",
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				// sample the source
+				"vec4 cTextureScreen = texture2D( tDiffuse, vUv );",
+
+				// make some noise
+				"float dx = rand( vUv + time );",
+
+				// add noise
+				"vec3 cResult = cTextureScreen.rgb + cTextureScreen.rgb * clamp( 0.1 + dx, 0.0, 1.0 );",
+
+				// get us a sine and cosine
+				"vec2 sc = vec2( sin( vUv.y * sCount ), cos( vUv.y * sCount ) );",
+
+				// add scanlines
+				"cResult += cTextureScreen.rgb * vec3( sc.x, sc.y, sc.x ) * sIntensity;",
+
+				// interpolate between source and result by intensity
+				"cResult = cTextureScreen.rgb + clamp( nIntensity, 0.0,1.0 ) * ( cResult - cTextureScreen.rgb );",
+
+				// convert to grayscale if desired
+				"if( grayscale ) {",
+
+					"cResult = vec3( cResult.r * 0.3 + cResult.g * 0.59 + cResult.b * 0.11 );",
+
+				"}",
+
+				"gl_FragColor =  vec4( cResult, cTextureScreen.a );",
+
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 49 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+	THREE.FilmPass = function ( noiseIntensity, scanlinesIntensity, scanlinesCount, grayscale ) {
+
+		THREE.Pass.call( this );
+
+		if ( THREE.FilmShader === undefined )
+			console.error( "THREE.FilmPass relies on THREE.FilmShader" );
+
+		var shader = THREE.FilmShader;
+
+		this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+
+		this.material = new THREE.ShaderMaterial( {
+
+			uniforms: this.uniforms,
+			vertexShader: shader.vertexShader,
+			fragmentShader: shader.fragmentShader
+
+		} );
+
+		if ( grayscale !== undefined )	this.uniforms.grayscale.value = grayscale;
+		if ( noiseIntensity !== undefined ) this.uniforms.nIntensity.value = noiseIntensity;
+		if ( scanlinesIntensity !== undefined ) this.uniforms.sIntensity.value = scanlinesIntensity;
+		if ( scanlinesCount !== undefined ) this.uniforms.sCount.value = scanlinesCount;
+
+		this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+		this.scene  = new THREE.Scene();
+
+		this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
+		this.scene.add( this.quad );
+
+	};
+
+	THREE.FilmPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+
+		constructor: THREE.FilmPass,
+
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			this.uniforms[ "tDiffuse" ].value = readBuffer.texture;
+			this.uniforms[ "time" ].value += delta;
+
+			this.quad.material = this.material;
+
+			if ( this.renderToScreen ) {
+
+				renderer.render( this.scene, this.camera );
+
+			} else {
+
+				renderer.render( this.scene, this.camera, writeBuffer, this.clear );
+
+			}
+
+		}
+
+	} );
+
+
+/***/ },
+/* 50 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 *
+	 * Convolution shader
+	 * ported from o3d sample to WebGL / GLSL
+	 * http://o3d.googlecode.com/svn/trunk/samples/convolution.html
+	 */
+
+	THREE.ConvolutionShader = {
+
+		defines: {
+
+			"KERNEL_SIZE_FLOAT": "25.0",
+			"KERNEL_SIZE_INT": "25",
+
+		},
+
+		uniforms: {
+
+			"tDiffuse":        { value: null },
+			"uImageIncrement": { value: new THREE.Vector2( 0.001953125, 0.0 ) },
+			"cKernel":         { value: [] }
+
+		},
+
+		vertexShader: [
+
+			"uniform vec2 uImageIncrement;",
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vUv = uv - ( ( KERNEL_SIZE_FLOAT - 1.0 ) / 2.0 ) * uImageIncrement;",
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"uniform float cKernel[ KERNEL_SIZE_INT ];",
+
+			"uniform sampler2D tDiffuse;",
+			"uniform vec2 uImageIncrement;",
+
+			"varying vec2 vUv;",
+
+			"void main() {",
+
+				"vec2 imageCoord = vUv;",
+				"vec4 sum = vec4( 0.0, 0.0, 0.0, 0.0 );",
+
+				"for( int i = 0; i < KERNEL_SIZE_INT; i ++ ) {",
+
+					"sum += texture2D( tDiffuse, imageCoord ) * cKernel[ i ];",
+					"imageCoord += uImageIncrement;",
+
+				"}",
+
+				"gl_FragColor = sum;",
+
+			"}"
+
+
+		].join( "\n" ),
+
+		buildKernel: function ( sigma ) {
+
+			// We lop off the sqrt(2 * pi) * sigma term, since we're going to normalize anyway.
+
+			function gauss( x, sigma ) {
+
+				return Math.exp( - ( x * x ) / ( 2.0 * sigma * sigma ) );
+
+			}
+
+			var i, values, sum, halfWidth, kMaxKernelSize = 25, kernelSize = 2 * Math.ceil( sigma * 3.0 ) + 1;
+
+			if ( kernelSize > kMaxKernelSize ) kernelSize = kMaxKernelSize;
+			halfWidth = ( kernelSize - 1 ) * 0.5;
+
+			values = new Array( kernelSize );
+			sum = 0.0;
+			for ( i = 0; i < kernelSize; ++ i ) {
+
+				values[ i ] = gauss( i - halfWidth, sigma );
+				sum += values[ i ];
+
+			}
+
+			// normalize the kernel
+
+			for ( i = 0; i < kernelSize; ++ i ) values[ i ] /= sum;
+
+			return values;
+
+		}
+
+	};
+
+
+/***/ },
+/* 51 */
+/***/ function(module, exports) {
+
+	/**
+	 * @author alteredq / http://alteredqualia.com/
+	 */
+
+	THREE.BloomPass = function ( strength, kernelSize, sigma, resolution ) {
+
+		THREE.Pass.call( this );
+
+		strength = ( strength !== undefined ) ? strength : 1;
+		kernelSize = ( kernelSize !== undefined ) ? kernelSize : 25;
+		sigma = ( sigma !== undefined ) ? sigma : 4.0;
+		resolution = ( resolution !== undefined ) ? resolution : 256;
+
+		// render targets
+
+		var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat };
+
+		this.renderTargetX = new THREE.WebGLRenderTarget( resolution, resolution, pars );
+		this.renderTargetY = new THREE.WebGLRenderTarget( resolution, resolution, pars );
+
+		// copy material
+
+		if ( THREE.CopyShader === undefined )
+			console.error( "THREE.BloomPass relies on THREE.CopyShader" );
+
+		var copyShader = THREE.CopyShader;
+
+		this.copyUniforms = THREE.UniformsUtils.clone( copyShader.uniforms );
+
+		this.copyUniforms[ "opacity" ].value = strength;
+
+		this.materialCopy = new THREE.ShaderMaterial( {
+
+			uniforms: this.copyUniforms,
+			vertexShader: copyShader.vertexShader,
+			fragmentShader: copyShader.fragmentShader,
+			blending: THREE.AdditiveBlending,
+			transparent: true
+
+		} );
+
+		// convolution material
+
+		if ( THREE.ConvolutionShader === undefined )
+			console.error( "THREE.BloomPass relies on THREE.ConvolutionShader" );
+
+		var convolutionShader = THREE.ConvolutionShader;
+
+		this.convolutionUniforms = THREE.UniformsUtils.clone( convolutionShader.uniforms );
+
+		this.convolutionUniforms[ "uImageIncrement" ].value = THREE.BloomPass.blurX;
+		this.convolutionUniforms[ "cKernel" ].value = THREE.ConvolutionShader.buildKernel( sigma );
+
+		this.materialConvolution = new THREE.ShaderMaterial( {
+
+			uniforms: this.convolutionUniforms,
+			vertexShader:  convolutionShader.vertexShader,
+			fragmentShader: convolutionShader.fragmentShader,
+			defines: {
+				"KERNEL_SIZE_FLOAT": kernelSize.toFixed( 1 ),
+				"KERNEL_SIZE_INT": kernelSize.toFixed( 0 )
+			}
+
+		} );
+
+		this.needsSwap = false;
+
+		this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
+		this.scene  = new THREE.Scene();
+
+		this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
+		this.scene.add( this.quad );
+
+	};
+
+	THREE.BloomPass.prototype = Object.assign( Object.create( THREE.Pass.prototype ), {
+
+		constructor: THREE.BloomPass,
+
+		render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
+
+			if ( maskActive ) renderer.context.disable( renderer.context.STENCIL_TEST );
+
+			// Render quad with blured scene into texture (convolution pass 1)
+
+			this.quad.material = this.materialConvolution;
+
+			this.convolutionUniforms[ "tDiffuse" ].value = readBuffer.texture;
+			this.convolutionUniforms[ "uImageIncrement" ].value = THREE.BloomPass.blurX;
+
+			renderer.render( this.scene, this.camera, this.renderTargetX, true );
+
+
+			// Render quad with blured scene into texture (convolution pass 2)
+
+			this.convolutionUniforms[ "tDiffuse" ].value = this.renderTargetX.texture;
+			this.convolutionUniforms[ "uImageIncrement" ].value = THREE.BloomPass.blurY;
+
+			renderer.render( this.scene, this.camera, this.renderTargetY, true );
+
+			// Render original scene with superimposed blur to texture
+
+			this.quad.material = this.materialCopy;
+
+			this.copyUniforms[ "tDiffuse" ].value = this.renderTargetY.texture;
+
+			if ( maskActive ) renderer.context.enable( renderer.context.STENCIL_TEST );
+
+			renderer.render( this.scene, this.camera, readBuffer, this.clear );
+
+		}
+
+	} );
+
+	THREE.BloomPass.blurX = new THREE.Vector2( 0.001953125, 0.0 );
+	THREE.BloomPass.blurY = new THREE.Vector2( 0.0, 0.001953125 );
+
+
+/***/ },
+/* 52 */
+/***/ function(module, exports) {
+
+	/**
 	 * @author tapio / http://tapio.github.com/
 	 *
 	 * Hue and saturation adjustment
@@ -48588,7 +49067,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 49 */
+/* 53 */
 /***/ function(module, exports) {
 
 	/**
@@ -48891,7 +49370,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 50 */
+/* 54 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49018,7 +49497,7 @@ var Iconeezin =
 
 		// Create a spinner sprite
 		var loader = new THREE.TextureLoader();
-		loader.load( __webpack_require__(51), (function( texture ) {
+		loader.load( __webpack_require__(55), (function( texture ) {
 
 			// Set material map
 			mat.map = texture;
@@ -49210,13 +49689,13 @@ var Iconeezin =
 
 
 /***/ },
-/* 51 */
+/* 55 */
 /***/ function(module, exports) {
 
 	module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA8pJREFUeNrsW8uR2kAQFS7fRQbLRoAyQI7AcgSwF67GEVhEYO11L8tGYIUgMoAILDJAEeCercY122795isKdZVKhWo0mn7T3fPeSEwul0twz/YpuHMbARgBGAEYAbhr+2yqo5eXlwhOCRziPLU45jMcBzjy9Xp90O1sossDwHHhbA7HwsME7gXoAMTZCwDofAHH3GMUH+GIVUHQrQG5Z+cDfH7mPAJg9mdw+jOgevYIUVC6jIBkYAVdaTw6q8CUycWzQ4enJP2mrgGgtoMQzFx5Dym4gtOrTyJUtkSEbZv5ZoKljQFppGDpG4DYMQD0eUqsUJcICRAepEtfoA4UNfkqrOiyVOES++4gtN91WIIraOelCAoi9F36vUFmSAf7Kv2+UtjrrJ0xnCO8tiD3c6ClzDi8qEE6O19hwDEjXipybYGHAO8nnheMnqjo0oqia9kyDjcAoBrb08GgRri2EQ6sFB+xkjk+9kud3XNp53I/YEN+i5pQEBBEiD737PcZ72vTHhuvchhnJsVQblRp0E4M9leHLn/IpKpBcm+hXeodABzkjsnNI4bxQWqXYBiHTDcVts9JEeVmXoS+9tJrbEsMBiPy/I2RqoVcGNG5CMGhYEXE+QhXijnT1ogYm5h+M1QTCcKe6JoObTNcAUS+bzpyfe1dIKsAtOT6E0dsegidN4w0Yzax9W6wIde/MdWd3vdbFbzBACDlcEFAEIVuxoUwVvuSaZ/orPVOimADUaKVOmwoYDETMdactw6ABMK2o3SOTLK8QQAg6QETkvv2AEAik3YEhDq8xPtvEwCJwoYd5WvOKMcci+ltASCtAHOGv5c19UJERlbDJq2AYIsIxTUz34nI9GGTQ6TCvVgcpsk75yfKMSO7TVbYoFEAGgbNyVuaHkdc80uXlNikHOb2BDh5y7FDuX1M5LNWOrnaEOH4O+dMk/Nt9+2YgqpdE0x9IMHxdxXnm+7n0qbCPQRlwmRiGcwMO3/VCx+WPiyQCeEJIUOy3EVAzTcCtOD1db4tErh0e1SNAt0IWDHihRIZVef/RQIhS3nw/1b8xlcKUFm7YwhRqPmMkHnZkraMwz4AWJQ+FCRakVHKbhl+38fE/Qem35N06UFVNOm8G4yYUOf4fapbqGqsIHQ5UpHPOilA38YeArdWtkyIdQCiwK8Z2RY3+Y3QDOmwK5sNDYDlLUaETgrkwbCscAoAsrPjQJzfq345boIJVp6dr7wxQenFx8mT8yeqFXztB0yRjiaBmw8mz1iDct23xJPxj5N3biMAIwAjACMAd21/BRgAk6Xp4c7+81UAAAAASUVORK5CYII="
 
 /***/ },
-/* 52 */
+/* 56 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49243,11 +49722,11 @@ var Iconeezin =
 
 	var VideoCore = __webpack_require__(29);
 
-	var SightInteraction = __webpack_require__(53);
+	var SightInteraction = __webpack_require__(57);
 
-	var PathFollowerControl = __webpack_require__(55);
-	var MouseControl = __webpack_require__(57);
-	var VRControl = __webpack_require__(58);
+	var PathFollowerControl = __webpack_require__(59);
+	var MouseControl = __webpack_require__(61);
+	var VRControl = __webpack_require__(62);
 
 	/**
 	 * The ControlsCore singleton contains the
@@ -49321,6 +49800,9 @@ var Iconeezin =
 
 		// Reset mouse view
 		this.reorientMouseView( false );
+
+		// Reset interactions
+		interaction.reset();
 
 	}
 
@@ -49520,7 +50002,7 @@ var Iconeezin =
 	module.exports = ControlsCore;
 
 /***/ },
-/* 53 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49546,7 +50028,7 @@ var Iconeezin =
 	 */
 
 	var VideoCore = __webpack_require__(29);
-	var TrackingCore = __webpack_require__(54);
+	var TrackingCore = __webpack_require__(58);
 	var ThreeAPI = __webpack_require__(26);
 
 	const CENTER = new THREE.Vector2(0,0);
@@ -49585,6 +50067,13 @@ var Iconeezin =
 		document.addEventListener( 'click', this.handleClick.bind(this), false );
 		document.addEventListener( 'touchend', this.handleClick.bind(this), false );
 
+	}
+
+	/**
+	 * Reset interactions
+	 */
+	SightInteraction.prototype.reset = function() {
+		this.interactiveObjects = [];
 	}
 
 	/**
@@ -49646,8 +50135,17 @@ var Iconeezin =
 				if (this.hoverObject) {
 
 					// Hadle mouse out
-					if (this.hoverInteraction.onMouseOut)
-						this.hoverInteraction.onMouseOut();
+					if (this.hoverInteraction.onMouseOut) {
+						if (this.hoverInteraction.debounce === 0.0) {
+							this.hoverInteraction.onMouseOut();
+							return;
+						}
+
+						// Reschedule debounce timer
+						clearTimeout(this.hoverInteraction._debounceTimer);
+						this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut, 
+							this.hoverInteraction.debounce);
+					}
 
 					// Stop tracking
 					if (this.hoverInteraction.trackID) {
@@ -49667,6 +50165,9 @@ var Iconeezin =
 				this.hoverInteraction = this.hoverObject.__interact__;
 
 				// Handle mouse over
+				if (this.hoverInteraction._debounceTimer) {
+					clearTimeout(this.hoverInteraction._debounceTimer);
+				}
 				if (this.hoverInteraction.onMouseOver)
 					this.hoverInteraction.onMouseOver();
 
@@ -49721,8 +50222,17 @@ var Iconeezin =
 			if (this.hoverObject) {
 
 				// Hadle mouse out
-				if (this.hoverInteraction.onMouseOut)
-					this.hoverInteraction.onMouseOut();
+				if (this.hoverInteraction.onMouseOut) {
+					if (this.hoverInteraction.debounce === 0.0) {
+						this.hoverInteraction.onMouseOut();
+						return;
+					}
+
+					// Reschedule debounce timer
+					clearTimeout(this.hoverInteraction._debounceTimer);
+					this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut, 
+						this.hoverInteraction.debounce);
+				}
 
 				// Stop tracking
 				if (this.hoverInteraction.trackID) {
@@ -49731,6 +50241,7 @@ var Iconeezin =
 
 				// Reset properties
 				this.hoverObject = null;
+				this.hoverInteraction = null;
 				this.gazeTimer = 0;
 				this.cursor.setHighlight(0);
 
@@ -49747,7 +50258,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 54 */
+/* 58 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -49798,6 +50309,7 @@ var Iconeezin =
 		this.activeExperimentMeta = { };
 		this.activeTaskMeta = { };
 		this.activeTaskName = "";
+		this.activeTaskID = -1;
 
 	}
 
@@ -49850,39 +50362,87 @@ var Iconeezin =
 	/**
 	 * Download experiment metadata
 	 */
-	TrackingCore.queryExperimentMeta = function( name, callback ) {
+	// TrackingCore.queryExperimentMeta = function( name, callback ) {
 
-		//////////////////////////////////////////
-		console.log("Querying Experiment:", name);
-		//////////////////////////////////////////
+	// 	//////////////////////////////////////////
+	// 	console.log("Querying Experiment:", name);
+	// 	//////////////////////////////////////////
 
-		// Keep downloaded experiment metadata
-		this.activeExperimentMeta = 
-			{
-				'tasks': { }
-			};
+	// 	// Keep downloaded experiment metadata
+	// 	this.activeExperimentMeta = 
+	// 		{
+	// 			'tasks': { }
+	// 		};
 
-		// Trigger callback
-		if (callback)
-			callback( this.activeExperimentMeta );
+	// 	// Trigger callback
+	// 	if (callback)
+	// 		callback( this.activeExperimentMeta );
 
-	}
+	// }
 
 	/**
 	 * Download task metadata
 	 */
-	TrackingCore.queryTaskMeta = function( name, properties, callback ) {
+	TrackingCore.queryNamedTaskMeta = function( name, properties, callback ) {
 
 		//////////////////////////////////////////
-		console.log("Querying Task:", name, properties);
+		console.log("Querying Named Task:", name, properties);
 		//////////////////////////////////////////
 
-		// Get task metadata
-		this.activeTaskMeta = (this.activeExperimentMeta.tasks || {})[name] || {};
+		// Get tasks
+		var id = -1, meta = null;
+		var tasks = this.activeExperimentMeta.tasks || [];
+		for (var i=0,l=tasks.length; i<l; ++i) {
+			if (tasks[i].name === name) {
+				id = i;
+				meta = tasks[i];
+				break;
+			}
+		}
+
+		// Check for failed
+		if (!meta) {
+			if (callback) callback( -1, null, null );
+			return;
+		}
+
+		// Update local properties
+		this.activeTaskMeta = meta;
+		this.activeTaskName = name;
+		this.activeTaskID = id;
 
 		// Callback with the data
-		if (callback)
-			callback( this.activeTaskMeta );
+		if (callback) callback( id, name, meta );
+
+	}
+
+	/**
+	 * Download next task metadata
+	 */
+	TrackingCore.queryNextTaskMeta = function( properties, callback ) {
+
+		//////////////////////////////////////////
+		console.log("Querying Next Task:", properties);
+		//////////////////////////////////////////
+
+		// Get tasks
+		var tasks = this.activeExperimentMeta.tasks || [];
+		var meta = tasks[ this.activeTaskID + 1 ];
+
+		// Check for failed
+		if (!meta) {
+			if (callback) callback( -1, null, null );
+			return;
+		}
+
+		// Update local properties
+		this.activeTaskMeta = meta;
+		this.activeTaskName = meta.name;
+		this.activeTaskID += 1;
+		console.log("next=",this.activeTaskID,", meta=",meta);
+
+		// Callback with the data
+		if (callback) callback( this.activeTaskID, meta.name, meta );
 
 	}
 
@@ -49970,7 +50530,7 @@ var Iconeezin =
 	/**
 	 * Start an experiment (called by core)
 	 */
-	TrackingCore.startExperiment = function( name, callback ) {
+	TrackingCore.startExperiment = function( name, meta, callback ) {
 
 		// Complete previous experiment
 		if (this.activeExperimentName) {
@@ -49978,11 +50538,17 @@ var Iconeezin =
 		}
 
 		// Query experiment metadata
-		this.queryExperimentMeta(name, (function(meta) {
+		// this.queryExperimentMeta(name, (function(meta) {
 
 			// Activate experiment
 			this.activeExperimentName = name;
+			this.activeExperimentMeta = meta;
 			this.restartTimer("internal.experiment");
+
+			// Prepare for first task
+			this.activeTaskID = -1;
+			this.activeTaskName = "";
+			this.activeTaskMeta = {};
 
 			// Set experiment tracking data
 			this.setGlobal("experiment", name);
@@ -49991,7 +50557,7 @@ var Iconeezin =
 			// Callback with experiment metadata
 			if (callback) callback(meta);
 
-		}).bind(this));
+		// }).bind(this));
 	}
 
 	/**
@@ -50010,9 +50576,9 @@ var Iconeezin =
 	}
 
 	/**
-	 * Start an experiment trask (called by the experiment)
+	 * Start a named experiment task (called by the experiment)
 	 */
-	TrackingCore.startTask = function( name, properties, callback ) {
+	TrackingCore.startNamedTask = function( name, properties, callback ) {
 
 		// Fill missing gaps
 		if (typeof properties === 'function') {
@@ -50021,19 +50587,43 @@ var Iconeezin =
 		}
 
 		// Obtain task metadata
-		this.queryTaskMeta( name, properties, (function(meta) {
-
-			// Keep properties
-			this.activeTaskName = name;
+		this.queryNamedTaskMeta( name, properties, (function( id, name, meta ) {
 
 			// Track event
-			this.trackEvent("experiment.task.started", { 'task': name });
+			this.trackEvent("experiment.task.started", { 'task': name, 'id': id });
 
 			// Start task timer
 			this.restartTimer("internal.task");
 
 			// Callback with task metadata
-			if (callback) callback( meta );
+			if (callback) callback( meta, (id+1)/(this.activeExperimentMeta.tasks || []).length );
+
+		}).bind(this));
+
+	}
+
+	/**
+	 * Start next experiment stack in a row
+	 */
+	TrackingCore.startNextTask = function( properties, callback ) {
+
+		// Fill missing gaps
+		if (typeof properties === 'function') {
+			callback = properties;
+			properties = {};
+		}
+
+		// Obtain task metadata
+		this.queryNextTaskMeta( properties, (function( id, name, meta ) {
+
+			// Track event
+			this.trackEvent("experiment.task.started", { 'task': name, 'id': id });
+
+			// Start task timer
+			this.restartTimer("internal.task");
+
+			// Callback with task metadata
+			if (callback) callback( meta, (id+1)/(this.activeExperimentMeta.tasks || []).length );
 
 		}).bind(this));
 
@@ -50049,10 +50639,6 @@ var Iconeezin =
 			'task': this.activeTaskName, 'duration': this.stopTimer("internal.task") }, results
 		));
 
-		// Reset active task
-		this.activeTaskMeta = {};
-		this.activeTaskName = "";
-
 	}
 
 	// Export regitry
@@ -50060,7 +50646,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 55 */
+/* 59 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50086,7 +50672,7 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var BaseControl = __webpack_require__(56);
+	var BaseControl = __webpack_require__(60);
 
 	var zero = new THREE.Vector3(0,0,0);
 	var norm = new THREE.Vector3();
@@ -50205,7 +50791,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 56 */
+/* 60 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -50314,7 +50900,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 57 */
+/* 61 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50340,7 +50926,7 @@ var Iconeezin =
 	 */
 
 	var VideoCore = __webpack_require__(29);
-	var BaseControl = __webpack_require__(56);
+	var BaseControl = __webpack_require__(60);
 
 	const PI_2 = Math.PI / 2;
 	const RESET_NORMAL_SPEED = 0.01;
@@ -50533,7 +51119,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 58 */
+/* 62 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50558,9 +51144,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var BaseControl = __webpack_require__(56);
+	var BaseControl = __webpack_require__(60);
 	var Browser = __webpack_require__(31);
-	__webpack_require__(59);
+	__webpack_require__(63);
 
 	var vec = new THREE.Vector3();
 
@@ -50607,7 +51193,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 59 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -50767,7 +51353,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 60 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50794,11 +51380,16 @@ var Iconeezin =
 
 	var VideoCore = __webpack_require__(29);
 	var AudioCore = __webpack_require__(4);
-	var ControlsCore = __webpack_require__(52);
-	var TrackingCore = __webpack_require__(54);
+	var ControlsCore = __webpack_require__(56);
+	var TrackingCore = __webpack_require__(58);
 
-	var Experiments = __webpack_require__(61);
-	var Loaders = __webpack_require__(62);
+	var ResultsRoom = __webpack_require__(65);
+	var Experiments = __webpack_require__(68);
+
+	var Config = __webpack_require__(28);
+	var Loaders = __webpack_require__(69);
+
+	var StopableTimers = __webpack_require__(80);
 
 	/**
 	 * Kernel core is the main logic that steers the runtime 
@@ -50823,10 +51414,17 @@ var Iconeezin =
 		// Dictionary of active experiments
 		this.loadedExperiments = {};
 		this.activeExperimentName = "";
+		this.activeExperimentId = 0;
 
 		// Paused state properties
 		this.paused = true;
 		this.pendingExperimentName = "";
+
+		// Results room instance
+		this.resultsRoom = new ResultsRoom({ });
+
+		// Metadata
+		this.meta = {};
 
 		// Register listener for hash change events
 		window.addEventListener('hashchange', (function() {
@@ -50838,13 +51436,53 @@ var Iconeezin =
 
 		}).bind(this));
 
-		// Load default experiment if hash missing
-		var hash = String(window.location.hash).substr(1);
-		if (!hash) {
-			this.showExperiment("introduction");
-		} else {
-			this.showExperiment(hash);
-		}
+		// Load metadata
+		this.loadMetadata((function(error) {
+
+			// Display error
+			if (error) {
+				console.error("Error loading experiment metadata:", error);
+				return;
+			}
+
+			// Load default experiment if hash missing
+			var hash = String(window.location.hash).substr(1);
+			if (!hash) {
+				this.showExperiment( this.meta.experiments[ this.activeExperimentId ].name );
+			} else {
+				this.showExperiment(hash);
+			}
+
+		}).bind(this));
+
+	}
+
+	/**
+	 * Set paused state
+	 */
+	ExperimentsCore.loadMetadata = function( callback ) {
+
+		// Request binary bundle
+		var req = new XMLHttpRequest();
+
+		// Wait until the bundle is loaded
+		req.addEventListener('readystatechange', (function () {
+			if (req.readyState !== 4) return;
+			if (req.status === 200) {  
+				try {
+					this.meta = JSON.parse(req.responseText);
+					callback( null );
+				} catch (e) {
+					callback( e.toString() );
+				}
+			} else {
+				callback( req.statusText );
+			}
+		}).bind(this));
+
+		// Place request
+		req.open('GET', Config.path.metadata);
+		req.send();
 
 	}
 
@@ -50861,6 +51499,30 @@ var Iconeezin =
 			this.showExperiment( this.pendingExperimentName );
 			this.pendingExperimentName = "";
 		}
+
+	}
+
+	/**
+	 * Pass metadata to the results screen and render
+	 */
+	ExperimentsCore.showResults = function( meta ) {
+
+		// Reset all stopable timers
+		StopableTimers.reset();
+
+		// Focus to results room
+		this.experiments.focusExperiment( this.resultsRoom, 
+			function() {
+				// Update interactions
+				ControlsCore.updateInteractions();
+			},
+			function() {
+				// Reset controls core only when it's not visible
+				AudioCore.reset();
+				ControlsCore.reset();
+				VideoCore.reset();
+			}
+		);
 
 	}
 
@@ -50882,6 +51544,24 @@ var Iconeezin =
 		// Mark experiment as active
 		this.activeExperimentName = experiment;
 
+		// Find the ID that corresponds to this experiment
+		this.activeExperimentId = -1;
+		var meta;
+		for (var i=0; i<this.meta.experiments.length; i++) {
+			var e = this.meta.experiments[i];
+			if (e.name == experiment) {
+				this.activeExperimentId = i;
+				meta = e;
+				break;
+			}
+		}
+
+		// Check for mismatch
+		if (this.activeExperimentId == -1) {
+			console.error("Iconeezin: Experiment '"+experiment+"' was not found in the metadata table.");
+			return;
+		}
+
 		// Update location hash
 		window.location.hash = experiment;
 
@@ -50895,9 +51575,10 @@ var Iconeezin =
 
 			// Reset other cores
 			AudioCore.reset();
-		
+			StopableTimers.reset();
+
 			// Ask TrackingCore to prepare for the experiment
-			TrackingCore.startExperiment( experiment, (function() {
+			TrackingCore.startExperiment( experiment, meta, (function() {
 
 				// Focus to the given experiment instance on the viewport
 				this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible, function() {
@@ -50906,11 +51587,14 @@ var Iconeezin =
 					ControlsCore.reset();
 					VideoCore.reset();
 
-				} );
+				});
 
 			}).bind(this));
 
 		} else {
+
+			// Reset all stopable timers
+			StopableTimers.reset();
 
 			// Load experiment
 			Loaders.loadExperiment( experiment, (function ( err, inst ) {
@@ -50930,7 +51614,7 @@ var Iconeezin =
 					this.loadedExperiments[experiment] = inst;
 
 					// Ask TrackingCore to prepare for the experiment
-					TrackingCore.startExperiment( experiment, (function() {
+					TrackingCore.startExperiment( experiment, meta, (function() {
 						this.experiments.focusExperiment( inst, handleExperimentVisible, function() {
 							
 							// Reset controls core only when it's not visible
@@ -50964,7 +51648,19 @@ var Iconeezin =
 	 *
 	 */
 	ExperimentsCore.experimentCompleted = function() {
+		var next = this.meta.experiments[this.activeExperimentId+1];
+		if (!next) {
+			alert('done!');
 
+		} else {
+
+			// Complete tracking this experiment
+			TrackingCore.completeExperiment();
+
+			// Forward to next
+			this.showExperiment( next.name );
+
+		}
 	}
 
 	// Export regitry
@@ -50972,7 +51668,601 @@ var Iconeezin =
 
 
 /***/ },
-/* 61 */
+/* 65 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 * 
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 * 
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 * 
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
+	var THREE = __webpack_require__(1);
+	var ExperimentsAPI = __webpack_require__(25);
+	var InteractionCore = __webpack_require__(27);
+
+	var Label = __webpack_require__(66);
+
+	/**
+	 * Paint function for block
+	 */
+	function PAINT_BLOCK( title, subtitle, progress, icon ) {
+		return function(ctx, w, h, mat) {
+
+			// Background
+			ctx.fillStyle = '#000000';
+			ctx.globalAlpha = 0.7;
+			ctx.fillRect(5,5,w-10,h-10);
+			ctx.globalAlpha = 1.0;
+
+			// Border
+			ctx.strokeStyle = '#FFFFFF';
+			ctx.lineWidth = 3;
+			ctx.strokeRect(1,1,w-2,h-2);
+
+			// Title
+			ctx.fillStyle = '#FFFFFF';
+			ctx.textAlign = "center";
+			ctx.font = "26px Tahoma";
+			ctx.fillText(title, w/2, 34);
+
+			// Subtitle
+			ctx.fillStyle = '#00FF00';
+			ctx.textAlign = "end";
+			ctx.font = "19px Tahoma";
+			ctx.fillText(subtitle + ' ' + Math.round(progress*100) + '%', 245, 72);
+
+			// Progress bars
+			for (var i=0, x=97; i<10; i++, x+=15) {
+				if (i/10 < progress) {
+					ctx.fillStyle = '#00FF00';
+				} else {
+					ctx.fillStyle = '#FFFFFF';
+				}
+				ctx.fillRect(x,82,12,27);
+			}
+
+			// Circle
+			ctx.fillStyle = '#000000';
+			ctx.lineWidth = 3;
+			ctx.beginPath();
+			ctx.arc( 46, 82, 30, 0, Math.PI*2 );
+			ctx.fill();
+
+			if (icon == 0) { // Play
+
+				ctx.strokeStyle = '#FFFFFF';
+				ctx.stroke();
+
+				ctx.fillStyle = '#FFFFFF';
+				ctx.beginPath();
+				ctx.moveTo(41,69);
+				ctx.lineTo(55,81);
+				ctx.lineTo(41,95);
+				ctx.fill();
+
+			} else if (icon == 1) { // V
+
+				ctx.strokeStyle = '#009245';
+				ctx.stroke();
+
+				ctx.strokeStyle = '#39B54A';
+				ctx.lineWidth = 5;
+				ctx.beginPath();
+				ctx.moveTo(31,84);
+				ctx.lineTo(40,93);
+				ctx.lineTo(61,73);
+				ctx.stroke();
+
+			} else if (icon == 2) { // X
+
+				ctx.strokeStyle = '#C1272D';
+				ctx.stroke();
+
+				ctx.strokeStyle = '#ED1C24';
+				ctx.lineWidth = 5;
+				ctx.beginPath();
+				ctx.moveTo(34,68);
+				ctx.lineTo(58,93);
+				ctx.moveTo(34,93);
+				ctx.lineTo(58,68);
+				ctx.stroke();
+
+			} else if (typeof icon === 'string') {
+
+				var img = document.createElement('img');
+				img.onload = function() {
+
+
+				};
+				img.src = icon;
+
+			}
+
+
+		};
+	}
+
+	/**
+	 * Results GUI were experiment results are shown
+	 */
+	var ResultsRoom = function() {
+		ExperimentsAPI.Experiment.call( this );
+		this.anchor.position.set( 0, 0, 0 );
+
+		// Create a sphere for equirectangular VR
+		var geom = new THREE.SphereGeometry( 500, 60, 40 );
+		var mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+		geom.scale( -1, 1, 1 );
+
+		// Create a spinner sprite
+		var loader = new THREE.TextureLoader();
+		loader.load( __webpack_require__(67), (function( texture ) {
+
+			// Set material map
+			mat.map = texture;
+			texture.needsUpdate = true;
+
+		}).bind(this));
+
+		// Create the sphere mesh
+		var mesh = new THREE.Mesh( geom, mat );
+		mesh.rotation.x = Math.PI/2;
+		this.add( mesh );
+
+		// Local properties
+		this.buttons = [];
+
+		// Title label
+		this.lblTitle = new Label( "test" );
+		this.lblTitle.position.y = 8;
+		// this.pivotTitle = new THREE.Object3D();
+		// this.pivotTitle.add( this.lblTitle );
+
+		this.lblTitle.fontSize = 18;
+		this.lblTitle.text = "Results Screen";
+		// this.add(this.pivotTitle);
+
+		// Add a few buttons
+		this.addButton( PAINT_BLOCK("EXPERIMENT 1", "Score", Math.random(), 0) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 2", "Score", Math.random(), 1) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 3", "Score", Math.random(), 2) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 4", "Score", Math.random(), 0) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 5", "Score", Math.random(), 1) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 6", "Score", Math.random(), 2) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 7", "Score", Math.random(), 0) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 8", "Score", Math.random(), 1) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 9", "Score", Math.random(), 2) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 10", "Score", Math.random(), 0) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 11", "Score", Math.random(), 1) );
+		this.addButton( PAINT_BLOCK("EXPERIMENT 12", "Score", Math.random(), 2) );
+
+	};
+
+	/**
+	 * Results room constructor
+	 */
+	ResultsRoom.prototype = Object.assign( Object.create( ExperimentsAPI.Experiment.prototype ), {
+
+		constructor: ResultsRoom,
+
+		/**
+		 * Reset results room
+		 */
+		reset: function() {
+			this.buttons = [];
+
+		},
+
+		configure: function( meta ) {
+
+		},
+
+		/**
+		 * Re-align results button
+		 */
+		realign: function(sx,sy) {
+			var center = new THREE.Vector3(0,0,0);
+
+			// Break down to cols and rows
+			var cols = 4;
+			var rows = Math.ceil( this.buttons.length / cols );
+			if (this.buttons.length < cols) cols = this.buttons.length;
+
+			// Radial distribution parameters
+			// var space_x = 0.349066;
+			// var space_y = 0.2556194;
+			var space_x = sx || 0.60;
+			var space_y = 3.2; //sy || 0.35;
+
+			// Distribute
+			var ofs_x = ((cols-1) * space_x) / 2.0;
+			var rx = ofs_x, ry = ((rows-1) * space_y) / 2.0;
+			for (var i=0, j=0, l=this.buttons.length; i<l; ++i) {
+				var pvt = this.buttons[i][0],
+					btn = this.buttons[i][1],
+					ibn = this.buttons[i][2];
+
+				// Orient object
+				pvt.rotation.order = 'ZXY';
+				pvt.position.z = 0;
+				pvt.rotation.z = rx;
+				// pvt.rotation.x = ry;
+				btn.lookAt( center );
+				ibn.lookAt( center );
+				pvt.position.z = ry;
+
+				// Keep original position for tweening
+				btn.original_position = btn.position.clone();
+
+				// Check for row overflow
+				rx -= space_x;
+				if (++j >= cols) {
+					rx = ofs_x;
+					ry -= space_y;
+					j = 0;
+				}
+
+			}
+
+			// Place label on top
+			// this.pivotTitle.rotation.x = ry + 0.1;
+
+		},
+
+		/**
+		 * Add a button to the screen 
+		 */
+		addButton: function( cb_paint, cb_click ) {
+
+			// Prepare mesh
+			var geometry = new THREE.PlaneGeometry( 6, 3 );
+			var material = new THREE.MeshBasicMaterial( {color: 0xffffff, side: THREE.DoubleSide, transparent: true} );
+			var plane = new THREE.Mesh( geometry, material );
+
+			// Draw the graphic
+			var canvas = document.createElement('canvas');
+			canvas.width = 256;
+			canvas.height = 128;
+			var ctx = canvas.getContext('2d');
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+			if (cb_paint) cb_paint( ctx, canvas.width, canvas.height, material );
+
+			// Create texture
+			var texture = new THREE.Texture(canvas);
+			texture.needsUpdate = true;
+			material.map = texture;
+
+			// Create a transparent interaction plane
+			// that does not participate in the animation
+			var transparentMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+			transparentMaterial.visible = false;
+			var iplane = new THREE.Mesh( geometry, transparentMaterial );
+			iplane.position.y = 10;
+
+			// Create pivot object
+			var pivot = new THREE.Object3D();
+			plane.position.y = 10;
+			plane.isHover = false;
+			pivot.add( plane );
+			pivot.add( iplane );
+
+			// Register on buttons
+			this.add( pivot );
+
+			// Re-align
+			this.buttons.push([ pivot, plane, iplane ]);
+			this.realign();
+
+			// Make interactive
+			InteractionCore.makeInteractive( iplane, {
+				'gaze': false,
+				'debounce': 150,
+				'onClick': function() {
+					if (cb_click) cb_click();
+				},
+				'onMouseOver': function() {
+					plane.isHover = true;
+				},
+				'onMouseOut': function() {
+					plane.isHover = false;
+				}
+			});
+
+		},
+
+		/**
+		 * Render update
+		 */
+		onUpdate: function( delta ) {
+			var center = new THREE.Vector3(0,0,0);
+			for (var i=0, l=this.buttons.length; i<l; ++i) {
+				var pvt = this.buttons[i][0], 
+					btn = this.buttons[i][1], target = null;
+
+				// 
+				if (btn.isHover) {
+					target = btn.original_position.clone().multiplyScalar(4/5);
+					target.z = -pvt.position.z * 1/3;
+				} else {
+					target = btn.original_position;
+				}
+
+				// 
+				if (target && !btn.position.equals(target)) {
+					btn.position.add( target.clone().sub( btn.position ).divideScalar(10) );
+					if (btn.position.distanceTo( target ) < 0.1)
+						btn.position.copy( target );
+				}
+
+			}
+		},
+
+	});
+
+	module.exports = ResultsRoom;
+
+
+
+/***/ },
+/* 66 */
+/***/ function(module, exports, __webpack_require__) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 * 
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 * 
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 * 
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
+	var THREE = __webpack_require__(1);
+
+	/**
+	 * Sprite label
+	 */
+	var Label = function( text, color, bgColor ) {
+
+		// Create canvas
+		var canvas = document.createElement('canvas');
+		var textureSize = 512;
+		canvas.width = textureSize;
+		canvas.height = textureSize;
+
+		// Create context
+		var context = canvas.getContext('2d');
+		context.textAlign = 'start';
+
+		// Create texture
+		var amap = new THREE.Texture(canvas);
+
+		// Create sprite material
+		var mat = new THREE.SpriteMaterial({
+		    map: amap,
+		    transparent: false,
+		    color: 0xffffff
+		});
+
+		// Construct
+		var scope = this;
+		THREE.Sprite.call( this, mat );
+
+		// Prepare sprite properties
+		var text = text || "";
+		var color = new THREE.Color( color || 0xcccccc );
+		var bgColor = new THREE.Color( bgColor || 0x000000 );
+		var bgOpacity = 0.8;
+		var borderColor = new THREE.Color( color || 0xcccccc );
+		var borderWidth = 1;
+		var fontFamily = 'Tahoma';
+		var fontSize = 16;
+		var padding = {
+			'left': 10, 'top': 10, 'right': 10, 'bottom': 10
+		};
+
+		/**
+		 * Re-generate canvas
+		 */
+		var regenerate = function() {
+
+			// Apply font and measure text
+			context.font =  fontSize + 'px ' + fontFamily;
+			var sz = context.measureText( text ),
+				lineHeight = context.measureText('M').width;
+
+			// Calculate anchor and offset
+			var width = sz.width + padding.left + padding.right + borderWidth * 2,
+				height = lineHeight + padding.top + padding.bottom + borderWidth * 2,
+				x = (textureSize - width) / 2, y = (textureSize - height) / 2;
+
+			// Clear rect
+			context.clearRect(0, 0, textureSize, textureSize);
+
+			// Fill back
+			context.globalAlpha = bgOpacity;
+			context.fillStyle = '#' + bgColor.getHexString();
+			context.fillRect(x,y,width,height);
+			context.globalAlpha = 1.0;
+
+			// Fill border
+			if (borderWidth > 0) {
+				context.strokeStyle = '#' + borderColor.getHexString();
+				context.lineWidth = borderWidth;
+				context.strokeRect(x,y,width,height);
+			}
+
+			// Draw text
+			context.fillStyle = '#' + color.getHexString();
+			context.fillText( text, x+borderWidth+padding.left, 
+								    y+height/2+lineHeight/2-1 );
+
+			// Update map
+			amap.needsUpdate = true;
+
+			// Check hide conditions
+			scope.visible = !!text;
+
+		}
+
+		// Initial generate
+		regenerate();
+
+		/**
+		 * Define properties
+		 */
+		Object.defineProperties(this,{
+
+			'fontFamily': {
+				'get': function() {
+					return fontFamily;
+				},
+				'set': function( val ) {
+					fontFamily = val;
+					regenerate();
+				}
+			},
+
+			'fontSize': {
+				'get': function() {
+					return fontSize;
+				},
+				'set': function( val ) {
+					fontSize = val;
+					regenerate();
+				}
+			},
+
+			'color': {
+				'get': function() {
+					return color;
+				},
+				'set': function( val ) {
+					color.set( val );
+					regenerate();
+				}
+			},
+
+			'backgroundColor': {
+				'get': function() {
+					return bgColor;
+				},
+				'set': function( val ) {
+					bgColor.set( val );
+					regenerate();
+				}
+			},
+
+			'backgroundOpacity': {
+				'get': function() {
+					return bgOpacity;
+				},
+				'set': function( val ) {
+					bgOpacity = val;
+					regenerate();
+				}
+			},
+
+			'borderColor': {
+				'get': function() {
+					return borderColor;
+				},
+				'set': function( val ) {
+					borderColor.set( val );
+					regenerate();
+				}
+			},
+
+			'borderWidth': {
+				'get': function() {
+					return borderWidth;
+				},
+				'set': function( val ) {
+					borderWidth = val;
+					regenerate();
+				}
+			},
+
+			'text': {
+				'get': function() {
+					return text;
+				},
+				'set': function( val ) {
+					text = val;
+					regenerate();
+				}
+			},
+
+			'padding': {
+				'get': function() {
+					return padding;
+				},
+				'set': function( val ) {
+					if (typeof val === 'object') {
+						padding.left = val.left || padding.left;
+						padding.right = val.right || padding.right;
+						padding.top = val.top || padding.top;
+						padding.bottom = val.bottom || padding.bottom;
+						regenerate();
+
+					} else if (typeof val === 'number') {
+						padding.left = val;
+						padding.right = val;
+						padding.top = val;
+						padding.bottom = val;
+						regenerate();
+
+					}
+				}
+			}
+
+		});
+
+	};
+
+	// Subclass from sprite
+	Label.prototype = Object.create( THREE.Sprite.prototype );
+
+	// Export label
+	module.exports = Label;
+
+/***/ },
+/* 67 */
+/***/ function(module, exports, __webpack_require__) {
+
+	module.exports = __webpack_require__.p + "img/results.jpg";
+
+/***/ },
+/* 68 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -51036,6 +52326,7 @@ var Iconeezin =
 			// Will show active
 			this.activeExperiment.onWillShow((function() {
 				// Fade in active
+				this.activeExperiment.isActive = true;
 				this.fadeIn( this.activeExperiment, (function() {
 
 					// We are shown
@@ -51054,6 +52345,7 @@ var Iconeezin =
 		var do_align = (function() {
 
 			// Add experiment on scene
+			console.log("Adding", this.activeExperiment);
 			this.viewport.scene.add( this.activeExperiment );
 			// Algn experiment
 			this.alignExperiment( this.activeExperiment );
@@ -51070,9 +52362,11 @@ var Iconeezin =
 			// Will hide previous
 			this.previousExperiment.onWillHide((function() {
 				// Fade out previous
+				this.previousExperiment.isActive = false;
 				this.fadeOut( this.previousExperiment, (function() {
 
 					// Remove previous experiment from scene
+					console.log("Removing", this.previousExperiment);
 					this.viewport.scene.remove( this.previousExperiment );
 
 					// We are hidden
@@ -51185,7 +52479,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 62 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51212,9 +52506,9 @@ var Iconeezin =
 
 	var Config = __webpack_require__(28);
 
-	var JBBLoader = __webpack_require__(63);
-	var JBBProfileThreeLoader = __webpack_require__(70);
-	var JBBProfileIconeezinLoader = __webpack_require__(72);
+	var JBBLoader = __webpack_require__(70);
+	var JBBProfileThreeLoader = __webpack_require__(77);
+	var JBBProfileIconeezinLoader = __webpack_require__(79);
 
 	/**
 	 * Loaders namespace contains all the different loading
@@ -51324,7 +52618,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 63 */
+/* 70 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {"use strict";
@@ -51348,10 +52642,10 @@ var Iconeezin =
 	 */
 
 	/* Imports */
-	var BinaryBundle = __webpack_require__(65);
-	var DecodeProfile = __webpack_require__(66);
-	var ProgressManager = __webpack_require__(67);
-	var Errors = __webpack_require__(68);
+	var BinaryBundle = __webpack_require__(72);
+	var DecodeProfile = __webpack_require__(73);
+	var ProgressManager = __webpack_require__(74);
+	var Errors = __webpack_require__(75);
 
 	/* Production optimisations and debug metadata flags */
 	if (typeof GULP_BUILD === "undefined") var GULP_BUILD = false;
@@ -51361,7 +52655,7 @@ var Iconeezin =
 
 	/* Additional includes on node builds */
 	if (IS_NODE) {
-		var fs = __webpack_require__(69);
+		var fs = __webpack_require__(76);
 	}
 
 	/* Size constants */
@@ -52655,10 +53949,10 @@ var Iconeezin =
 	// Export the binary loader
 	module.exports = BinaryLoader;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(64)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(71)))
 
 /***/ },
-/* 64 */
+/* 71 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -52758,7 +54052,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 65 */
+/* 72 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53118,7 +54412,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 66 */
+/* 73 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53235,7 +54529,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 67 */
+/* 74 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53410,7 +54704,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 68 */
+/* 75 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -53509,13 +54803,13 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 69 */
+/* 76 */
 /***/ function(module, exports) {
 
 	
 
 /***/ },
-/* 70 */
+/* 77 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -53542,7 +54836,7 @@ var Iconeezin =
 	/* Generated source follows */
 
 	var THREE = __webpack_require__(1);
-	var MD2Character = __webpack_require__(71);
+	var MD2Character = __webpack_require__(78);
 
 	/**
 	 * Factory & Initializer of THREE.CubeTexture
@@ -55314,7 +56608,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 71 */
+/* 78 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -55578,7 +56872,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 72 */
+/* 79 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Iconeezin = Iconeezin || {}; Iconeezin["API"] = __webpack_require__(2);
@@ -55631,6 +56925,188 @@ var Iconeezin =
 			}
 	};
 
+
+/***/ },
+/* 80 */
+/***/ function(module, exports) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 * 
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 * 
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 * 
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
+	/**
+	 * StopableTimers is a set of setTimeout and setInterval
+	 * timers that can be temporarily paused
+	 */
+	var StopableTimers = {};
+
+	/**
+	 * List of active timers
+	 */
+	var activeTimers = [],
+		lastID = 0;
+
+	/**
+	 * Helpers
+	 */
+	var helperTimer  = null,
+		helperDelay = 1000,
+		helperPaused = true;
+
+	/**
+	 * Helper function to trigger timers
+	 */
+	var helperFn = function() {
+		var now = Date.now(), swap = [];
+		if (helperPaused) return;
+		
+		// Process timers
+		for (var i=0, l=activeTimers.length; i<l; ++i) {
+			var t = activeTimers[i];
+			if (now >= t.expires) {
+				try { t.fn(); } catch (x) {	}
+				if (t.restart) {
+					t.expires = now + t.delay;
+					swap.push(t);
+				}
+			} else {
+				swap.push(t);
+			}
+		}
+		
+		// Swap arrays
+		activeTimers = swap;
+		if (swap.length == 0) {
+			clearInterval(helperTimer);
+			helperDelay = 1000;
+			helperTimer = null;
+		}
+
+	}
+
+	/**
+	 * Re-schedule helper with the given resolution in milliseconds
+	 */
+	var tuneHelper = function(resolution) {
+
+		// Calculate effective resolution (max 60 fps)
+		resolution = Math.round( resolution / 3 );
+		if (resolution < 16) resolution = 16;
+
+		// Check if we should replace existing function
+		if ((resolution < helperDelay) || !helperTimer) {
+			if (helperTimer) clearInterval(helperTimer);
+
+			// Schedule helper timer
+			helperDelay = resolution;
+			helperTimer = setInterval( helperFn, resolution );
+
+		}
+	}
+
+	/**
+	 * Schedule a timeout
+	 */
+	StopableTimers.setTimeout = function(fn, delay) {
+		var timer = {
+			'id': lastID++,
+			'fn': fn,
+			'delay': delay,
+			'expires': Date.now() + delay,
+			'remains': delay,
+			'restart': false
+		};
+		activeTimers.push(timer);
+		tuneHelper( delay );
+		return timer.id;
+	}
+
+	/**
+	 * Schedule an interval
+	 */
+	StopableTimers.setInterval = function(fn, delay) {
+		var timer = {
+			'id': lastID++,
+			'fn': fn,
+			'delay': delay,
+			'expires': Date.now() + delay,
+			'remains': delay,
+			'restart': true
+		};
+		activeTimers.push(timer);
+		tuneHelper( delay );
+		return timer.id;
+	}
+
+	/**
+	 * Clear a timeout
+	 */
+	StopableTimers.clearTimeout = StopableTimers.clearInterval = function(id) {
+		for (var i=0, l=activeTimers.length; i<l; ++i) {
+			var t = activeTimers[i];
+			if (t.id === id) {
+				activeTimers.splice( i, 1 );
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Set paused/running state
+	 */
+	StopableTimers.setPaused = function( paused ) {
+		var now = Date.now();
+		if (paused && !helperPaused) {
+			for (var i=0, l=activeTimers.length; i<l; ++i) {
+				var t = activeTimers[i];
+				t.remains = t.expires - now;
+			}
+			helperPaused = true;
+		} else if (!paused && helperPaused) {
+			for (var i=0, l=activeTimers.length; i<l; ++i) {
+				var t = activeTimers[i];
+				t.expires = now + t.remains;
+			}
+			helperPaused = false;
+		}
+	}
+
+	/**
+	 * Stop and remove all timers
+	 */
+	StopableTimers.reset = function() {
+		if (helperTimer) {
+			clearTimeout(helperTimer);
+		}
+
+		helperTimer = null;
+		helperDelay = 1000;
+		helperPaused = true;
+		activeTimers = [];
+	}
+
+
+	// Export StopableTimers
+	module.exports = StopableTimers;
 
 /***/ }
 /******/ ]);

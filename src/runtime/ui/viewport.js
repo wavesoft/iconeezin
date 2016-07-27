@@ -46,24 +46,17 @@ require("three/examples/js/postprocessing/BokehPass");
 require("three/examples/js/shaders/SMAAShader");
 require("three/examples/js/postprocessing/SMAAPass");
 
+require("three/examples/js/shaders/FilmShader");
+require("three/examples/js/postprocessing/FilmPass");
+
+require("three/examples/js/shaders/ConvolutionShader");
+require("three/examples/js/postprocessing/BloomPass");
+
 require("three/examples/js/shaders/HueSaturationShader");
 
-// Custom pass for rendering the HMD display in a texture
-// for possible post-processing.
+// VR Pass and HUD
 require("./custom/postprocessing/VRPass");
-
 require("./custom/objects/HUD");
-
-// var HUDPixel = function( align ) { THREE.HUDLayer.call( this, 128, 128, align ) }
-// HUDPixel.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), {
-// 	constructor: HUDPixel,
-// 	onPaint: function(ctx,w,h) {
-// 		ctx.fillStyle = "red";
-// 		ctx.fillRect(0,0,w/2,h/2);
-// 		ctx.fillStyle = "blue";
-// 		ctx.fillRect(w/2,h/2,w/2,h/2);
-// 	}
-// });
 
 /**
  * Our viewport is where everything gets rendered
@@ -130,6 +123,8 @@ var Viewport = function( viewportDOM, vrHMD ) {
 
 	// Initialize the renderer
 	this.renderer = new THREE.WebGLRenderer({ antialias: true });
+	this.renderer.autoClear = false;
+	this.renderer.shadowMap.enabled = true;
 	this.renderer.setPixelRatio( 1 );
 	this.viewportDOM.appendChild( this.renderer.domElement );
 
@@ -141,18 +136,33 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.renderPass.renderToScreen = true;
 	this.effectComposer.addPass( this.renderPass );
 
+	// Glitch pass
+	this.glitchPass = new THREE.GlitchPass();
+	this.glitchPass.goWild = true;
+	this.glitchPass.renderToScreen = true;
+	this.glitchPass.enabled = false;
+	this.effectComposer.addPass( this.glitchPass );
+
+	// Bloom pass
+	this.bloomPass = new THREE.BloomPass();
+	this.bloomPass.renderToScreen = true;
+	this.bloomPass.enabled = false;
+	this.effectComposer.addPass( this.bloomPass );
+
+	// Bloom pass
+	this.filmPass = new THREE.FilmPass();
+	this.filmPass.renderToScreen = true;
+	this.filmPass.enabled = false;
+	this.effectComposer.addPass( this.filmPass );
+
 	// FXAA anti-alias pass
 	this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
 	this.antialiasPass.setSize = (function( w, h ) {
 		this.uniforms['resolution'].value.set( 1/w, 1/h );
 	}).bind(this.antialiasPass)
-	// this.effectComposer.addPass( this.antialiasPass );
-
-	// Glitch pass
-	this.glitchPass = new THREE.GlitchPass();
-	this.glitchPass.goWild = true;
-	this.glitchPass.enabled = false;
-	// this.effectComposer.addPass( this.glitchPass );
+	this.antialiasPass.enabled = false;
+	this.antialiasPass.renderToScreen = true;
+	this.effectComposer.addPass( this.antialiasPass );
 
 	/////////////////////////////////////////////////////////////
 	// Environment
@@ -182,10 +192,69 @@ var Viewport = function( viewportDOM, vrHMD ) {
 }
 
 /**
+ * Enable a pass by it's ID
+ */
+Viewport.prototype.setEffect = function( id, parameters ) {
+
+	// Enable appropriate effect
+	this.glitchPass.enabled = (id === 1);
+	this.bloomPass.enabled = (id === 2);
+	this.filmPass.enabled = (id === 3);
+
+	// Hackfix for bloom bug
+	this.antialiasPass.enabled = (id === 2);
+
+	// Configure appropriate effect
+	if (!parameters)
+		parameters = {};
+
+	// Use default value
+	if (typeof parameters !== 'object')
+		parameters = { 'value': parameters };
+
+	// Handle effect parameters
+	switch (id) {
+		case 1:
+			// [Glitch]
+			this.glitchPass.goWild = !parameters['value'];
+			break;
+		case 2:
+			// [Bloom]
+			break;
+		case 3:
+			// [Film]
+			if (parameters['value']) {
+				if (parameters['value'] === 0) {
+					this.filmPass.uniforms['nIntensity'].value = 0;
+					this.filmPass.uniforms['sIntensity'].value = 0;
+					this.filmPass.uniforms['sCount'].value = 0;
+				} else {
+					this.filmPass.uniforms['nIntensity'].value = parameters['value'] || 0.5;
+					this.filmPass.uniforms['sIntensity'].value = Math.pow( parameters['value'], 4);
+					this.filmPass.uniforms['sCount'].value = parseInt( 4096 * parameters['value'] );
+				}
+			} else {
+				this.filmPass.uniforms['nIntensity'].value = parameters['nIntensity'] || 0.5;
+				this.filmPass.uniforms['sIntensity'].value = parameters['sIntensity'] || 0.05;
+				this.filmPass.uniforms['sCount'].value = parameters['sCount'] || 4096;
+			}
+			this.filmPass.uniforms['grayscale'].value = parameters['grayscale'] || 0;
+			break;
+	}
+
+	// Disable render pass if an effect i active
+	this.renderPass.renderToScreen = !(
+		this.glitchPass.enabled || 
+		this.bloomPass.enabled ||
+		this.filmPass.enabled
+	);
+}
+
+/**
  * Enable or diable antialias pass
  */
 Viewport.prototype.setAntialias = function( enabled ) {
-	this.antialiasPass.enabled = enabled;
+	// this.antialiasPass.enabled = enabled;
 }
 
 /**
@@ -296,6 +365,7 @@ Viewport.prototype.render = function() {
 	}
 
 	// Render composer
+	this.renderer.clear(); 
 	this.effectComposer.render( d );
 
 }
@@ -336,42 +406,6 @@ Viewport.prototype.setPaused = function( paused ) {
 		this.paused = true;
 
 	}
-
-}
-
-/**
- * Add an experiment to the viewport
- *
- * @param {ExperimentBase} experiment - The experiment to add
- */
-Viewport.prototype.addExperiment = function( experiment ) {
-
-	// Store experiment in registry
-	this.experiments.push( experiment );
-
-	// Add objects
-	this.scene.add( experiment.scene );
-
-	// Separate lignts from the scene
-	var lights = [];
-	experiment.scene.traverse(function(obj) {
-		if (obj instanceof THREE.Light) {
-			lights.push( obj );
-		}
-	});
-	experiment._lights = lights;
-
-	// Turn off the lights
-	for (var i=0; i<lights.length; i++) {
-
-		// Keep original color & Turn light off
-		lights[i]._originalColor = lights[i].color.getHex();
-		lights[i].color.setHex( 0x000000 );
-
-	}
-
-	// If we had no active experiment so far, activate it too
-	this.activateExperiment( experiment );
 
 }
 
@@ -429,6 +463,7 @@ Viewport.prototype.reset = function( ) {
 
 	// Reset HUD
 	this.hudStatus.reset();
+	this.setEffect(0);
 
 }
 

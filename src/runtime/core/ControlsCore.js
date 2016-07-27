@@ -101,6 +101,9 @@ ControlsCore.reset = function() {
 	// Reset mouse view
 	this.reorientMouseView( false );
 
+	// Reset interactions
+	interaction.reset();
+
 }
 
 /**

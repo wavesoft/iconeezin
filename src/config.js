@@ -43,7 +43,7 @@ module.exports = {
 		/**
 		 * Path to experiments metadata
 		 */
-		'metadata': 'experiments/meta.json'
+		'metadata': 'experiments/specs.json'
 
 	},
 

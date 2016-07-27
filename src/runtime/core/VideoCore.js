@@ -43,6 +43,11 @@ var viewportHeight = 0;
 var VideoCore = {};
 
 /**
+ * Video effect constants
+ */
+VideoCore.EFFECT_SEPIA = 1;
+
+/**
  * Initialize the video core
  */
 VideoCore.initialize = function( rootDOM, canvasDOM ) {
@@ -279,6 +284,16 @@ VideoCore.hideInteractionLabel = function() {
  */
 VideoCore.showProgress = function( value, reason ) {
 	VideoCore.viewport.hudStatus.setProgress( value, reason );
+}
+
+/**
+ * Glitch the video with some duration
+ */
+VideoCore.glitch = function( duration ) {
+	VideoCore.viewport.setEffect( 1 ); // Enable glitch effect
+	setTimeout(function() {
+		VideoCore.viewport.setEffect( 0 );
+	}, duration);
 }
 
 // Export

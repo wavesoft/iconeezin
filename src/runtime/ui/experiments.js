@@ -59,6 +59,7 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 		// Will show active
 		this.activeExperiment.onWillShow((function() {
 			// Fade in active
+			this.activeExperiment.isActive = true;
 			this.fadeIn( this.activeExperiment, (function() {
 
 				// We are shown
@@ -77,6 +78,7 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 	var do_align = (function() {
 
 		// Add experiment on scene
+		console.log("Adding", this.activeExperiment);
 		this.viewport.scene.add( this.activeExperiment );
 		// Algn experiment
 		this.alignExperiment( this.activeExperiment );
@@ -93,9 +95,11 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 		// Will hide previous
 		this.previousExperiment.onWillHide((function() {
 			// Fade out previous
+			this.previousExperiment.isActive = false;
 			this.fadeOut( this.previousExperiment, (function() {
 
 				// Remove previous experiment from scene
+				console.log("Removing", this.previousExperiment);
 				this.viewport.scene.remove( this.previousExperiment );
 
 				// We are hidden
