@@ -125,6 +125,13 @@ module.exports = {
 			return StopableTimers.clearInterval( id );
 		},
 
+		/**
+		 * RunTween helper forward to viewport
+		 */
+		'runTween': function( fn, duration, cb ) {
+			return VideoCore.viewport.runTween( duration, fn, cb );
+		},
+
 	},
 
 	// Exposing libraries for re-using

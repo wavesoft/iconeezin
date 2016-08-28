@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -24,6 +24,7 @@ var VideoCore = require("./VideoCore");
 
 var SightInteraction = require("../input/SightInteraction");
 
+var InfiniteControl = require("../controls/InfiniteControl");
 var PathFollowerControl = require("../controls/PathFollowerControl");
 var MouseControl = require("../controls/MouseControl");
 var VRControl = require("../controls/VRControl");
@@ -48,7 +49,7 @@ ControlsCore.initialize = function() {
 	// Register render callback
 	VideoCore.viewport.addRenderListener( this.onUpdate.bind(this) );
 
-	// Base controls 
+	// Base controls
 	mouseControl = new MouseControl();
 	vrControl = new VRControl();
 
@@ -73,8 +74,8 @@ ControlsCore.initialize = function() {
 
 	// Set defaults
 	this.setHMD( false );
-	this.setZero( 
-		new THREE.Vector3(0,0,3), 
+	this.setZero(
+		new THREE.Vector3(0,0,3),
 		new THREE.Vector3(0,1,0)
 	);
 
@@ -190,6 +191,7 @@ ControlsCore.setHMD = function( hmd ) {
  * Activate a particular control
  */
 ControlsCore.activateControl = function( control ) {
+  console.log('-activating(', control, ')');
 
 	// Deactivate previous control
 	if (activeControl)
@@ -210,6 +212,7 @@ ControlsCore.activateControl = function( control ) {
  */
 ControlsCore.deactivateLastControl = function() {
 	if (!activeControl) return;
+  console.log('-deactivating(', activeControl, ')');
 
 	// Restore last control gimbal
 	gimbal = activeControl.unchainGimbal( gimbal );
@@ -227,7 +230,7 @@ ControlsCore.deactivateLastControl = function() {
 ControlsCore.setPaused = function( paused ) {
 	// Disable everything
 	if (this.paused = paused) {
-		
+
 		// Disable all controls
 		vrControl.disable();
 		mouseControl.disable();
@@ -283,6 +286,13 @@ ControlsCore.replaceFollowPath = function( curve ) {
  */
 ControlsCore.reorientMouseView = function( animate ) {
 	mouseControl.resetView( animate );
+}
+
+/**
+ * Start infinite controls using the specified control object
+ */
+ControlsCore.infiniteNavigationUsing = function( toController ) {
+	this.activateControl(new InfiniteControl(toController));
 }
 
 /**

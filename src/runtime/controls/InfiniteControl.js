@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -24,31 +24,50 @@ var THREE = require('three');
 var BaseControl = require('./BaseControl');
 
 /**
- * Camera path locks camera into a 3D curve
+ * This control locks the camera in a single location and does not move it.
+ *
+ * Instead it passes the camera orientation to the specified 'control'
+ * object in order to use it for procedural environment generation, giving
+ * the illusion of motion.
  */
-var FocusAtControl = function( ) {
+var InfiniteControl = function( controller ) {
 	BaseControl.call( this );
-
+  this.controller = controller;
+  this.camera = null;
 }
 
 /**
  * Subclass from base controls
  */
-FocusAtControl.prototype = Object.create( BaseControl.prototype );
+InfiniteControl.prototype = Object.create( BaseControl.prototype );
 
 /**
- * Specify the object to fly infront of
+ * Chain given object in our gimbal and return the object
  */
-FocusAtControl.prototype.flyInfrontOf = function( object ) {
+BaseControl.prototype.chainGimbal = function( gimbal ) {
+  this.gimbal.add( gimbal );
 
+  // Locate zero gimbal
+  this.camera = null;
+  gimbal.traverse((function(obj) {
+    if (obj instanceof THREE.Camera) {
+      this.camera = obj;
+    }
+  }).bind(this));
+
+  return this.gimbal;
 };
 
 /**
- * Update 
+ * Update
  */
-FocusAtControl.prototype.onUpdate = function( delta ) {
-
+InfiniteControl.prototype.onUpdate = function( delta ) {
+  if (this.controller && this.camera) {
+    this.controller.onOrientationChange(
+      this.camera.getWorldQuaternion()
+    );
+  }
 };
 
 // Export
-module.exports = FocusAtControl;
+module.exports = InfiniteControl;
