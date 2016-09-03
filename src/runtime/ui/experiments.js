@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -54,7 +54,7 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 	// Don't do anything if this is already the active experiment
 	if (this.activeExperiment === experiment)
 		return;
-	
+
 	var do_fadein = (function() {
 		// Will show active
 		this.activeExperiment.onWillShow((function() {
@@ -75,14 +75,17 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 		}).bind(this));
 	}).bind(this);
 
-	var do_align = (function() {
+	var do_setup = (function() {
 
 		// Add experiment on scene
 		console.log("Adding", this.activeExperiment);
-		this.viewport.scene.add( this.activeExperiment );
+		this.viewport.setScene( this.activeExperiment );
 		// Algn experiment
 		this.alignExperiment( this.activeExperiment );
-		
+
+		// Enable scene fog
+		this.viewport.setFog(this.activeExperiment.fog);
+
 		// Trigger transition callback
 		if (cb_transition) cb_transition();
 
@@ -100,13 +103,12 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 
 				// Remove previous experiment from scene
 				console.log("Removing", this.previousExperiment);
-				this.viewport.scene.remove( this.previousExperiment );
 
 				// We are hidden
 				this.previousExperiment.onHidden();
 				this.previousExperiment = null;
-				do_align();
-				
+				do_setup();
+
 			}).bind(this));
 		}).bind(this));
 	}).bind(this);
@@ -119,7 +121,7 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 	if (this.previousExperiment) {
 		do_fadeout();
 	} else {
-		do_align();
+		do_setup();
 	}
 
 }
@@ -130,8 +132,8 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 Experiments.prototype.alignExperiment = function( experiment ) {
 
 	// Set zero
-	this.controls.setZero( 
-		experiment.anchor.position, 
+	this.controls.setZero(
+		experiment.anchor.position,
 		experiment.anchor.direction
 	);
 

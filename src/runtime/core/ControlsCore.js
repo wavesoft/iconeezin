@@ -67,7 +67,7 @@ ControlsCore.initialize = function() {
 	// The zero gimbal that holds the reference position
 	zeroGimbal = new THREE.Object3D();
 	zeroGimbal.up.set( 0,0,1 );
-	VideoCore.viewport.scene.add( zeroGimbal );
+	VideoCore.viewport.addSceneObject( zeroGimbal );
 
 	// Create sight interaction
 	interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );

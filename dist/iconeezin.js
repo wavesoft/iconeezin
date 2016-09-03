@@ -44485,17 +44485,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -44543,13 +44543,11 @@ var Iconeezin =
 		// Flag that denotes if the experiment is active
 		this.isActive = false;
 
-		// Experiment features 
+		// Experiment features
 		this.features = {
-
 			render: {
 				glow_pass: false		/* Set to TRUE to enable glow pass */
-			},
-			
+			}
 		};
 
 	}
@@ -45326,6 +45324,11 @@ var Iconeezin =
 		 */
 		this.tweenFunctions = [];
 
+		/**
+		 * Objects re-injected on every scene
+		 */
+		this.sceneObjects = [];
+
 		/////////////////////////////////////////////////////////////
 		// Constructor
 		/////////////////////////////////////////////////////////////
@@ -45347,9 +45350,10 @@ var Iconeezin =
 
 		// Initialize a THREE scene
 		this.scene = new THREE.Scene();
+		this.scene.fog = new THREE.Fog( 0xffffff, 0.015, 50 );
 
 		// Initialize a camera (with dummy ratio)
-		this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 1000000 );
+		this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 45000 );
 
 		// Camera looks towards +Y with Z up
 		this.camera.up.set( 0.0, 0.0, 1.0 );
@@ -45422,8 +45426,9 @@ var Iconeezin =
 		this.sky.uniforms.mieCoefficient.value = 0.005;
 		this.sky.uniforms.mieDirectionalG.value = 0.8;
 		this.sky.uniforms.luminance.value = 0.9;
+		this.sky.mesh.scale.set(45000, 45000, 45000);
 		this.setSunPosition(0.20, 0.25);
-		this.scene.add( this.sky.mesh );
+		this.addSceneObject( this.sky.mesh );
 
 		/////////////////////////////////////////////////////////////
 		// Helpers
@@ -45431,7 +45436,7 @@ var Iconeezin =
 
 		// Add axis on 0,0,0
 		var axisHelper = new THREE.AxisHelper( 5 );
-		this.scene.add( axisHelper );
+		this.addSceneObject( axisHelper );
 
 		// Initialize the sizes (apply actual size)
 		this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
@@ -45639,6 +45644,25 @@ var Iconeezin =
 	}
 
 	/**
+	 * Set global viewport fog
+	 */
+	Viewport.prototype.setFog = function( fog ) {
+		var fogFar = 1000000;
+		if (fog && fog.far) fogFar = fog.far;
+
+		// Bring camera's max distance to fog's edge
+		this.camera.far = fogFar + 10;
+		this.camera.updateProjectionMatrix();
+
+		// Adapt skydone
+		this.sky.mesh.scale.set(
+			fogFar / 2,
+			fogFar / 2,
+			fogFar / 2
+		);
+	}
+
+	/**
 	 * Start or stop animation
 	 */
 	Viewport.prototype.setPaused = function( paused ) {
@@ -45697,6 +45721,33 @@ var Iconeezin =
 		this.addRenderListener( tweenFunction );
 		this.tweenFunctions.push( tweenFunction );
 
+	}
+
+	/**
+	 * Add a persistent object on every scene
+	 */
+	Viewport.prototype.addSceneObject = function( sceneObject ) {
+		this.sceneObjects.push(sceneObject);
+		this.scene.add( sceneObject );
+	}
+
+	/**
+	 * Replace scene (with an active experiment usually)
+	 */
+	Viewport.prototype.setScene = function( scene ) {
+		this.sceneObjects.forEach((obj) => {
+			this.scene.remove(obj);
+		});
+
+		this.scene = scene;
+		this.renderPass.scene = scene;
+
+		// Update shadow map
+		this.renderer.shadowMap.needsUpdate = true;
+
+		this.sceneObjects.forEach((obj) => {
+			this.scene.add(obj);
+		});
 	}
 
 	/**
@@ -46924,7 +46975,7 @@ var Iconeezin =
 			side: THREE.BackSide
 		} );
 
-		var skyGeo = new THREE.SphereBufferGeometry( 450000, 32, 15 );
+		var skyGeo = new THREE.SphereBufferGeometry( 1, 32, 15 );
 		var skyMesh = new THREE.Mesh( skyGeo, skyMat );
 
 
@@ -49775,7 +49826,7 @@ var Iconeezin =
 		// The zero gimbal that holds the reference position
 		zeroGimbal = new THREE.Object3D();
 		zeroGimbal.up.set( 0,0,1 );
-		VideoCore.viewport.scene.add( zeroGimbal );
+		VideoCore.viewport.addSceneObject( zeroGimbal );
 
 		// Create sight interaction
 		interaction = new SightInteraction( VideoCore.cursor, VideoCore.viewport );
@@ -52367,17 +52418,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -52419,7 +52470,7 @@ var Iconeezin =
 		// Don't do anything if this is already the active experiment
 		if (this.activeExperiment === experiment)
 			return;
-		
+
 		var do_fadein = (function() {
 			// Will show active
 			this.activeExperiment.onWillShow((function() {
@@ -52440,14 +52491,17 @@ var Iconeezin =
 			}).bind(this));
 		}).bind(this);
 
-		var do_align = (function() {
+		var do_setup = (function() {
 
 			// Add experiment on scene
 			console.log("Adding", this.activeExperiment);
-			this.viewport.scene.add( this.activeExperiment );
+			this.viewport.setScene( this.activeExperiment );
 			// Algn experiment
 			this.alignExperiment( this.activeExperiment );
-			
+
+			// Enable scene fog
+			this.viewport.setFog(this.activeExperiment.fog);
+
 			// Trigger transition callback
 			if (cb_transition) cb_transition();
 
@@ -52465,13 +52519,12 @@ var Iconeezin =
 
 					// Remove previous experiment from scene
 					console.log("Removing", this.previousExperiment);
-					this.viewport.scene.remove( this.previousExperiment );
 
 					// We are hidden
 					this.previousExperiment.onHidden();
 					this.previousExperiment = null;
-					do_align();
-					
+					do_setup();
+
 				}).bind(this));
 			}).bind(this));
 		}).bind(this);
@@ -52484,7 +52537,7 @@ var Iconeezin =
 		if (this.previousExperiment) {
 			do_fadeout();
 		} else {
-			do_align();
+			do_setup();
 		}
 
 	}
@@ -52495,8 +52548,8 @@ var Iconeezin =
 	Experiments.prototype.alignExperiment = function( experiment ) {
 
 		// Set zero
-		this.controls.setZero( 
-			experiment.anchor.position, 
+		this.controls.setZero(
+			experiment.anchor.position,
 			experiment.anchor.direction
 		);
 

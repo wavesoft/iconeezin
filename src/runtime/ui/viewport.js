@@ -79,6 +79,11 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	 */
 	this.tweenFunctions = [];
 
+	/**
+	 * Objects re-injected on every scene
+	 */
+	this.sceneObjects = [];
+
 	/////////////////////////////////////////////////////////////
 	// Constructor
 	/////////////////////////////////////////////////////////////
@@ -100,9 +105,10 @@ var Viewport = function( viewportDOM, vrHMD ) {
 
 	// Initialize a THREE scene
 	this.scene = new THREE.Scene();
+	this.scene.fog = new THREE.Fog( 0xffffff, 0.015, 50 );
 
 	// Initialize a camera (with dummy ratio)
-	this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 1000000 );
+	this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 45000 );
 
 	// Camera looks towards +Y with Z up
 	this.camera.up.set( 0.0, 0.0, 1.0 );
@@ -175,8 +181,9 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.sky.uniforms.mieCoefficient.value = 0.005;
 	this.sky.uniforms.mieDirectionalG.value = 0.8;
 	this.sky.uniforms.luminance.value = 0.9;
+	this.sky.mesh.scale.set(45000, 45000, 45000);
 	this.setSunPosition(0.20, 0.25);
-	this.scene.add( this.sky.mesh );
+	this.addSceneObject( this.sky.mesh );
 
 	/////////////////////////////////////////////////////////////
 	// Helpers
@@ -184,7 +191,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 
 	// Add axis on 0,0,0
 	var axisHelper = new THREE.AxisHelper( 5 );
-	this.scene.add( axisHelper );
+	this.addSceneObject( axisHelper );
 
 	// Initialize the sizes (apply actual size)
 	this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
@@ -392,6 +399,25 @@ Viewport.prototype.setHMD = function( enabled ) {
 }
 
 /**
+ * Set global viewport fog
+ */
+Viewport.prototype.setFog = function( fog ) {
+	var fogFar = 1000000;
+	if (fog && fog.far) fogFar = fog.far;
+
+	// Bring camera's max distance to fog's edge
+	this.camera.far = fogFar + 10;
+	this.camera.updateProjectionMatrix();
+
+	// Adapt skydone
+	this.sky.mesh.scale.set(
+		fogFar / 2,
+		fogFar / 2,
+		fogFar / 2
+	);
+}
+
+/**
  * Start or stop animation
  */
 Viewport.prototype.setPaused = function( paused ) {
@@ -450,6 +476,33 @@ Viewport.prototype.runTween = function( duration, fn, cb ) {
 	this.addRenderListener( tweenFunction );
 	this.tweenFunctions.push( tweenFunction );
 
+}
+
+/**
+ * Add a persistent object on every scene
+ */
+Viewport.prototype.addSceneObject = function( sceneObject ) {
+	this.sceneObjects.push(sceneObject);
+	this.scene.add( sceneObject );
+}
+
+/**
+ * Replace scene (with an active experiment usually)
+ */
+Viewport.prototype.setScene = function( scene ) {
+	this.sceneObjects.forEach((obj) => {
+		this.scene.remove(obj);
+	});
+
+	this.scene = scene;
+	this.renderPass.scene = scene;
+
+	// Update shadow map
+	this.renderer.shadowMap.needsUpdate = true;
+
+	this.sceneObjects.forEach((obj) => {
+		this.scene.add(obj);
+	});
 }
 
 /**
