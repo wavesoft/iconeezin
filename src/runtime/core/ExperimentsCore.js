@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -34,7 +34,7 @@ var Loaders = require("../io/Loaders");
 var StopableTimers = require("../util/StopableTimers");
 
 /**
- * Kernel core is the main logic that steers the runtime 
+ * Kernel core is the main logic that steers the runtime
  */
 var ExperimentsCore = { };
 
@@ -87,6 +87,9 @@ ExperimentsCore.initialize = function() {
 			return;
 		}
 
+		// Initialize tracking
+		TrackingCore.setup(this.meta.tracking || {});
+
 		// Load default experiment if hash missing
 		var hash = String(window.location.hash).substr(1);
 		if (!hash) {
@@ -110,7 +113,7 @@ ExperimentsCore.loadMetadata = function( callback ) {
 	// Wait until the bundle is loaded
 	req.addEventListener('readystatechange', (function () {
 		if (req.readyState !== 4) return;
-		if (req.status === 200) {  
+		if (req.status === 200) {
 			try {
 				this.meta = JSON.parse(req.responseText);
 				callback( null );
@@ -153,7 +156,7 @@ ExperimentsCore.showResults = function( meta ) {
 	StopableTimers.reset();
 
 	// Focus to results room
-	this.experiments.focusExperiment( this.resultsRoom, 
+	this.experiments.focusExperiment( this.resultsRoom,
 		function() {
 			// Update interactions
 			ControlsCore.updateInteractions();
@@ -258,7 +261,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 				// Ask TrackingCore to prepare for the experiment
 				TrackingCore.startExperiment( experiment, meta, (function() {
 					this.experiments.focusExperiment( inst, handleExperimentVisible, function() {
-						
+
 						// Reset controls core only when it's not visible
 						ControlsCore.reset();
 						VideoCore.reset();

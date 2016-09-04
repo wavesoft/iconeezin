@@ -2,23 +2,25 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
+
+var ua = require('universal-analytics');
 
 /**
  * Tracking core exposes feedback information for the analysts
@@ -48,6 +50,55 @@ TrackingCore.initialize = function( trackingID ) {
 	this.activeTaskName = "";
 	this.activeTaskID = -1;
 
+	// Event tracking
+	this.events = [];
+	this.ga = null;
+
+}
+
+/**
+ * Set-up tracking configuration
+ */
+TrackingCore.setup = function( trackingConfig ) {
+	if (trackingConfig.engine === 'GA') {
+		this.ga = ua(trackingConfig.id);
+		this.events.forEach((event) => {
+			this.feedEvent(event);
+		});
+		this.events = [];
+	}
+}
+
+/**
+ * Feed event to the tracker
+ */
+TrackingCore.feedEvent = function( event ) {
+	var i;
+	var uid = 'anonymous';
+	var path = '/';
+	var keys = Object.keys(event.properties);
+
+	// Remove useful properies from the keys and handle
+	// them earlier, in order to populate category and action
+	if (i = keys.indexOf('experiment') >= 0) {
+		path = '/' + event.properties.experiment;
+		keys.splice(i,1);
+	}
+	if (i = keys.indexOf('uid') >= 0) {
+		uid = 'U-' + event.properties.uid;
+		keys.splice(i,1);
+	}
+
+	// Feed each property as a separate GA event
+	Object.keys(event.properties).forEach((key) => {
+		this.ga.event({
+			ec: uid,						// User ID is the event category
+			ea: event.name,			// The event name is actually the action
+			el: key,						// Property details goes to action
+			ev: event.properties[key],
+			dp: path
+		});
+	});
 }
 
 /**
@@ -94,6 +145,11 @@ TrackingCore.trackEvent = function( name, properties ) {
 	console.log("Event:", name, eventProperties);
 	//////////////////////////////////////////
 
+	if (this.ga) {
+		this.feedEvent({ name: name, properties: properties });
+	} else {
+		this.events.push({ name: name, properties: properties });
+	}
 }
 
 /**
@@ -106,7 +162,7 @@ TrackingCore.trackEvent = function( name, properties ) {
 // 	//////////////////////////////////////////
 
 // 	// Keep downloaded experiment metadata
-// 	this.activeExperimentMeta = 
+// 	this.activeExperimentMeta =
 // 		{
 // 			'tasks': { }
 // 		};
@@ -304,8 +360,8 @@ TrackingCore.completeExperiment = function() {
 	if (!this.activeExperimentName) return;
 
 	// Track event
-	this.trackEvent("experiment.completed", { 
-		'experiment': this.activeExperimentName, 'duration': this.stopTimer("internal.experiment") 
+	this.trackEvent("experiment.completed", {
+		'experiment': this.activeExperimentName, 'duration': this.stopTimer("internal.experiment")
 	});
 
 	// Reset active experiment name
@@ -372,7 +428,7 @@ TrackingCore.startNextTask = function( properties, callback ) {
 TrackingCore.completeTask = function( results ) {
 
 	// Track event completion
-	this.trackEvent("experiment.task.completed", Object.assign({ 
+	this.trackEvent("experiment.task.completed", Object.assign({
 		'task': this.activeTaskName, 'duration': this.stopTimer("internal.task") }, results
 	));
 
