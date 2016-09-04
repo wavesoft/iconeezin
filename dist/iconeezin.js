@@ -42628,17 +42628,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -42698,7 +42698,7 @@ var Iconeezin =
 
 	/**
 	 * Helper function to set/unset line in delay
-	 * @param {int} delay - The reverberation delay
+	 * @param {int} delay - The reverberation delay (ms)
 	 */
 	VoiceEffects.prototype.setDelay = function( delay ) {
 		if (!delay || (delay < 0)) {
@@ -42718,7 +42718,7 @@ var Iconeezin =
 			}
 
 			// Update delay
-			this.lineInDelay.delayTime.value = delay;
+			this.lineInDelay.delayTime.value = delay / 1000;
 
 		}
 	}
@@ -45376,6 +45376,7 @@ var Iconeezin =
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.autoClear = false;
 		this.renderer.shadowMap.enabled = true;
+		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 		this.renderer.setPixelRatio( 1 );
 		this.viewportDOM.appendChild( this.renderer.domElement );
 
@@ -45400,7 +45401,7 @@ var Iconeezin =
 		this.bloomPass.enabled = false;
 		this.effectComposer.addPass( this.bloomPass );
 
-		// Bloom pass
+		// Fillm effect pass
 		this.filmPass = new THREE.FilmPass();
 		this.filmPass.renderToScreen = true;
 		this.filmPass.enabled = false;
@@ -45427,8 +45428,36 @@ var Iconeezin =
 		this.sky.uniforms.mieDirectionalG.value = 0.8;
 		this.sky.uniforms.luminance.value = 0.9;
 		this.sky.mesh.scale.set(45000, 45000, 45000);
-		this.setSunPosition(0.20, 0.25);
 		this.addSceneObject( this.sky.mesh );
+
+		// // Add ambient light for shadows
+	  // this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.25 );
+	  // this.addSceneObject(this.ambientLight);
+
+		// Add sky light
+	  this.skyLight = new THREE.DirectionalLight( 0xffffff );
+	  this.skyLight.position.set( 0, 1, 1 );
+	  this.skyLight.castShadow = true;
+	  this.addSceneObject(this.skyLight);
+
+	  // Hemisphere light for fill-in
+		this.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+		this.hemiLight.color.setHSL( 0.6, 1, 0.6 );
+		this.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+		this.hemiLight.position.set( 0, 500, 0 );
+		this.addSceneObject( this.hemiLight );
+
+	  // Adjust shadow map for current scenarios
+	  this.skyLight.shadow.camera.left = -30;
+	  this.skyLight.shadow.camera.right = 30;
+	  this.skyLight.shadow.camera.top = 30;
+	  this.skyLight.shadow.camera.bottom = -30;
+	  this.skyLight.shadow.mapSize.set(2048, 2048);
+
+		this.setSunPosition(0.20, 0.25);
+
+		this.addSceneObject(new THREE.CameraHelper(this.skyLight.shadow.camera));
+
 
 		/////////////////////////////////////////////////////////////
 		// Helpers
@@ -45531,6 +45560,8 @@ var Iconeezin =
 		position.y = distance * Math.sin( phi ) * Math.cos( theta );
 
 		this.sky.uniforms.sunPosition.value.copy( position );
+		this.skyLight.position.copy( position );
+		this.skyLight.shadow.camera.far = distance + 1000;
 
 	}
 
@@ -45591,7 +45622,7 @@ var Iconeezin =
 
 		// Schedule next frame if not paused
 		// if (!this.paused) requestAnimationFrame( this.render.bind(this) );
-		if (!this.paused) setTimeout( this.render.bind(this), 1000/10 );
+		if (!this.paused) setTimeout( this.render.bind(this), 1000/12 );
 
 		// Get elapsed time to update animations
 		var t = Date.now(),
@@ -45648,7 +45679,7 @@ var Iconeezin =
 	 */
 	Viewport.prototype.setFog = function( fog ) {
 		var fogFar = 1000000;
-		if (fog && fog.far) fogFar = fog.far;
+		// if (fog && fog.far) fogFar = fog.far;
 
 		// Bring camera's max distance to fog's edge
 		this.camera.far = fogFar + 10;
@@ -45660,6 +45691,13 @@ var Iconeezin =
 			fogFar / 2,
 			fogFar / 2
 		);
+
+		// if (fog) {
+		// 	this.sky.mesh.visible = false;
+		// 	this.renderer.setClearColor(fog.color, 1.0);
+		// } else {
+		// 	this.sky.mesh.visible = true;
+		// }
 	}
 
 	/**

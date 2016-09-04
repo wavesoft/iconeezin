@@ -30,6 +30,7 @@
     "jbb-profile-three": "^1.0.2",
     "jquery": "^2.2.4",
     "three": "^0.78.0",
+    "universal-analytics": "^0.4.2",
     "url-loader": "^0.5.7"
   },
   "devDependencies": {

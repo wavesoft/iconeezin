@@ -131,6 +131,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.renderer = new THREE.WebGLRenderer({ antialias: true });
 	this.renderer.autoClear = false;
 	this.renderer.shadowMap.enabled = true;
+	this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 	this.renderer.setPixelRatio( 1 );
 	this.viewportDOM.appendChild( this.renderer.domElement );
 
@@ -155,7 +156,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.bloomPass.enabled = false;
 	this.effectComposer.addPass( this.bloomPass );
 
-	// Bloom pass
+	// Fillm effect pass
 	this.filmPass = new THREE.FilmPass();
 	this.filmPass.renderToScreen = true;
 	this.filmPass.enabled = false;
@@ -182,8 +183,36 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.sky.uniforms.mieDirectionalG.value = 0.8;
 	this.sky.uniforms.luminance.value = 0.9;
 	this.sky.mesh.scale.set(45000, 45000, 45000);
-	this.setSunPosition(0.20, 0.25);
 	this.addSceneObject( this.sky.mesh );
+
+	// // Add ambient light for shadows
+  // this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.25 );
+  // this.addSceneObject(this.ambientLight);
+
+	// Add sky light
+  this.skyLight = new THREE.DirectionalLight( 0xffffff );
+  this.skyLight.position.set( 0, 1, 1 );
+  this.skyLight.castShadow = true;
+  this.addSceneObject(this.skyLight);
+
+  // Hemisphere light for fill-in
+	this.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+	this.hemiLight.color.setHSL( 0.6, 1, 0.6 );
+	this.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+	this.hemiLight.position.set( 0, 500, 0 );
+	this.addSceneObject( this.hemiLight );
+
+  // Adjust shadow map for current scenarios
+  this.skyLight.shadow.camera.left = -30;
+  this.skyLight.shadow.camera.right = 30;
+  this.skyLight.shadow.camera.top = 30;
+  this.skyLight.shadow.camera.bottom = -30;
+  this.skyLight.shadow.mapSize.set(2048, 2048);
+
+	this.setSunPosition(0.20, 0.25);
+
+	this.addSceneObject(new THREE.CameraHelper(this.skyLight.shadow.camera));
+
 
 	/////////////////////////////////////////////////////////////
 	// Helpers
@@ -286,6 +315,8 @@ Viewport.prototype.setSunPosition = function( inclination, azimuth ) {
 	position.y = distance * Math.sin( phi ) * Math.cos( theta );
 
 	this.sky.uniforms.sunPosition.value.copy( position );
+	this.skyLight.position.copy( position );
+	this.skyLight.shadow.camera.far = distance + 1000;
 
 }
 
@@ -346,7 +377,7 @@ Viewport.prototype.render = function() {
 
 	// Schedule next frame if not paused
 	// if (!this.paused) requestAnimationFrame( this.render.bind(this) );
-	if (!this.paused) setTimeout( this.render.bind(this), 1000/10 );
+	if (!this.paused) setTimeout( this.render.bind(this), 1000/12 );
 
 	// Get elapsed time to update animations
 	var t = Date.now(),
@@ -403,7 +434,7 @@ Viewport.prototype.setHMD = function( enabled ) {
  */
 Viewport.prototype.setFog = function( fog ) {
 	var fogFar = 1000000;
-	if (fog && fog.far) fogFar = fog.far;
+	// if (fog && fog.far) fogFar = fog.far;
 
 	// Bring camera's max distance to fog's edge
 	this.camera.far = fogFar + 10;
@@ -415,6 +446,13 @@ Viewport.prototype.setFog = function( fog ) {
 		fogFar / 2,
 		fogFar / 2
 	);
+
+	// if (fog) {
+	// 	this.sky.mesh.visible = false;
+	// 	this.renderer.setClearColor(fog.color, 1.0);
+	// } else {
+	// 	this.sky.mesh.visible = true;
+	// }
 }
 
 /**
