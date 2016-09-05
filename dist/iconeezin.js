@@ -42278,17 +42278,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -42325,13 +42325,13 @@ var Iconeezin =
 
 		/**
 		 * API to voice commands
-		 * @property 
+		 * @property
 		 */
 		this.voiceCommands = new VoiceCommands();
 
 		/**
 		 * API to voice effects
-		 * @property 
+		 * @property
 		 */
 		this.voiceEffects = new VoiceEffects( this.listener );
 
@@ -42455,6 +42455,13 @@ var Iconeezin =
 				}).bind(this))
 				.start();
 		}
+
+	}
+
+	/**
+	 * Set the value of global reverberation
+	 */
+	AudioCore.setReverb = function( value ) {
 
 	}
 
@@ -50373,17 +50380,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -50419,6 +50426,65 @@ var Iconeezin =
 		this.activeTaskName = "";
 		this.activeTaskID = -1;
 
+		// Event tracking
+		this.events = [];
+		this.tracking = false;
+
+	}
+
+	/**
+	 * Set-up tracking configuration
+	 */
+	TrackingCore.setup = function( trackingConfig ) {
+		if (trackingConfig.engine === 'GA') {
+
+			// Google analytics bootstrap
+			(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+			(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+			m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+			})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+			// Start tracker
+			ga('create', trackingConfig.id, 'auto');
+		  ga('send', 'pageview');
+			this.tracking = true;
+
+			// Feed pending events
+			this.events.forEach((event) => {
+				this.feedEvent(event);
+			});
+			this.events = [];
+		}
+	}
+
+	/**
+	 * Feed event to the tracker
+	 */
+	TrackingCore.feedEvent = function( event ) {
+		var i;
+		var uid = 'anonymous';
+		var path = '/';
+		var keys = Object.keys(event.properties);
+
+		// Remove useful properies from the keys and handle
+		// them earlier, in order to populate category and action
+		if (i = keys.indexOf('experiment') >= 0) {
+			path = '/' + event.properties.experiment;
+			keys.splice(i,1);
+		}
+		if (i = keys.indexOf('uid') >= 0) {
+			uid = 'U-' + event.properties.uid;
+			keys.splice(i,1);
+		}
+
+		// Feed each property as a separate GA event
+		Object.keys(event.properties).forEach((key) => {
+			ga('send', 'event',
+				uid,
+				event.name,
+				key+':'+event.properties[key]
+			);
+		});
 	}
 
 	/**
@@ -50465,6 +50531,11 @@ var Iconeezin =
 		console.log("Event:", name, eventProperties);
 		//////////////////////////////////////////
 
+		if (this.tracking) {
+			this.feedEvent({ name: name, properties: properties });
+		} else {
+			this.events.push({ name: name, properties: properties });
+		}
 	}
 
 	/**
@@ -50477,7 +50548,7 @@ var Iconeezin =
 	// 	//////////////////////////////////////////
 
 	// 	// Keep downloaded experiment metadata
-	// 	this.activeExperimentMeta = 
+	// 	this.activeExperimentMeta =
 	// 		{
 	// 			'tasks': { }
 	// 		};
@@ -50675,8 +50746,8 @@ var Iconeezin =
 		if (!this.activeExperimentName) return;
 
 		// Track event
-		this.trackEvent("experiment.completed", { 
-			'experiment': this.activeExperimentName, 'duration': this.stopTimer("internal.experiment") 
+		this.trackEvent("experiment.completed", {
+			'experiment': this.activeExperimentName, 'duration': this.stopTimer("internal.experiment")
 		});
 
 		// Reset active experiment name
@@ -50743,7 +50814,7 @@ var Iconeezin =
 	TrackingCore.completeTask = function( results ) {
 
 		// Track event completion
-		this.trackEvent("experiment.task.completed", Object.assign({ 
+		this.trackEvent("experiment.task.completed", Object.assign({
 			'task': this.activeTaskName, 'duration': this.stopTimer("internal.task") }, results
 		));
 
@@ -51547,17 +51618,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -51579,7 +51650,7 @@ var Iconeezin =
 	var StopableTimers = __webpack_require__(81);
 
 	/**
-	 * Kernel core is the main logic that steers the runtime 
+	 * Kernel core is the main logic that steers the runtime
 	 */
 	var ExperimentsCore = { };
 
@@ -51632,6 +51703,9 @@ var Iconeezin =
 				return;
 			}
 
+			// Initialize tracking
+			TrackingCore.setup(this.meta.tracking || {});
+
 			// Load default experiment if hash missing
 			var hash = String(window.location.hash).substr(1);
 			if (!hash) {
@@ -51655,7 +51729,7 @@ var Iconeezin =
 		// Wait until the bundle is loaded
 		req.addEventListener('readystatechange', (function () {
 			if (req.readyState !== 4) return;
-			if (req.status === 200) {  
+			if (req.status === 200) {
 				try {
 					this.meta = JSON.parse(req.responseText);
 					callback( null );
@@ -51698,7 +51772,7 @@ var Iconeezin =
 		StopableTimers.reset();
 
 		// Focus to results room
-		this.experiments.focusExperiment( this.resultsRoom, 
+		this.experiments.focusExperiment( this.resultsRoom,
 			function() {
 				// Update interactions
 				ControlsCore.updateInteractions();
@@ -51803,7 +51877,7 @@ var Iconeezin =
 					// Ask TrackingCore to prepare for the experiment
 					TrackingCore.startExperiment( experiment, meta, (function() {
 						this.experiments.focusExperiment( inst, handleExperimentVisible, function() {
-							
+
 							// Reset controls core only when it's not visible
 							ControlsCore.reset();
 							VideoCore.reset();

@@ -13,8 +13,8 @@ gulp.task('js/iconeezin', function() {
 				loaders: [
 					{ test: /\.json$/, loader: 'json' },
 					{ test: /\.(png|jpg)$/, loader: 'url-loader?limit=8192&name=img/[name].[ext]' },
-				],
-		    },
+				]
+	    },
 			node: {
 				fs: 'empty'
 			},
