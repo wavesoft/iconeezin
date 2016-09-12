@@ -287,6 +287,20 @@ VideoCore.showProgress = function( value, reason ) {
 }
 
 /**
+ * Add a custom HUD layer
+ */
+VideoCore.addHudLayer = function( layer ) {
+	VideoCore.viewport.addHudLayer( layer );
+}
+
+/**
+ * Remove a custom HUD layer
+ */
+VideoCore.removeHUD = function( layer ) {
+	VideoCore.viewport.removeHudLayer( layer );
+}
+
+/**
  * Glitch the video with some duration
  */
 VideoCore.glitch = function( duration ) {

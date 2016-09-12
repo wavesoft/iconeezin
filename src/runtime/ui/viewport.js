@@ -122,6 +122,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	// Create a HUD display
 	this.hudStatus = new HUDStatus( this );
 	this.hud.addLayer( this.hudStatus );
+	this.hudExternalLayers = [];
 
 	/////////////////////////////////////////////////////////////
 	// Rendering
@@ -140,6 +141,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 
 	// Render pass in VR
 	this.renderPass = new THREE.VRPass( this.scene, this.camera, vrHMD );
+	this.renderPass.clear = false;
 	this.renderPass.renderToScreen = true;
 	this.effectComposer.addPass( this.renderPass );
 
@@ -185,22 +187,12 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.sky.mesh.scale.set(45000, 45000, 45000);
 	this.addSceneObject( this.sky.mesh );
 
-	// // Add ambient light for shadows
-  // this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.25 );
-  // this.addSceneObject(this.ambientLight);
-
 	// Add sky light
   this.skyLight = new THREE.DirectionalLight( 0xffffff );
-  this.skyLight.position.set( 0, 1, 1 );
+  this.skyLight.up.set(0, 0, 1);
+  this.skyLight.position.set(0, 1, 1);
   this.skyLight.castShadow = true;
   this.addSceneObject(this.skyLight);
-
-  // Hemisphere light for fill-in
-	this.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
-	this.hemiLight.color.setHSL( 0.6, 1, 0.6 );
-	this.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
-	this.hemiLight.position.set( 0, 500, 0 );
-	this.addSceneObject( this.hemiLight );
 
   // Adjust shadow map for current scenarios
   this.skyLight.shadow.camera.left = -30;
@@ -208,6 +200,17 @@ var Viewport = function( viewportDOM, vrHMD ) {
   this.skyLight.shadow.camera.top = 30;
   this.skyLight.shadow.camera.bottom = -30;
   this.skyLight.shadow.mapSize.set(2048, 2048);
+
+  // Hemisphere light for fill-in
+	this.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.5 );
+	this.hemiLight.color.setHSL( 0.6, 1, 0.6 );
+	this.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+	this.hemiLight.position.set( 0, 500, 0 );
+	this.addSceneObject( this.hemiLight );
+
+	// Add ambient light to ease the shadows
+  this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.25 );
+  this.addSceneObject(this.ambientLight);
 
 	this.setSunPosition(0.20, 0.25);
 
@@ -350,6 +353,24 @@ Viewport.prototype.setSize = function( width, height, pixelRatio, skipStyleUpdat
 }
 
 /**
+ * Add a external HUD Layer
+ */
+Viewport.prototype.addHudLayer = function( layer ) {
+	this.hudExternalLayers.push( layer );
+	this.hud.addLayer( layer );
+}
+
+/**
+ * Remove a external HUD Layer
+ */
+Viewport.prototype.removeHudLayer = function( layer ) {
+	var i = this.hudExternalLayers.indexOf( layer );
+	if (i < 0) return;
+	this.hudExternalLayers.split(i, 1);
+	this.hud.removeLayer( layer );
+}
+
+/**
  * Add a render listener
  * @param {function} listener - The listener function to call before rendering the scene
  */
@@ -390,6 +411,9 @@ Viewport.prototype.render = function() {
 	//  resizes. This should not update the scene though...)
 	//
 	if (!this.paused) {
+
+		// Align shadow camera
+		this.skyLight.lookAt(this.camera.position);
 
 		// Call render listeners
 		for (var i=0; i<this.renderListeners.length; i++) {
@@ -551,6 +575,11 @@ Viewport.prototype.reset = function( ) {
 	// Remove all active tweens
 	for (var i=0; i<this.tweenFunctions.length; i++) {
 		this.removeRenderListener(this.tweenFunctions[i]);
+	}
+
+	// Remove all
+	for (var i=0; i<this.hudExternalLayers.length; i++) {
+		this.hud.removeLayer(this.hudExternalLayers[i]);
 	}
 
 	// Reset HUD

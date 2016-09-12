@@ -49,17 +49,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -75,18 +75,19 @@ var Iconeezin =
 	var IconeezinAPI = __webpack_require__(2);
 
 	// Load default configuration
-	var DefaultConfig = __webpack_require__(28);
+	var DefaultConfig = __webpack_require__(29);
 	DefaultConfig.up = new libTHREE.Vector3( 0,0,1 );
 
 	// Load components afterwards
 	var AudioCore = __webpack_require__(4);
-	var VideoCore = __webpack_require__(29);
-	var ControlsCore = __webpack_require__(56);
-	var TrackingCore = __webpack_require__(58);
-	var ExperimentsCore = __webpack_require__(65);
+	var VideoCore = __webpack_require__(30);
+	var ControlsCore = __webpack_require__(57);
+	var TrackingCore = __webpack_require__(59);
+	var ExperimentsCore = __webpack_require__(66);
 	var InteractionCore = __webpack_require__(27);
-	var BrowserUtil = __webpack_require__(31);
-	var StopableTimers = __webpack_require__(81);
+	var BrowserUtil = __webpack_require__(32);
+	var StopableTimers = __webpack_require__(82);
+	var ThreeUtil = __webpack_require__(83);
 
 	/**
 	 * Expose useful parts of the runtime API
@@ -95,6 +96,11 @@ var Iconeezin =
 
 		// Iconeezin Configuration
 		'Config': DefaultConfig,
+
+		// Utility functions
+		'Util': Object.assign({},
+			ThreeUtil
+		),
 
 		// Iconeezin API
 		'API': IconeezinAPI,
@@ -123,7 +129,7 @@ var Iconeezin =
 
 				// Register for some critical DOM events
 				var handleFullScreenChange = function() {
-					var is_fullscreen = 
+					var is_fullscreen =
 						document.fullscreenElement ||
 						document.webkitFullscreenElement ||
 						document.mozFullScreenElement ||
@@ -42076,17 +42082,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -42097,6 +42103,7 @@ var Iconeezin =
 	var AudioAPI = __webpack_require__(3);
 	var ExperimentAPI = __webpack_require__(25);
 	var ThreeAPI = __webpack_require__(26);
+	var HudAPI = __webpack_require__(28);
 
 	/**
 	 * Expose useful APIs
@@ -42119,9 +42126,15 @@ var Iconeezin =
 		 * Experiments API
 		 */
 		'Experiment': ExperimentAPI.Experiment,
-		'ExperimentFile': ExperimentAPI.ExperimentFile
+		'ExperimentFile': ExperimentAPI.ExperimentFile,
+
+		/**
+		 * HUD Layer
+		 */
+		'HUDLayer': HudAPI.HUDLayer
 
 	};
+
 
 /***/ },
 /* 3 */
@@ -44863,6 +44876,234 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
+	 *
+	 * This program is free software; you can redistribute it and/or modify
+	 * it under the terms of the GNU General Public License as published by
+	 * the Free Software Foundation; either version 2 of the License, or
+	 * (at your option) any later version.
+	 *
+	 * This program is distributed in the hope that it will be useful,
+	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
+	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	 * GNU General Public License for more details.
+	 *
+	 * You should have received a copy of the GNU General Public License along
+	 * with this program; if not, write to the Free Software Foundation, Inc.,
+	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+	 *
+	 * @author Ioannis Charalampidis / https://github.com/wavesoft
+	 */
+
+	/**
+	 * A HUD layer contains drawable and addressable information
+	 */
+	var HUDLayer = function ( width, height, anchor ) {
+
+	  // Link information
+	  this.id = null;
+	  this.hud = null;
+	  this.pixelRatio = 1.0;
+
+	  // Local properties
+	  this.anchor = anchor || 'tl';
+	  this.size = new THREE.Vector2( width, height );
+	  this.position = new THREE.Vector2( 0, 0 );
+
+	  this.uniforms = {
+	    'size': new THREE.Vector2(0,0),
+	    'pos': new THREE.Vector2(0,0),
+	    'tex': null
+	  };
+
+	  // Create a 2D canvas
+	  this.canvas = document.createElement('canvas');
+	  this.context = this.canvas.getContext('2d');
+	  this.setSize( width, height );
+
+	  // Create texture using the canvas
+	  this.uniforms.tex = new THREE.Texture( this.canvas );
+	  this.uniforms.tex.needsUpdate = true;
+
+	}
+
+	HUDLayer.prototype = {
+	  constructor: HUDLayer,
+
+	  register: function( hud, layer_id ) {
+
+	    // Update uniforms
+	    this.id = layer_id;
+	    this.hud = hud;
+	    this.hud.uniforms['layer_size'].value[this.id] = this.uniforms.size;
+	    this.hud.uniforms['layer_pos'].value[this.id] = this.uniforms.pos;
+	    this.hud.uniforms['layer_tex'].value[this.id] = this.uniforms.tex;
+
+	    // Adapt pixel ratio from HUD
+	    this.setPixelRatio( this.hud.pixelRatio );
+
+	    // Update uniforms
+	    this.updateUniforms();
+	    this.redraw();
+
+	  },
+
+	  unregister: function() {
+
+	    // Unregister
+	    this.hud.uniforms['layer_size'].value[this.id] = new THREE.Vector2(0,0);
+	    this.hud.uniforms['layer_pos'].value[this.id] = new THREE.Vector2(0,0);
+	    this.hud.uniforms['layer_tex'].value[this.id] = null;
+	    this.id = null;
+	    this.hud = null;
+
+	  },
+
+	  setPosition: function( x, y ) {
+
+	    // Set position & Update uniforms
+	    this.position.set( x, y );
+	    this.updateUniforms();
+
+	  },
+
+	  setAnchor: function( anchor ) {
+
+	    // Set anchor & Update uniforms
+	    this.anchor = anchor;
+	    this.updateUniforms();
+
+	  },
+
+	  setPixelRatio: function( ratio ) {
+
+	    // Set anchor & Update uniforms
+	    this.pixelRatio = ratio;
+	    this.setSize( this.size.x, this.size.y );
+
+	  },
+
+	  setSize: function( width, height ) {
+
+	    // Snap canvas to multiplicants of power of 2
+	    this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width))) * this.pixelRatio;
+	    this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height))) * this.pixelRatio;
+	    this.canvas.style = "width: "+width+"px; height: "+height+" px;";
+
+	    // Keep real size available
+	    this.size.set( width, height );
+
+	    // Update uniforms
+	    this.updateUniforms();
+	    this.redraw();
+
+	  },
+
+	  updateUniforms: function() {
+
+	    // Skip if disposed or not registered
+	    if (!this.canvas) return;
+	    if (!this.hud) return;
+
+	    //
+	    // Update size
+	    //
+	    this.uniforms.size.set( this.canvas.width, this.canvas.height );
+
+	    //
+	    // Depending on anchor alignment, update position uniform
+	    //
+	    switch (this.anchor[0].toLowerCase()) {
+	      case 't':
+	        this.uniforms.pos.y = (this.hud.size.y - this.canvas.height) - this.position.y;
+	        break;
+	      case 'c':
+	        this.uniforms.pos.y = (this.hud.size.y - this.size.y) / 2 - (this.canvas.height - this.size.y) - this.position.y;
+	        break;
+	      case 'b':
+	        this.uniforms.pos.y = (this.size.y - this.canvas.height) + this.position.y;
+	        break;
+	      default:
+	        console.warn("THREE.HUD: unknown anchor argument '"+this.anchor[0]+"'. Expecting 't','c','b'.")
+	        break;
+	    }
+	    switch (this.anchor[1].toLowerCase()) {
+	      case 'l':
+	        this.uniforms.pos.x = this.position.x;
+	        break;
+	      case 'c':
+	        this.uniforms.pos.x = this.hud.size.x/2 - this.size.x/2 + this.position.x;
+	        break;
+	      case 'r':
+	        this.uniforms.pos.x = (this.hud.size.x - this.size.x) + this.position.x;
+	        break;
+	      default:
+	        console.warn("THREE.HUD: unknown anchor argument '"+this.anchor[1]+"'. Expecting 'l','c','r'.")
+	        break;
+	    }
+
+	    //
+	    // Round position
+	    //
+	    this.uniforms.pos.set(
+	      Math.round(this.uniforms.pos.x),
+	      Math.round(this.uniforms.pos.y)
+	    );
+
+	    // console.log("HUD Layer",this.id,"at (",this.uniforms.pos.x,",",this.uniforms.pos.y,") size=(",
+	    //  this.uniforms.size.x,",",this.uniforms.size.y,") with HUD=(",this.hud.size.x,",",this.hud.size.y,")");
+
+	  },
+
+	  redraw: function() {
+
+	    // Skip if disposed or not registered
+	    if (!this.canvas) return;
+	    if (!this.hud) return;
+
+	    // Call user's paint method to draw the canvas
+	    this.context.clearRect( -1, -1, this.canvas.width+2, this.canvas.height+2 );
+	    this.context.save();
+	    this.context.translate(0.5,0.5);
+	    this.onPaint( this.context, this.size.x, this.size.y );
+	    this.context.restore();
+
+	    // Update texture
+	    this.uniforms.tex.needsUpdate = true;
+
+	  },
+
+	  dispose: function() {
+
+	    // Unregister from HUD
+	    this.unregister();
+
+	    // Release resources
+	    this.context = null;
+	    this.canvas = null;
+
+	  },
+
+	  onPaint: function( ctx, width, height ) {
+
+	    // Must be implemented by the user to draw the layer contents
+
+	  },
+
+	};
+
+	module.exports = {
+	  HUDLayer: HUDLayer
+	}
+
+
+/***/ },
+/* 29 */
+/***/ function(module, exports) {
+
+	"use strict";
+	/**
+	 * Iconeez.in - A Web VR Platform for social experiments
+	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
 	 * 
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
@@ -44942,7 +45183,7 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 29 */
+/* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -44967,9 +45208,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var Viewport = __webpack_require__(30);
-	var Cursor = __webpack_require__(54);
-	var Browser = __webpack_require__(31);
+	var Viewport = __webpack_require__(31);
+	var Cursor = __webpack_require__(55);
+	var Browser = __webpack_require__(32);
 
 	/**
 	 * Private properties
@@ -45234,6 +45475,20 @@ var Iconeezin =
 	}
 
 	/**
+	 * Add a custom HUD layer
+	 */
+	VideoCore.addHudLayer = function( layer ) {
+		VideoCore.viewport.addHudLayer( layer );
+	}
+
+	/**
+	 * Remove a custom HUD layer
+	 */
+	VideoCore.removeHUD = function( layer ) {
+		VideoCore.viewport.removeHudLayer( layer );
+	}
+
+	/**
 	 * Glitch the video with some duration
 	 */
 	VideoCore.glitch = function( duration ) {
@@ -45247,7 +45502,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 30 */
+/* 31 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -45273,42 +45528,42 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var Browser = __webpack_require__(31);
-	var HUDStatus = __webpack_require__(32);
+	var Browser = __webpack_require__(32);
+	var HUDStatus = __webpack_require__(33);
 
 	// Modified version of example scripts
 	// in order to work with Z-Up orientation
-	__webpack_require__(35);
+	__webpack_require__(34);
 
 	// Effect composer complex
+	__webpack_require__(35);
 	__webpack_require__(36);
-	__webpack_require__(37);
 
+	__webpack_require__(37);
 	__webpack_require__(38);
 	__webpack_require__(39);
 	__webpack_require__(40);
+
 	__webpack_require__(41);
-
 	__webpack_require__(42);
+
 	__webpack_require__(43);
-
 	__webpack_require__(44);
+
 	__webpack_require__(45);
-
 	__webpack_require__(46);
+
 	__webpack_require__(47);
-
 	__webpack_require__(48);
-	__webpack_require__(49);
 
+	__webpack_require__(49);
 	__webpack_require__(50);
+
 	__webpack_require__(51);
 
-	__webpack_require__(52);
-
 	// VR Pass and HUD
+	__webpack_require__(52);
 	__webpack_require__(53);
-	__webpack_require__(33);
 
 	/**
 	 * Our viewport is where everything gets rendered
@@ -45374,6 +45629,7 @@ var Iconeezin =
 		// Create a HUD display
 		this.hudStatus = new HUDStatus( this );
 		this.hud.addLayer( this.hudStatus );
+		this.hudExternalLayers = [];
 
 		/////////////////////////////////////////////////////////////
 		// Rendering
@@ -45392,6 +45648,7 @@ var Iconeezin =
 
 		// Render pass in VR
 		this.renderPass = new THREE.VRPass( this.scene, this.camera, vrHMD );
+		this.renderPass.clear = false;
 		this.renderPass.renderToScreen = true;
 		this.effectComposer.addPass( this.renderPass );
 
@@ -45437,22 +45694,12 @@ var Iconeezin =
 		this.sky.mesh.scale.set(45000, 45000, 45000);
 		this.addSceneObject( this.sky.mesh );
 
-		// // Add ambient light for shadows
-	  // this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.25 );
-	  // this.addSceneObject(this.ambientLight);
-
 		// Add sky light
 	  this.skyLight = new THREE.DirectionalLight( 0xffffff );
-	  this.skyLight.position.set( 0, 1, 1 );
+	  this.skyLight.up.set(0, 0, 1);
+	  this.skyLight.position.set(0, 1, 1);
 	  this.skyLight.castShadow = true;
 	  this.addSceneObject(this.skyLight);
-
-	  // Hemisphere light for fill-in
-		this.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
-		this.hemiLight.color.setHSL( 0.6, 1, 0.6 );
-		this.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
-		this.hemiLight.position.set( 0, 500, 0 );
-		this.addSceneObject( this.hemiLight );
 
 	  // Adjust shadow map for current scenarios
 	  this.skyLight.shadow.camera.left = -30;
@@ -45460,6 +45707,17 @@ var Iconeezin =
 	  this.skyLight.shadow.camera.top = 30;
 	  this.skyLight.shadow.camera.bottom = -30;
 	  this.skyLight.shadow.mapSize.set(2048, 2048);
+
+	  // Hemisphere light for fill-in
+		this.hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.5 );
+		this.hemiLight.color.setHSL( 0.6, 1, 0.6 );
+		this.hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+		this.hemiLight.position.set( 0, 500, 0 );
+		this.addSceneObject( this.hemiLight );
+
+		// Add ambient light to ease the shadows
+	  this.ambientLight = new THREE.AmbientLight( 0xffffff, 0.25 );
+	  this.addSceneObject(this.ambientLight);
 
 		this.setSunPosition(0.20, 0.25);
 
@@ -45602,6 +45860,24 @@ var Iconeezin =
 	}
 
 	/**
+	 * Add a external HUD Layer
+	 */
+	Viewport.prototype.addHudLayer = function( layer ) {
+		this.hudExternalLayers.push( layer );
+		this.hud.addLayer( layer );
+	}
+
+	/**
+	 * Remove a external HUD Layer
+	 */
+	Viewport.prototype.removeHudLayer = function( layer ) {
+		var i = this.hudExternalLayers.indexOf( layer );
+		if (i < 0) return;
+		this.hudExternalLayers.split(i, 1);
+		this.hud.removeLayer( layer );
+	}
+
+	/**
 	 * Add a render listener
 	 * @param {function} listener - The listener function to call before rendering the scene
 	 */
@@ -45642,6 +45918,9 @@ var Iconeezin =
 		//  resizes. This should not update the scene though...)
 		//
 		if (!this.paused) {
+
+			// Align shadow camera
+			this.skyLight.lookAt(this.camera.position);
 
 			// Call render listeners
 			for (var i=0; i<this.renderListeners.length; i++) {
@@ -45805,6 +46084,11 @@ var Iconeezin =
 			this.removeRenderListener(this.tweenFunctions[i]);
 		}
 
+		// Remove all
+		for (var i=0; i<this.hudExternalLayers.length; i++) {
+			this.hud.removeLayer(this.hudExternalLayers[i]);
+		}
+
 		// Reset HUD
 		this.hudStatus.reset();
 		this.setEffect(0);
@@ -45817,7 +46101,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 31 */
+/* 32 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -46172,24 +46456,24 @@ var Iconeezin =
 	module.exports = Browser;
 
 /***/ },
-/* 32 */
+/* 33 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -46198,14 +46482,13 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-
-	__webpack_require__(33);
+	var IconeezinAPI = __webpack_require__(2);
 
 	/**
 	 * HUD Status component
 	 */
 	var HUDStatus = function( viewport ) {
-		THREE.HUDLayer.call(this, 256, 128, 'cc');
+		IconeezinAPI.HUDLayer.call(this, 256, 256, 'cc');
 
 		// Label text
 		this.viewport = viewport;
@@ -46219,7 +46502,7 @@ var Iconeezin =
 	};
 
 	// Subclass from sprite
-	HUDStatus.prototype = Object.assign( Object.create( THREE.HUDLayer.prototype ), {
+	HUDStatus.prototype = Object.assign( Object.create( IconeezinAPI.HUDLayer.prototype ), {
 
 		constructor: HUDStatus,
 
@@ -46347,420 +46630,9 @@ var Iconeezin =
 	// Export label
 	module.exports = HUDStatus;
 
-/***/ },
-/* 33 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * @author wavesoft / https://github.com/wavesoft
-	 */
-	var THREE = __webpack_require__(1);
-	__webpack_require__(34);
-
-	/**
-	 * Maximum number of layers allowed
-	 */
-	const MAX_LAYERS = 5;
-
-	/**
-	 * HUD object that is placed on the camera in the scene and
-	 * renders the HUD UI with a custom shader.
-	 */
-	THREE.HUD = function () {
-		THREE.Object3D.call( this );
-
-		// Local properties
-		this.hudLayers = [];
-		this.size = new THREE.Vector2(0,0);
-		this.pixelRatio = 1.0;
-
-		// Initialize the shader material
-		this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShader.uniforms );
-		this.material = new THREE.ShaderMaterial( {
-
-			defines: THREE.HUDShader.defines || {},
-			uniforms: this.uniforms,
-			vertexShader: THREE.HUDShader.vertexShader,
-			fragmentShader: THREE.HUDShader.fragmentShader,
-			transparent: true
-
-		} );
-
-		// Move size vector as uniform
-		this.uniforms['size'].value = this.size;
-
-		// Create a quad that fills the screen
-		var quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), this.material );
-		quad.position.z = -0.25;
-		this.add( quad );
-
-	}
-
-	THREE.HUD.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
-
-		constructor: THREE.HUD,
-
-		addLayer: function( layer ) {
-
-			// Check for a free layer
-			var id = -1;
-			for (var i=0; i<MAX_LAYERS; i++) {
-				if (this.uniforms['layer_size'].value[i].x == 0) {
-					id = i;
-					break;
-				}
-			}
-			if (id < 0) {
-				console.warn("THREE.HUD: you can add up to "+MAX_LAYERS+" layers in the HUD.");
-				return;
-			}
-
-			// Register layer on HUD
-			layer.register( this, id );
-			this.hudLayers.push( layer );
-
-			return this;
-
-		},
-
-		removeLayer: function( layer ) {
-
-			// Get layer
-			var i = this.hudLayers.indexOf( layer );
-			if (i === -1) return;
-
-			// Unregister and remove
-			layer.unregister();
-			this.hudLayers.splice(i,1);
-			return this;
-
-		},
-
-		setPixelRatio: function( ratio ) {
-
-			// Update pixel ratio of all components
-			this.pixelRatio = ratio;
-
-			// Re-orient all layers
-			for (var i=0; i<this.hudLayers.length; ++i) {
-				this.hudLayers[i].setPixelRatio( this.pixelRatio );
-			}
-
-		},
-
-		setSize: function( width, height ) {
-
-			// Update size
-			this.size.set( width, height );
-
-			// Re-orient all layers
-			for (var i=0; i<this.hudLayers.length; ++i) {
-				this.hudLayers[i].updateUniforms();
-			}
-
-		},
-
-		setFadeoutOpacity: function( value ) {
-
-			// Update fade-out opacity
-			this.uniforms['black_fader'].value = value;
-
-		},
-
-		setStereo: function( enabled ) {
-
-			// Update size
-			this.uniforms['stereo'].value = enabled;
-
-		},
-
-	});
-
-	/**
-	 * A HUD layer contains drawable and addressable information
-	 */
-	THREE.HUDLayer = function ( width, height, anchor ) {
-
-		// Link information
-		this.id = null;
-		this.hud = null;
-		this.pixelRatio = 1.0;
-
-		// Local properties
-		this.anchor = anchor || 'tl';
-		this.size = new THREE.Vector2( width, height );
-		this.position = new THREE.Vector2( 0, 0 );
-
-		this.uniforms = {
-			'size': new THREE.Vector2(0,0),
-			'pos': new THREE.Vector2(0,0),
-			'tex': null
-		};
-
-		// Create a 2D canvas
-		this.canvas = document.createElement('canvas');
-		this.context = this.canvas.getContext('2d');
-		this.setSize( width, height );
-
-		// Create texture using the canvas
-		this.uniforms.tex = new THREE.Texture( this.canvas );
-		this.uniforms.tex.needsUpdate = true;
-
-	}
-
-	THREE.HUDLayer.prototype = {
-		constructor: THREE.HUDLayer,
-
-		register: function( hud, layer_id ) {
-
-			// Update uniforms
-			this.id = layer_id;
-			this.hud = hud;
-			this.hud.uniforms['layer_size'].value[this.id] = this.uniforms.size;
-			this.hud.uniforms['layer_pos'].value[this.id] = this.uniforms.pos;
-			this.hud.uniforms['layer_tex'].value[this.id] = this.uniforms.tex;
-
-			// Adapt pixel ratio from HUD
-			this.setPixelRatio( this.hud.pixelRatio );
-
-			// Update uniforms
-			this.updateUniforms();
-			this.redraw();
-
-		},
-
-		unregister: function() {
-
-			// Unregister
-			this.hud.uniforms['layer_size'].value[this.id] = new THREE.Vector2(0,0);
-			this.hud.uniforms['layer_pos'].value[this.id] = new THREE.Vector2(0,0);
-			this.hud.uniforms['layer_tex'].value[this.id] = null;
-			this.id = null;
-			this.hud = null;
-
-		},
-
-		setPosition: function( x, y ) {
-
-			// Set position & Update uniforms
-			this.position.set( x, y );
-			this.updateUniforms();
-
-		},
-
-		setAnchor: function( anchor ) {
-
-			// Set anchor & Update uniforms
-			this.anchor = anchor;
-			this.updateUniforms();
-
-		},
-
-		setPixelRatio: function( ratio ) {
-
-			// Set anchor & Update uniforms
-			this.pixelRatio = ratio;
-			this.setSize( this.size.x, this.size.y );
-
-		},
-
-		setSize: function( width, height ) {
-
-			// Snap canvas to multiplicants of power of 2
-			this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width))) * this.pixelRatio;
-			this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height))) * this.pixelRatio;
-			this.canvas.style = "width: "+width+"px; height: "+height+" px;";
-
-			// Keep real size available
-			this.size.set( width, height );
-
-			// Update uniforms
-			this.updateUniforms();
-			this.redraw();
-
-		},
-
-		updateUniforms: function() {
-
-			// Skip if disposed or not registered
-			if (!this.canvas) return;
-			if (!this.hud) return;
-
-			//
-			// Update size
-			//
-			this.uniforms.size.set( this.canvas.width, this.canvas.height );
-
-			//
-			// Depending on anchor alignment, update position uniform
-			//
-			switch (this.anchor[0].toLowerCase()) {
-				case 't':
-					this.uniforms.pos.y = (this.hud.size.y - this.canvas.height) - this.position.y;
-					break;
-				case 'c':
-					this.uniforms.pos.y = (this.hud.size.y - this.size.y) / 2 - (this.canvas.height - this.size.y) - this.position.y;
-					break;
-				case 'b':
-					this.uniforms.pos.y = (this.size.y - this.canvas.height) + this.position.y;
-					break;
-				default:
-					console.warn("THREE.HUD: unknown anchor argument '"+this.anchor[0]+"'. Expecting 't','c','b'.")
-					break;
-			}
-			switch (this.anchor[1].toLowerCase()) {
-				case 'l':
-					this.uniforms.pos.x = this.position.x;
-					break;
-				case 'c':
-					this.uniforms.pos.x = this.hud.size.x/2 - this.size.x/2 + this.position.x;
-					break;
-				case 'r':
-					this.uniforms.pos.x = (this.hud.size.x - this.size.x) + this.position.x;
-					break;
-				default:
-					console.warn("THREE.HUD: unknown anchor argument '"+this.anchor[1]+"'. Expecting 'l','c','r'.")
-					break;
-			}
-
-			//
-			// Round position
-			//
-			this.uniforms.pos.set(
-				Math.round(this.uniforms.pos.x),
-				Math.round(this.uniforms.pos.y)
-			);
-
-			// console.log("HUD Layer",this.id,"at (",this.uniforms.pos.x,",",this.uniforms.pos.y,") size=(",
-			// 	this.uniforms.size.x,",",this.uniforms.size.y,") with HUD=(",this.hud.size.x,",",this.hud.size.y,")");
-
-		},
-
-		redraw: function() {
-
-			// Skip if disposed or not registered
-			if (!this.canvas) return;
-			if (!this.hud) return;
-
-			// Call user's paint method to draw the canvas
-			this.context.clearRect( -1, -1, this.canvas.width+2, this.canvas.height+2 );
-			this.context.save();
-			this.context.translate(0.5,0.5);
-			this.onPaint( this.context, this.size.x, this.size.y );
-			this.context.restore();
-
-			// Update texture
-			this.uniforms.tex.needsUpdate = true;
-
-		},
-
-		dispose: function() {
-
-			// Unregister from HUD
-			this.unregister();
-
-			// Release resources
-			this.context = null;
-			this.canvas = null;
-
-		},
-
-		onPaint: function( ctx, width, height ) {
-
-			// Must be implemented by the user to draw the layer contents
-
-		},
-
-	};
 
 /***/ },
 /* 34 */
-/***/ function(module, exports, __webpack_require__) {
-
-	/**
-	 * @author ioannis Charalampidis / http://wavesoft.github.io/
-	 *
-	 * Overlay shader used by GUI pass
-	 */
-
-	var THREE = __webpack_require__(1);
-
-	const MAX_LAYERS = 5;
-
-	THREE.HUDShader = {
-
-		uniforms: {
-
-			"black_fader" : { value: 0.0 },
-			"stereo"  	  : { value: false },
-
-			"size"  	  : { value: new THREE.Vector2(0,0) },
-
-			"layer_pos"	  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
-			"layer_size"  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
-			"layer_tex"   : { value: [ null, null, null, null, null ], type: "tv" }
-
-		},
-
-		vertexShader: [
-
-			"void main() {",
-
-				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-
-			"}"
-
-		].join( "\n" ),
-
-		fragmentShader: [
-
-			"uniform vec2 layer_pos["+MAX_LAYERS+"];",
-			"uniform vec2 layer_size["+MAX_LAYERS+"];",
-			"uniform sampler2D layer_tex["+MAX_LAYERS+"];",
-
-			"uniform vec2 size;",
-			"uniform bool stereo;",
-			"uniform float black_fader;",
-
-			"void renderLayer( vec2 pos, vec2 sz, sampler2D tex ) {",
-				"vec4 col;",
-				"if ((gl_FragCoord.x > pos.x + 1.0) && (gl_FragCoord.y > pos.y + 1.0) &&",
-					"(gl_FragCoord.x < pos.x + sz.x - 2.0) && (gl_FragCoord.y < pos.y + sz.y - 2.0)) {",
-					"col = texture2D(tex, (gl_FragCoord.xy - pos) / sz);",
-					"gl_FragColor = mix(gl_FragColor, col, col.a);",
-				"}",
-			"}",
-
-			"void main() {",
-
-				"gl_FragColor = vec4( 0.0, 0.0, 0.0, 0.0 );",
-
-				"for (int i = 0; i<"+MAX_LAYERS+"; ++i) {",
-					"if (layer_size[i].x > 0.0) {",
-						"if (stereo) {",
-							"float ofs = (layer_pos[i].x / (size.x - layer_size[i].x)) * layer_size[i].x / 2.0;",
-							"float layer_mid = layer_pos[i].x / 2.0;",
-							"float screen_mid = size.x / 2.0;",
-							"renderLayer( vec2( layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
-							"renderLayer( vec2( screen_mid + layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
-						"} else {",
-							"renderLayer( layer_pos[i], layer_size[i], layer_tex[i] );",
-						"}",
-					"}",
-				"}",
-
-				"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), black_fader);",
-
-
-			"}"
-
-		].join( "\n" )
-
-	};
-
-
-/***/ },
-/* 35 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -47032,7 +46904,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 36 */
+/* 35 */
 /***/ function(module, exports) {
 
 	/**
@@ -47084,7 +46956,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 37 */
+/* 36 */
 /***/ function(module, exports) {
 
 	/**
@@ -47178,7 +47050,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 38 */
+/* 37 */
 /***/ function(module, exports) {
 
 	/**
@@ -47359,7 +47231,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 39 */
+/* 38 */
 /***/ function(module, exports) {
 
 	/**
@@ -47418,7 +47290,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 40 */
+/* 39 */
 /***/ function(module, exports) {
 
 	/**
@@ -47521,7 +47393,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 41 */
+/* 40 */
 /***/ function(module, exports) {
 
 	/**
@@ -47593,7 +47465,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 42 */
+/* 41 */
 /***/ function(module, exports) {
 
 	/**
@@ -47702,7 +47574,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 43 */
+/* 42 */
 /***/ function(module, exports) {
 
 	/**
@@ -47823,7 +47695,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 44 */
+/* 43 */
 /***/ function(module, exports) {
 
 	/**
@@ -47945,7 +47817,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 45 */
+/* 44 */
 /***/ function(module, exports) {
 
 	/**
@@ -48053,7 +47925,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 46 */
+/* 45 */
 /***/ function(module, exports) {
 
 	/**
@@ -48521,7 +48393,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 47 */
+/* 46 */
 /***/ function(module, exports) {
 
 	/**
@@ -48691,7 +48563,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 48 */
+/* 47 */
 /***/ function(module, exports) {
 
 	/**
@@ -48801,7 +48673,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 49 */
+/* 48 */
 /***/ function(module, exports) {
 
 	/**
@@ -48867,7 +48739,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 50 */
+/* 49 */
 /***/ function(module, exports) {
 
 	/**
@@ -48974,7 +48846,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 51 */
+/* 50 */
 /***/ function(module, exports) {
 
 	/**
@@ -49096,7 +48968,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 52 */
+/* 51 */
 /***/ function(module, exports) {
 
 	/**
@@ -49171,7 +49043,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 53 */
+/* 52 */
 /***/ function(module, exports) {
 
 	/**
@@ -49474,7 +49346,223 @@ var Iconeezin =
 
 
 /***/ },
+/* 53 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * @author wavesoft / https://github.com/wavesoft
+	 */
+	var THREE = __webpack_require__(1);
+	__webpack_require__(54);
+
+	/**
+	 * Maximum number of layers allowed
+	 */
+	const MAX_LAYERS = 5;
+
+	/**
+	 * HUD object that is placed on the camera in the scene and
+	 * renders the HUD UI with a custom shader.
+	 */
+	THREE.HUD = function () {
+		THREE.Object3D.call( this );
+
+		// Local properties
+		this.hudLayers = [];
+		this.size = new THREE.Vector2(0,0);
+		this.pixelRatio = 1.0;
+
+		// Initialize the shader material
+		this.uniforms = THREE.UniformsUtils.clone( THREE.HUDShader.uniforms );
+		this.material = new THREE.ShaderMaterial( {
+
+			defines: THREE.HUDShader.defines || {},
+			uniforms: this.uniforms,
+			vertexShader: THREE.HUDShader.vertexShader,
+			fragmentShader: THREE.HUDShader.fragmentShader,
+			transparent: true
+
+		} );
+
+		// Move size vector as uniform
+		this.uniforms['size'].value = this.size;
+
+		// Create a quad that fills the screen
+		var quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), this.material );
+		quad.position.z = -0.25;
+		this.add( quad );
+
+	}
+
+	THREE.HUD.prototype = Object.assign( Object.create( THREE.Object3D.prototype ), {
+
+		constructor: THREE.HUD,
+
+		addLayer: function( layer ) {
+
+			// Check for a free layer
+			var id = -1;
+			for (var i=0; i<MAX_LAYERS; i++) {
+				if (this.uniforms['layer_size'].value[i].x == 0) {
+					id = i;
+					break;
+				}
+			}
+			if (id < 0) {
+				console.warn("THREE.HUD: you can add up to "+MAX_LAYERS+" layers in the HUD.");
+				return;
+			}
+
+			// Register layer on HUD
+			layer.register( this, id );
+			this.hudLayers.push( layer );
+
+			return this;
+
+		},
+
+		removeLayer: function( layer ) {
+
+			// Get layer
+			var i = this.hudLayers.indexOf( layer );
+			if (i === -1) return;
+
+			// Unregister and remove
+			layer.unregister();
+			this.hudLayers.splice(i,1);
+			return this;
+
+		},
+
+		setPixelRatio: function( ratio ) {
+
+			// Update pixel ratio of all components
+			this.pixelRatio = ratio;
+
+			// Re-orient all layers
+			for (var i=0; i<this.hudLayers.length; ++i) {
+				this.hudLayers[i].setPixelRatio( this.pixelRatio );
+			}
+
+		},
+
+		setSize: function( width, height ) {
+
+			// Update size
+			this.size.set( width, height );
+
+			// Re-orient all layers
+			for (var i=0; i<this.hudLayers.length; ++i) {
+				this.hudLayers[i].updateUniforms();
+			}
+
+		},
+
+		setFadeoutOpacity: function( value ) {
+
+			// Update fade-out opacity
+			this.uniforms['black_fader'].value = value;
+
+		},
+
+		setStereo: function( enabled ) {
+
+			// Update size
+			this.uniforms['stereo'].value = enabled;
+
+		},
+
+	});
+
+
+/***/ },
 /* 54 */
+/***/ function(module, exports, __webpack_require__) {
+
+	/**
+	 * @author ioannis Charalampidis / http://wavesoft.github.io/
+	 *
+	 * Overlay shader used by GUI pass
+	 */
+
+	var THREE = __webpack_require__(1);
+
+	const MAX_LAYERS = 5;
+
+	THREE.HUDShader = {
+
+		uniforms: {
+
+			"black_fader" : { value: 0.0 },
+			"stereo"  	  : { value: false },
+
+			"size"  	  : { value: new THREE.Vector2(0,0) },
+
+			"layer_pos"	  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
+			"layer_size"  : { value: [ new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0),new THREE.Vector2(0,0) ], type: "v2v" },
+			"layer_tex"   : { value: [ null, null, null, null, null ], type: "tv" }
+
+		},
+
+		vertexShader: [
+
+			"void main() {",
+
+				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+			"}"
+
+		].join( "\n" ),
+
+		fragmentShader: [
+
+			"uniform vec2 layer_pos["+MAX_LAYERS+"];",
+			"uniform vec2 layer_size["+MAX_LAYERS+"];",
+			"uniform sampler2D layer_tex["+MAX_LAYERS+"];",
+
+			"uniform vec2 size;",
+			"uniform bool stereo;",
+			"uniform float black_fader;",
+
+			"void renderLayer( vec2 pos, vec2 sz, sampler2D tex ) {",
+				"vec4 col;",
+				"if ((gl_FragCoord.x > pos.x + 1.0) && (gl_FragCoord.y > pos.y + 1.0) &&",
+					"(gl_FragCoord.x < pos.x + sz.x - 2.0) && (gl_FragCoord.y < pos.y + sz.y - 2.0)) {",
+					"col = texture2D(tex, (gl_FragCoord.xy - pos) / sz);",
+					"gl_FragColor = mix(gl_FragColor, col, col.a);",
+				"}",
+			"}",
+
+			"void main() {",
+
+				"gl_FragColor = vec4( 0.0, 0.0, 0.0, 0.0 );",
+
+				"for (int i = 0; i<"+MAX_LAYERS+"; ++i) {",
+					"if (layer_size[i].x > 0.0) {",
+						"if (stereo) {",
+							"float ofs = (layer_pos[i].x / (size.x - layer_size[i].x)) * layer_size[i].x / 2.0;",
+							"float layer_mid = layer_pos[i].x / 2.0;",
+							"float screen_mid = size.x / 2.0;",
+							"renderLayer( vec2( layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
+							"renderLayer( vec2( screen_mid + layer_mid - ofs, layer_pos[i].y ), layer_size[i], layer_tex[i] );",
+						"} else {",
+							"renderLayer( layer_pos[i], layer_size[i], layer_tex[i] );",
+						"}",
+					"}",
+				"}",
+
+				"gl_FragColor = mix(gl_FragColor, vec4(0.0,0.0,0.0,1.0), black_fader);",
+
+
+			"}"
+
+		].join( "\n" )
+
+	};
+
+
+/***/ },
+/* 55 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49601,7 +49689,7 @@ var Iconeezin =
 
 		// Create a spinner sprite
 		var loader = new THREE.TextureLoader();
-		loader.load( __webpack_require__(55), (function( texture ) {
+		loader.load( __webpack_require__(56), (function( texture ) {
 
 			// Set material map
 			mat.map = texture;
@@ -49793,13 +49881,13 @@ var Iconeezin =
 
 
 /***/ },
-/* 55 */
+/* 56 */
 /***/ function(module, exports) {
 
 	module.exports = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA8pJREFUeNrsW8uR2kAQFS7fRQbLRoAyQI7AcgSwF67GEVhEYO11L8tGYIUgMoAILDJAEeCercY122795isKdZVKhWo0mn7T3fPeSEwul0twz/YpuHMbARgBGAEYAbhr+2yqo5eXlwhOCRziPLU45jMcBzjy9Xp90O1sossDwHHhbA7HwsME7gXoAMTZCwDofAHH3GMUH+GIVUHQrQG5Z+cDfH7mPAJg9mdw+jOgevYIUVC6jIBkYAVdaTw6q8CUycWzQ4enJP2mrgGgtoMQzFx5Dym4gtOrTyJUtkSEbZv5ZoKljQFppGDpG4DYMQD0eUqsUJcICRAepEtfoA4UNfkqrOiyVOES++4gtN91WIIraOelCAoi9F36vUFmSAf7Kv2+UtjrrJ0xnCO8tiD3c6ClzDi8qEE6O19hwDEjXipybYGHAO8nnheMnqjo0oqia9kyDjcAoBrb08GgRri2EQ6sFB+xkjk+9kud3XNp53I/YEN+i5pQEBBEiD737PcZ72vTHhuvchhnJsVQblRp0E4M9leHLn/IpKpBcm+hXeodABzkjsnNI4bxQWqXYBiHTDcVts9JEeVmXoS+9tJrbEsMBiPy/I2RqoVcGNG5CMGhYEXE+QhXijnT1ogYm5h+M1QTCcKe6JoObTNcAUS+bzpyfe1dIKsAtOT6E0dsegidN4w0Yzax9W6wIde/MdWd3vdbFbzBACDlcEFAEIVuxoUwVvuSaZ/orPVOimADUaKVOmwoYDETMdactw6ABMK2o3SOTLK8QQAg6QETkvv2AEAik3YEhDq8xPtvEwCJwoYd5WvOKMcci+ltASCtAHOGv5c19UJERlbDJq2AYIsIxTUz34nI9GGTQ6TCvVgcpsk75yfKMSO7TVbYoFEAGgbNyVuaHkdc80uXlNikHOb2BDh5y7FDuX1M5LNWOrnaEOH4O+dMk/Nt9+2YgqpdE0x9IMHxdxXnm+7n0qbCPQRlwmRiGcwMO3/VCx+WPiyQCeEJIUOy3EVAzTcCtOD1db4tErh0e1SNAt0IWDHihRIZVef/RQIhS3nw/1b8xlcKUFm7YwhRqPmMkHnZkraMwz4AWJQ+FCRakVHKbhl+38fE/Qem35N06UFVNOm8G4yYUOf4fapbqGqsIHQ5UpHPOilA38YeArdWtkyIdQCiwK8Z2RY3+Y3QDOmwK5sNDYDlLUaETgrkwbCscAoAsrPjQJzfq345boIJVp6dr7wxQenFx8mT8yeqFXztB0yRjiaBmw8mz1iDct23xJPxj5N3biMAIwAjACMAd21/BRgAk6Xp4c7+81UAAAAASUVORK5CYII="
 
 /***/ },
-/* 56 */
+/* 57 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -49824,14 +49912,14 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(29);
+	var VideoCore = __webpack_require__(30);
 
-	var SightInteraction = __webpack_require__(57);
+	var SightInteraction = __webpack_require__(58);
 
-	var InfiniteControl = __webpack_require__(59);
-	var PathFollowerControl = __webpack_require__(61);
-	var MouseControl = __webpack_require__(62);
-	var VRControl = __webpack_require__(63);
+	var InfiniteControl = __webpack_require__(60);
+	var PathFollowerControl = __webpack_require__(62);
+	var MouseControl = __webpack_require__(63);
+	var VRControl = __webpack_require__(64);
 
 	/**
 	 * The ControlsCore singleton contains the
@@ -50117,7 +50205,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 57 */
+/* 58 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50142,8 +50230,8 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(29);
-	var TrackingCore = __webpack_require__(58);
+	var VideoCore = __webpack_require__(30);
+	var TrackingCore = __webpack_require__(59);
 	var ThreeAPI = __webpack_require__(26);
 
 	const CENTER = new THREE.Vector2(0,0);
@@ -50373,7 +50461,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 58 */
+/* 59 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -50825,7 +50913,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 59 */
+/* 60 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -50851,7 +50939,7 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var BaseControl = __webpack_require__(60);
+	var BaseControl = __webpack_require__(61);
 
 	/**
 	 * This control locks the camera in a single location and does not move it.
@@ -50904,7 +50992,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 60 */
+/* 61 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -51013,7 +51101,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 61 */
+/* 62 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51039,7 +51127,7 @@ var Iconeezin =
 	 */
 
 	var THREE = __webpack_require__(1);
-	var BaseControl = __webpack_require__(60);
+	var BaseControl = __webpack_require__(61);
 
 	var zero = new THREE.Vector3(0,0,0);
 	var norm = new THREE.Vector3();
@@ -51158,7 +51246,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 62 */
+/* 63 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51183,8 +51271,8 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(29);
-	var BaseControl = __webpack_require__(60);
+	var VideoCore = __webpack_require__(30);
+	var BaseControl = __webpack_require__(61);
 
 	const PI_2 = Math.PI / 2;
 	const RESET_NORMAL_SPEED = 0.01;
@@ -51377,7 +51465,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 63 */
+/* 64 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51402,9 +51490,9 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var BaseControl = __webpack_require__(60);
-	var Browser = __webpack_require__(31);
-	__webpack_require__(64);
+	var BaseControl = __webpack_require__(61);
+	var Browser = __webpack_require__(32);
+	__webpack_require__(65);
 
 	var vec = new THREE.Vector3();
 
@@ -51451,7 +51539,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 64 */
+/* 65 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -51611,7 +51699,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 65 */
+/* 66 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51636,18 +51724,18 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var VideoCore = __webpack_require__(29);
+	var VideoCore = __webpack_require__(30);
 	var AudioCore = __webpack_require__(4);
-	var ControlsCore = __webpack_require__(56);
-	var TrackingCore = __webpack_require__(58);
+	var ControlsCore = __webpack_require__(57);
+	var TrackingCore = __webpack_require__(59);
 
-	var ResultsRoom = __webpack_require__(66);
-	var Experiments = __webpack_require__(69);
+	var ResultsRoom = __webpack_require__(67);
+	var Experiments = __webpack_require__(70);
 
-	var Config = __webpack_require__(28);
-	var Loaders = __webpack_require__(70);
+	var Config = __webpack_require__(29);
+	var Loaders = __webpack_require__(71);
 
-	var StopableTimers = __webpack_require__(81);
+	var StopableTimers = __webpack_require__(82);
 
 	/**
 	 * Kernel core is the main logic that steers the runtime
@@ -51929,7 +52017,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 66 */
+/* 67 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -51958,7 +52046,7 @@ var Iconeezin =
 	var ExperimentsAPI = __webpack_require__(25);
 	var InteractionCore = __webpack_require__(27);
 
-	var Label = __webpack_require__(67);
+	var Label = __webpack_require__(68);
 
 	/**
 	 * Paint function for block
@@ -52074,7 +52162,7 @@ var Iconeezin =
 
 		// Create a spinner sprite
 		var loader = new THREE.TextureLoader();
-		loader.load( __webpack_require__(68), (function( texture ) {
+		loader.load( __webpack_require__(69), (function( texture ) {
 
 			// Set material map
 			mat.map = texture;
@@ -52282,24 +52370,24 @@ var Iconeezin =
 
 
 /***/ },
-/* 67 */
+/* 68 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -52326,6 +52414,7 @@ var Iconeezin =
 
 		// Create texture
 		var amap = new THREE.Texture(canvas);
+		amap.minFilter = THREE.LinearFilter
 
 		// Create sprite material
 		var mat = new THREE.SpriteMaterial({
@@ -52384,7 +52473,7 @@ var Iconeezin =
 
 			// Draw text
 			context.fillStyle = '#' + color.getHexString();
-			context.fillText( text, x+borderWidth+padding.left, 
+			context.fillText( text, x+borderWidth+padding.left,
 								    y+height/2+lineHeight/2-1 );
 
 			// Update map
@@ -52516,14 +52605,15 @@ var Iconeezin =
 	// Export label
 	module.exports = Label;
 
+
 /***/ },
-/* 68 */
+/* 69 */
 /***/ function(module, exports, __webpack_require__) {
 
 	module.exports = __webpack_require__.p + "img/results.jpg";
 
 /***/ },
-/* 69 */
+/* 70 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -52742,7 +52832,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 70 */
+/* 71 */
 /***/ function(module, exports, __webpack_require__) {
 
 	"use strict";
@@ -52767,11 +52857,11 @@ var Iconeezin =
 	 * @author Ioannis Charalampidis / https://github.com/wavesoft
 	 */
 
-	var Config = __webpack_require__(28);
+	var Config = __webpack_require__(29);
 
-	var JBBLoader = __webpack_require__(71);
-	var JBBProfileThreeLoader = __webpack_require__(78);
-	var JBBProfileIconeezinLoader = __webpack_require__(80);
+	var JBBLoader = __webpack_require__(72);
+	var JBBProfileThreeLoader = __webpack_require__(79);
+	var JBBProfileIconeezinLoader = __webpack_require__(81);
 
 	/**
 	 * Loaders namespace contains all the different loading
@@ -52881,7 +52971,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 71 */
+/* 72 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(process) {"use strict";
@@ -52905,10 +52995,10 @@ var Iconeezin =
 	 */
 
 	/* Imports */
-	var BinaryBundle = __webpack_require__(73);
-	var DecodeProfile = __webpack_require__(74);
-	var ProgressManager = __webpack_require__(75);
-	var Errors = __webpack_require__(76);
+	var BinaryBundle = __webpack_require__(74);
+	var DecodeProfile = __webpack_require__(75);
+	var ProgressManager = __webpack_require__(76);
+	var Errors = __webpack_require__(77);
 
 	/* Production optimisations and debug metadata flags */
 	if (typeof GULP_BUILD === "undefined") var GULP_BUILD = false;
@@ -52918,7 +53008,7 @@ var Iconeezin =
 
 	/* Additional includes on node builds */
 	if (IS_NODE) {
-		var fs = __webpack_require__(77);
+		var fs = __webpack_require__(78);
 	}
 
 	/* Size constants */
@@ -54212,10 +54302,10 @@ var Iconeezin =
 	// Export the binary loader
 	module.exports = BinaryLoader;
 
-	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(72)))
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(73)))
 
 /***/ },
-/* 72 */
+/* 73 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -54315,7 +54405,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 73 */
+/* 74 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -54675,7 +54765,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 74 */
+/* 75 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -54792,7 +54882,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 75 */
+/* 76 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -54967,7 +55057,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 76 */
+/* 77 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -55066,13 +55156,13 @@ var Iconeezin =
 	};
 
 /***/ },
-/* 77 */
+/* 78 */
 /***/ function(module, exports) {
 
 	
 
 /***/ },
-/* 78 */
+/* 79 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -55099,7 +55189,7 @@ var Iconeezin =
 	/* Generated source follows */
 
 	var THREE = __webpack_require__(1);
-	var MD2Character = __webpack_require__(79);
+	var MD2Character = __webpack_require__(80);
 
 	/**
 	 * Factory & Initializer of THREE.CubeTexture
@@ -56871,7 +56961,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 79 */
+/* 80 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/**
@@ -57135,7 +57225,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 80 */
+/* 81 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var Iconeezin = Iconeezin || {}; Iconeezin["API"] = __webpack_require__(2);
@@ -57190,7 +57280,7 @@ var Iconeezin =
 
 
 /***/ },
-/* 81 */
+/* 82 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -57370,6 +57460,40 @@ var Iconeezin =
 
 	// Export StopableTimers
 	module.exports = StopableTimers;
+
+/***/ },
+/* 83 */
+/***/ function(module, exports) {
+
+	
+	var ThreeUtil = {
+
+	  createTexture: function(img, props) {
+
+	    // Create texture and register a listener when it's loaded
+	    var tex = new THREE.Texture(img);
+	    img.addEventListener('load', function() {
+	      tex.needsUpdate = true;
+	    });
+
+	    // In most of the cases we want to wrap, so default to wrapping
+	    tex.wrapS = THREE.RepeatWrapping;
+	    tex.wrapS = THREE.RepeatWrapping;
+
+	    // Add default props
+	    if (props) {
+	      Object.keys(props).forEach(function(prop) {
+	        tex[prop] = props[prop];
+	      });
+	    }
+
+	    return tex;
+	  }
+
+	};
+
+	module.exports = ThreeUtil;
+
 
 /***/ }
 /******/ ]);
