@@ -20,30 +20,37 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-var ThreeUtil = {
+var HudLayerUtil = {
 
-  createTexture: function(img, props) {
-
-    // Create texture and register a listener when it's loaded
-    var tex = new THREE.Texture(img);
-    img.addEventListener('load', function() {
-      tex.needsUpdate = true;
+  /**
+   * Helper function to load image from given DOM element
+   * and to wait until it's loaded in order to trigger a re-draw.
+   */
+  redrawWhenLoaded: function(layer, image) {
+    image.addEventListener('load', function() {
+      layer.redraw();
     });
+    return image;
+  },
 
-    // In most of the cases we want to wrap, so default to wrapping
-    tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapS = THREE.RepeatWrapping;
-
-    // Add default props
-    if (props) {
-      Object.keys(props).forEach(function(prop) {
-        tex[prop] = props[prop];
-      });
-    }
-
-    return tex;
+  /**
+   * Utility function to draw a rounded rectangle,
+   * automatically bound to the layer drawing context
+   */
+  roundedRect: function(ctx,x,y,w,h,r) {
+    var r = r || 0;
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.lineTo(x+w-r, y);
+    ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+    ctx.lineTo(x+w, y+h-r);
+    ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+    ctx.lineTo(x+r, y+h);
+    ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+    ctx.lineTo(x, y+r, x+r, y);
+    ctx.quadraticCurveTo(x, y, x+r, y);
   }
 
 };
 
-module.exports = ThreeUtil;
+module.exports = HudLayerUtil;

@@ -41,6 +41,7 @@ var InteractionCore = require("./src/runtime/core/InteractionCore");
 var BrowserUtil = require("./src/runtime/util/Browser");
 var StopableTimers = require("./src/runtime/util/StopableTimers");
 var ThreeUtil = require("./src/runtime/util/ThreeUtil");
+var HudLayerUtil = require("./src/runtime/util/HudLayerUtil");
 
 /**
  * Expose useful parts of the runtime API
@@ -52,7 +53,8 @@ module.exports = {
 
 	// Utility functions
 	'Util': Object.assign({},
-		ThreeUtil
+		ThreeUtil,
+		HudLayerUtil
 	),
 
 	// Iconeezin API
