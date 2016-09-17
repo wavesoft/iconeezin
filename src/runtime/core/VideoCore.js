@@ -35,6 +35,7 @@ var timeoutVal = 0;
 var isPresenting = false;
 var viewportWidth = 0;
 var viewportHeight = 0;
+var temporaryRenderListeners = [];
 
 /**
  * The VideoCore singleton contains the
@@ -131,6 +132,11 @@ VideoCore.reset = function() {
 	// Reset cursor
 	this.cursor.reset();
 
+	// Remove custom renderers from the viewport
+	temporaryRenderListeners.forEach((function(r) {
+		this.viewport.removeRenderListener(r);
+	}).bind(this));
+
 }
 
 /**
@@ -161,6 +167,13 @@ VideoCore.fadeOut = function( cb ) {
 
 	}).bind(this), cb)
 
+}
+
+/**
+ * Run an arbitrary tween, synced on the render clock
+ */
+VideoCore.runTween = function( duration, cb ) {
+	this.viewport.runTween( duration, cb );
 }
 
 /**
@@ -298,6 +311,24 @@ VideoCore.addHudLayer = function( layer ) {
  */
 VideoCore.removeHUD = function( layer ) {
 	VideoCore.viewport.removeHudLayer( layer );
+}
+
+/**
+ * Add a temporary render listener
+ */
+VideoCore.addRenderListener = function( listener ) {
+	this.viewport.addRenderListener(listener);
+	temporaryRenderListeners.push(listener);
+}
+
+/**
+ * Remove a temporary render listener
+ */
+VideoCore.removeRenderListener = function( listener ) {
+	var i = temporaryRenderListeners.indexOf(listener);
+	if (i < 0) return;
+	this.viewport.removeRenderListener(listener);
+	temporaryRenderListeners.splice(i, 1);
 }
 
 /**

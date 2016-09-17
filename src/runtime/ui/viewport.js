@@ -412,9 +412,6 @@ Viewport.prototype.render = function() {
 	//
 	if (!this.paused) {
 
-		// Align shadow camera
-		this.skyLight.lookAt(this.camera.position);
-
 		// Call render listeners
 		for (var i=0; i<this.renderListeners.length; i++) {
 			this.renderListeners[i]( d, t );
@@ -424,6 +421,12 @@ Viewport.prototype.render = function() {
 		for (var i=0; i<this.experiments.length; i++) {
 			this.experiments[i].onUpdate( d );
 		}
+
+		// Shadow light follows the camera
+		this.skyLight.target.position.copy(
+			this.camera.getWorldPosition()
+		);
+		this.skyLight.target.updateMatrixWorld();
 
 	}
 

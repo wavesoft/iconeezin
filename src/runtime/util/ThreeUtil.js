@@ -20,6 +20,32 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+var VideoCore = require('../core/VideoCore');
+
+var ShadowShader = {
+
+  fragment: [
+    '#include <packing>',
+    'uniform sampler2D texture;',
+    'varying vec2 vUV;',
+    'void main() {',
+      'vec4 pixel = texture2D( texture, vUV );',
+      'if ( pixel.a < 0.5 ) discard;',
+      'gl_FragData[ 0 ] = packDepthToRGBA( gl_FragCoord.z );',
+    '}'
+  ].join('\n'),
+
+  vertex: [
+    'varying vec2 vUV;',
+    'void main() {',
+      'vUV = 0.75 * uv;',
+      'vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );',
+      'gl_Position = projectionMatrix * mvPosition;',
+    '}'
+  ].join('\n')
+
+};
+
 var ThreeUtil = {
 
   createTexture: function(img, props) {
@@ -32,7 +58,7 @@ var ThreeUtil = {
 
     // In most of the cases we want to wrap, so default to wrapping
     tex.wrapS = THREE.RepeatWrapping;
-    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
 
     // Add default props
     if (props) {
@@ -42,6 +68,55 @@ var ThreeUtil = {
     }
 
     return tex;
+  },
+
+  createShadowMaterial: function(forTexture) {
+    return new THREE.ShaderMaterial( {
+      uniforms: {
+        texture:  { value: forTexture }
+      },
+      vertexShader: ShadowShader.vertex,
+      fragmentShader: ShadowShader.fragment,
+      side: THREE.DoubleSide
+    });
+  },
+
+  createBildboard: function(width, height, texture, castShadow) {
+    var plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          side: THREE.FrontSide
+        })
+      );
+
+    // We are on a z-up world
+    plane.up = new THREE.Vector3(0,0,1);
+
+    // Cast shadow if specified
+    if (castShadow) {
+      plane.customDepthMaterial = ThreeUtil.createShadowMaterial(texture);
+      plane.material.alphaTest = 0.1;
+      plane.castShadow = true;
+      plane.receiveShadow = true;
+    }
+
+    // Register a custom render listener in order
+    // to make the bildboard point always towards the camera
+    VideoCore.addRenderListener(function() {
+      var pos = VideoCore.viewport.camera.getWorldPosition();
+      pos.z = plane.position.z;
+      plane.lookAt( pos );
+    });
+
+    return plane;
+  },
+
+  getAxisParameter: function(center, xUnit, yUnit, xValue, yValue) {
+    var xDir = xUnit.clone().sub(center).multiplyScalar(xValue);
+    var yDir = yUnit.clone().sub(center).multiplyScalar(yValue);
+    return center.clone().add( xDir ).add( yDir );
   }
 
 };
