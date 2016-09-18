@@ -23,6 +23,7 @@
 var THREE = require("three");
 var Browser = require("../util/Browser");
 var HUDStatus = require("./HUDStatus");
+var Animations = require("./Animations");
 
 // Modified version of example scripts
 // in order to work with Z-Up orientation
@@ -31,6 +32,7 @@ require("./custom/shaders/SkyShader");
 // Effect composer complex
 require("three/examples/js/shaders/CopyShader");
 require("three/examples/js/shaders/FXAAShader");
+require("three/examples/js/shaders/SSAOShader");
 
 require("three/examples/js/postprocessing/EffectComposer");
 require("three/examples/js/postprocessing/RenderPass");
@@ -84,6 +86,11 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	 */
 	this.sceneObjects = [];
 
+	/**
+	 * Create new animations manager
+	 */
+	this.animations = new Animations();
+
 	/////////////////////////////////////////////////////////////
 	// Constructor
 	/////////////////////////////////////////////////////////////
@@ -108,7 +115,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.scene.fog = new THREE.Fog( 0xffffff, 0.015, 50 );
 
 	// Initialize a camera (with dummy ratio)
-	this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 45000 );
+	this.camera = new THREE.PerspectiveCamera( 75, 1.0, 0.1, 1000 );
 
 	// Camera looks towards +Y with Z up
 	this.camera.up.set( 0.0, 0.0, 1.0 );
@@ -164,6 +171,19 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.filmPass.enabled = false;
 	this.effectComposer.addPass( this.filmPass );
 
+	// SSAO pass
+	this.ssaoPass = new THREE.ShaderPass( THREE.SSAOShader );
+	this.ssaoPass.enabled = false;
+	this.ssaoPass.needsSwap = true;
+	this.ssaoPass.renderToScreen = false;
+	this.ssaoPass.uniforms[ 'size' ].value.set( 1024, 768 );
+	this.ssaoPass.uniforms[ 'cameraNear' ].value = this.camera.near;
+	this.ssaoPass.uniforms[ 'cameraFar' ].value = this.camera.far;
+	this.ssaoPass.uniforms[ 'aoClamp' ].value = 0.3;
+	this.ssaoPass.uniforms[ 'onlyAO' ].value = true;
+	this.ssaoPass.uniforms[ 'lumInfluence' ].value = 0.5;
+	this.effectComposer.addPass( this.ssaoPass );
+
 	// FXAA anti-alias pass
 	this.antialiasPass = new THREE.ShaderPass( THREE.FXAAShader );
 	this.antialiasPass.setSize = (function( w, h ) {
@@ -172,6 +192,19 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.antialiasPass.enabled = false;
 	this.antialiasPass.renderToScreen = true;
 	this.effectComposer.addPass( this.antialiasPass );
+
+	/////////////////////////////////////////////////////////////
+	// Depth pass
+	/////////////////////////////////////////////////////////////
+
+	// Setup depth pass
+	this.depthMaterial = new THREE.MeshDepthMaterial();
+	this.depthMaterial.depthPacking = THREE.RGBADepthPacking;
+	this.depthMaterial.blending = THREE.NoBlending;
+
+	var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter };
+	this.depthRenderTarget = new THREE.WebGLRenderTarget( 1024, 768, pars );
+	this.ssaoPass.uniforms[ "tDepth" ].value = this.depthRenderTarget.texture;
 
 	/////////////////////////////////////////////////////////////
 	// Environment
@@ -184,7 +217,7 @@ var Viewport = function( viewportDOM, vrHMD ) {
 	this.sky.uniforms.mieCoefficient.value = 0.005;
 	this.sky.uniforms.mieDirectionalG.value = 0.8;
 	this.sky.uniforms.luminance.value = 0.9;
-	this.sky.mesh.scale.set(45000, 45000, 45000);
+	this.sky.mesh.scale.set(1000, 1000, 1000);
 	this.addSceneObject( this.sky.mesh );
 
 	// Add sky light
@@ -214,19 +247,20 @@ var Viewport = function( viewportDOM, vrHMD ) {
 
 	this.setSunPosition(0.20, 0.25);
 
-	this.addSceneObject(new THREE.CameraHelper(this.skyLight.shadow.camera));
-
-
 	/////////////////////////////////////////////////////////////
 	// Helpers
 	/////////////////////////////////////////////////////////////
 
 	// Add axis on 0,0,0
-	var axisHelper = new THREE.AxisHelper( 5 );
-	this.addSceneObject( axisHelper );
+	// var axisHelper = new THREE.AxisHelper( 5 );
+	// this.addSceneObject( axisHelper );
+
+	// Shadow camera
+	// this.addSceneObject(new THREE.CameraHelper(this.skyLight.shadow.camera));
 
 	// Initialize the sizes (apply actual size)
 	this.setSize( this.viewportDOM.offsetWidth, this.viewportDOM.offsetHeight );
+	this.setFog( null );
 
 }
 
@@ -297,6 +331,13 @@ Viewport.prototype.setAntialias = function( enabled ) {
 }
 
 /**
+ * Enable or diable SSAO pass
+ */
+Viewport.prototype.setSSAO = function( enabled ) {
+	// this.antialiasPass.enabled = enabled;
+}
+
+/**
  * Resize viewport to fit new size
  */
 Viewport.prototype.setOpacity = function( value ) {
@@ -327,10 +368,16 @@ Viewport.prototype.setSunPosition = function( inclination, azimuth ) {
  * Resize viewport to fit new size
  */
 Viewport.prototype.setSize = function( width, height, pixelRatio, skipStyleUpdate ) {
+	// var newWidth  = Math.floor( width / pixelRatio ) || 1;
+	// var newHeight = Math.floor( height / pixelRatio ) || 1;
 
 	// Get size of the viewport
 	this.width = width;
 	this.height = height;
+
+	// Update SSAO pass
+	this.ssaoPass.uniforms[ 'size' ].value.set( width, height );
+	this.depthRenderTarget.setSize( width, height );
 
 	// Update camera
 	this.camera.aspect = width / height;
@@ -428,6 +475,29 @@ Viewport.prototype.render = function() {
 		);
 		this.skyLight.target.updateMatrixWorld();
 
+		// Update animations
+		this.animations.update( d );
+
+	}
+
+	// Render SSAO pass
+	if (this.ssaoPass.enabled) {
+		this.renderer.clear();
+
+		this.sceneObjects.forEach(function(o) { o.visible = false; })
+		this.renderPass.overrideMaterial = this.depthMaterial;
+
+		// Use the VRRenderer to render depth on the scene, on both
+		// eyes when VR is enabled.
+		var oldValue = this.renderPass.renderToScreen;
+		this.renderPass.render(
+			this.renderer, null, this.depthRenderTarget, d, null
+		);
+		this.renderPass.renderToScreen = oldValue;
+
+		this.renderPass.overrideMaterial = null;
+		this.sceneObjects.forEach(function(o) { o.visible = true; })
+
 	}
 
 	// Render composer
@@ -460,12 +530,15 @@ Viewport.prototype.setHMD = function( enabled ) {
  * Set global viewport fog
  */
 Viewport.prototype.setFog = function( fog ) {
-	var fogFar = 1000000;
+	var fogFar = 1000;
 	// if (fog && fog.far) fogFar = fog.far;
 
 	// Bring camera's max distance to fog's edge
 	this.camera.far = fogFar + 10;
 	this.camera.updateProjectionMatrix();
+
+	this.ssaoPass.uniforms[ 'cameraNear' ].value = this.camera.near;
+	this.ssaoPass.uniforms[ 'cameraFar' ].value = this.camera.far;
 
 	// Adapt skydone
 	this.sky.mesh.scale.set(
@@ -574,6 +647,9 @@ Viewport.prototype.setScene = function( scene ) {
  * Reset everything
  */
 Viewport.prototype.reset = function( ) {
+
+	// Reset animations
+	this.animations.reset();
 
 	// Remove all active tweens
 	for (var i=0; i<this.tweenFunctions.length; i++) {

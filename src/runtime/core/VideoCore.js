@@ -61,6 +61,7 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 	this.qualityFlags = {
 		'antialias': true,
 		'hires': false,
+		'ssao': false
 	};
 
 	// Create a canvas DOM if missing
@@ -73,6 +74,7 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 	// Create a new viewport instance
 	this.viewport = new Viewport( canvasDOM, Browser.vrHMD );
 	this.viewport.setAntialias( this.qualityFlags.antialias );
+	this.viewport.setSSAO( this.qualityFlags.ssao );
 	Browser.onVRSupportChange(function( isPlugged, vrHMD ) {
 		VideoCore.viewport.setHMDDevice( isPlugged ? vrHMD : undefined );
 	});
@@ -332,6 +334,13 @@ VideoCore.removeRenderListener = function( listener ) {
 }
 
 /**
+ * Create animation mixer
+ */
+VideoCore.getAnimationMixer = function( mesh ) {
+	return this.viewport.animations.getMixer( mesh );
+}
+
+/**
  * Glitch the video with some duration
  */
 VideoCore.glitch = function( duration ) {
@@ -340,5 +349,6 @@ VideoCore.glitch = function( duration ) {
 		VideoCore.viewport.setEffect( 0 );
 	}, duration);
 }
+
 // Export
 module.exports = VideoCore;

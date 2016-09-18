@@ -123,6 +123,13 @@ Experiment.prototype.onResumed = function() {
 };
 
 /**
+ * Called when the experiment can safely initialize
+ */
+Experiment.prototype.onLoad = function( db ) {
+
+};
+
+/**
  * The Experiment API namespace contains the
  * classes for implementing external experiment objects.
  */
