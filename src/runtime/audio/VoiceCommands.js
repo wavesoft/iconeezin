@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -55,7 +55,7 @@ function getProgressScore( a, b ) {
 	var diff = jsDiff.diffWords( src, cmp );
 	var good_c = 0, progress_c = 0, c = 0, anchored = false, removed_c = 0;
 
-	// Process 
+	// Process
 	for (var i=0, l=diff.length; i<l; i++) {
 		var change = diff[i];
 
@@ -135,9 +135,10 @@ var VoiceCommands = function() {
 			this.resultsCallbacks[i](null, e);
 	}).bind(this);
 	this.recognition.onresult = (function(e) {
+		var result = e.results[e.resultIndex];
 		// console.log("Heard: '" + e.results[0][0].transcript + "' (confidence="+ e.results[0][0].confidence + ")")
 		for (var i=0, l=this.resultsCallbacks.length; i<l; ++i)
-			this.resultsCallbacks[i](e.results, null);
+			this.resultsCallbacks[i](result, null);
 	}).bind(this);
 
 	// // Debug events
@@ -196,7 +197,7 @@ VoiceCommands.prototype.reset = function() {
 };
 
 /**
- * Expect a phrase to be spoken. 
+ * Expect a phrase to be spoken.
  *
  * The progress callback will be fired with interim results and other metadata
  * regarding the speaking progress.
@@ -211,8 +212,8 @@ VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
 		}
 
 		// Get match score
-		var transcript = results[0][0].transcript,
-			confidence = results[0][0].confidence,
+		var transcript = results[0].transcript,
+			confidence = results[0].confidence,
 			score = getProgressScore( phrase, transcript );
 
 		// Keep track of last confidence (Because it bets 0 when completed)
@@ -222,7 +223,7 @@ VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
 
 		// Prepare callback metadata
 		var meta = {
-			'completed': results[0].isFinal,
+			'completed': results.isFinal,
 			'confidence': confidence,
 			'progress': score[0],
 			'score': score[1],
@@ -240,6 +241,66 @@ VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
 	this.startDictation();
 
 };
+
+/**
+ * Expect one of the given gommand(s)
+ */
+VoiceCommands.prototype.expectCommands = function( commands, error_cb ) {
+
+	// Compile regex
+	var _commands = Object.keys(commands).map(function (command) {
+		return {
+			regex: new RegExp(command),
+			callback: commands[command]
+		};
+	});
+
+	// Create a callback delegate to receive speech events
+	var last_confidence = 0;
+	var cb = function( results, error ) {
+		if (error) {
+			error_cb(error, null);
+			return;
+		}
+
+		// Wait for final result
+		if (results.isFinal) {
+			var handled = false;
+			var lastTranscript = '';
+
+			// Iterate over result transcripts
+			for (var i=0; i<results.length; i++) {
+				var result = results[i];
+				var transcript = result.transcript;
+				if (handled) return;
+
+				// Match commands
+				_commands.forEach(function (command) {
+					if (handled) return;
+
+					// Find first matching command
+					if (command.regex.exec(transcript)) {
+						handled = true;
+						command.callback(transcript);
+					}
+				});
+
+				lastTranscript = transcript;
+			}
+
+			// If nothing matched, fire unknown callback
+			if (!handled && error_cb) {
+				error_cb(null, lastTranscript);
+			}
+		}
+
+	};
+
+	// Start dictation
+	this.resultsCallbacks.push(cb);
+	this.startDictation();
+
+}
 
 /**
  * Enable voice commands
