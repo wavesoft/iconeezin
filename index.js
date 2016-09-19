@@ -20,6 +20,8 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
+const VERSION = "1.0.0";
+
 // Load libraries as soon as possible
 var libTHREE = require("three");
 global.THREE = libTHREE;
@@ -73,6 +75,7 @@ module.exports = {
 
 		// Initialize helper
 		'initialize': function( viewportDOM, canvasDOM ) {
+			console.log('Iconeez.in engine v' + VERSION);
 
 			// Initialize core components
 			VideoCore.initialize( viewportDOM, canvasDOM );

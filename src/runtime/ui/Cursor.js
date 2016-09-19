@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -58,13 +58,13 @@ var Cursor = function( viewport ) {
 	for (var i=0; i<ANIMATION_STEPS-1; i++) {
 		var ofs = Math.PI*2*(i/ANIMATION_STEPS);
 		this.animGeometries.push(
-			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, RING_RESOLUTION, 
+			new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, RING_RESOLUTION,
 				1, Math.PI/2-ofs ,ofs )
 		);
 	}
 	// Add the final full-ring geometry
-	this.animGeometries.push( 
-		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, RING_RESOLUTION ) 
+	this.animGeometries.push(
+		new THREE.RingGeometry( RING_SIZE, RING_SIZE + RING_THCKNESS, RING_RESOLUTION )
 	);
 
 	// Create a cursor
@@ -109,7 +109,6 @@ var Cursor = function( viewport ) {
 	var mat = new THREE.SpriteMaterial({
 		transparent: true,
 		opacity: 1.0,
-		useScreenCoordinates: false,
 		color: 0xffffff
 	});
 
@@ -171,7 +170,7 @@ Cursor.prototype.setProgressionAnimation = function(v) {
 
 	// Pick appropriate geometry if v>1
 	} else {
-		
+
 		// Calculate animation step
 		var i = 0;
 		if (v) {

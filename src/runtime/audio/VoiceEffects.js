@@ -122,7 +122,7 @@ VoiceEffects.prototype.setPaused = function( enabled ) {
  * the user must call .stop() and receive the THREE.Audio
  * object when needs to complete the object.
  */
-VoiceEffects.prototype.record = function( callback ) {
+VoiceEffects.prototype.record = function() {
 
 	// Start recording line in, bypassing any audio effects that it might exists
 	this.recorder.record( this.lineIn.source );

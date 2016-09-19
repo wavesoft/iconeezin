@@ -26,9 +26,30 @@
 var TrackingCore = { };
 
 /**
+ * Generate a random ID
+ */
+function anonymousID() {
+	var text = "";
+	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+	for( var i=0; i < 16; i++ )
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+	return 'anon-'+text;
+}
+
+/**
  * Initialize tracking core
  */
-TrackingCore.initialize = function( trackingID ) {
+TrackingCore.initialize = function() {
+
+	// Check if we have a tracking ID from the URL
+	var trackingID = anonymousID();
+	if (window.location.hash.startsWith("#u-")) {
+		trackingID = 'u-' + window.location.hash.substr(3);
+	}
+
+	console.info('Your tracking ID is ' + trackingID);
 
 	// Timers
 	this.timers = { };
@@ -435,9 +456,25 @@ TrackingCore.startNextTask = function( properties, callback ) {
  */
 TrackingCore.completeTask = function( results ) {
 
+	// Separate store from tracking variables
+	var results = results || {};
+	var store = {};
+	var track = {};
+
+	Object.keys(results).forEach(function (key) {
+		if (key.substr(0,1) === '_') {
+			store[key] = results[key];
+		} else {
+			track[key] = results[key];
+		}
+	});
+
 	// Track event completion
-	this.trackEvent("experiment.task.completed", Object.assign({
-		'task': this.activeTaskName, 'duration': this.stopTimer("internal.task") }, results
+	this.trackEvent("experiment.task.completed", Object.assign(
+		{
+			'task': this.activeTaskName,
+			'duration': this.stopTimer("internal.task")
+		},track
 	));
 
 }
