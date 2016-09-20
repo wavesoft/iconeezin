@@ -44712,17 +44712,17 @@ var Iconeezin =
 	/**
 	 * Iconeez.in - A Web VR Platform for social experiments
 	 * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
-	 * 
+	 *
 	 * This program is free software; you can redistribute it and/or modify
 	 * it under the terms of the GNU General Public License as published by
 	 * the Free Software Foundation; either version 2 of the License, or
 	 * (at your option) any later version.
-	 * 
+	 *
 	 * This program is distributed in the hope that it will be useful,
 	 * but WITHOUT ANY WARRANTY; without even the implied warranty of
 	 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 	 * GNU General Public License for more details.
-	 * 
+	 *
 	 * You should have received a copy of the GNU General Public License along
 	 * with this program; if not, write to the Free Software Foundation, Inc.,
 	 * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -44739,7 +44739,7 @@ var Iconeezin =
 	 * Initialize interaction core
 	 */
 	InteractionCore.initialize = function() {
-		
+
 	}
 
 	/**
@@ -44772,12 +44772,14 @@ var Iconeezin =
 			opt.title = options.title;
 			opt.debounce = options.debounce || 0.0;
 			opt.trackID = options.trackID;
+			opt.enabled = (options.enabled === undefined) ? true : options.enabled;
 
 		} else {
 
 			// Simple callback
 			opt.onInteract = options;
 			opt.gaze = true;
+			opt.enabled = true;
 
 		}
 
@@ -44790,6 +44792,13 @@ var Iconeezin =
 		);
 	}
 
+	/**
+	 * Enable or disable interactive status of an element
+	 */
+	InteractionCore.setInteractive = function( object, isInteractive ) {
+		if (!object.__interact__) return;
+		object.__interact__.enabled = isInteractive;
+	}
 
 	// Export regitry
 	module.exports = InteractionCore;
@@ -50696,7 +50705,7 @@ var Iconeezin =
 		}
 
 		// Trigger events
-		if (intersectObject) {
+		if (intersectObject && intersectObject.__interact__.enabled) {
 
 			if (intersectObject !== this.hoverObject) {
 

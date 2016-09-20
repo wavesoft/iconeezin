@@ -137,7 +137,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 	}
 
 	// Trigger events
-	if (intersectObject) {
+	if (intersectObject && intersectObject.__interact__.enabled) {
 
 		if (intersectObject !== this.hoverObject) {
 
