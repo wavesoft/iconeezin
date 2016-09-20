@@ -145,6 +145,24 @@ module.exports = {
 			return VideoCore.viewport.runTween( duration, fn, cb );
 		},
 
+		/**
+		 * Pre-flight checks
+		 */
+		'preflight': function(cb_results) {
+
+			// First perform a speech recognition pre-flight
+			AudioCore.voiceCommands.probeSupport(function (hasSupport) {
+				if (!hasSupport) {
+					cb_results(false, 'Unable to initialize speech recognition');
+					return;
+				}
+
+				// Success
+				cb_results(true);
+			});
+
+		}
+
 	},
 
 	// Exposing libraries for re-using

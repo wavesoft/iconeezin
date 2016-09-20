@@ -23,9 +23,9 @@
 var jsDiff = require('diff');
 
 /**
- * Unify a word by removing accents and capitalizations
+ * Normalize a word by removing accents and capitalizations
  */
-function unify( word ) {
+function normalize( word ) {
 	return word.toLowerCase()
 		.replace(/[ά]/g,"α")
 		.replace(/[έ]/g,"ε")
@@ -50,8 +50,8 @@ function unify( word ) {
 function getProgressScore( a, b ) {
 
 	// Calculate the diff between the two phrases
-	var src = unify(a), src_c = src.trim().split(/\s+/g).length;
-	var cmp = unify(b);
+	var src = normalize(a), src_c = src.trim().split(/\s+/g).length;
+	var cmp = normalize(b);
 	var diff = jsDiff.diffWords( src, cmp );
 	var good_c = 0, progress_c = 0, c = 0, anchored = false, removed_c = 0;
 
@@ -306,6 +306,38 @@ VoiceCommands.prototype.expectCommands = function( commands, error_cb ) {
  * Enable voice commands
  */
 VoiceCommands.prototype.setPaused = function( isPaused ) {
+
+}
+
+/**
+ * This function triggers a speech input and stops right when it gets
+ * a confirmation. This is used only to probe the browser in order to
+ * show the promt to the user.
+ */
+VoiceCommands.prototype.probeSupport = function( callback ) {
+
+	// Create an instance
+	var probeRecognition = new SpeechRecognition();
+	var didStart = false;
+
+	probeRecognition.onstart = function() {
+		if (didStart) return;
+
+		// Stop right away
+		didStart = true;
+		probeRecognition.stop();
+
+		// Success callback
+		callback(true);
+	};
+	probeRecognition.onerror = function() {
+		if (didStart) return;
+		// Erroreus callback
+		callback(false);
+	};
+
+	// Start
+	probeRecognition.start();
 
 }
 

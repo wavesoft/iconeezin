@@ -49,6 +49,9 @@ ControlsCore.initialize = function() {
 	// Register render callback
 	VideoCore.viewport.addRenderListener( this.onUpdate.bind(this) );
 
+	// Initialize path follower
+	pathFollower = new PathFollowerControl();
+
 	// Base controls
 	mouseControl = new MouseControl();
 	vrControl = new VRControl();
@@ -101,6 +104,9 @@ ControlsCore.reset = function() {
 
 	// Reset interactions
 	interaction.reset();
+
+	// Reset path follower
+	pathFollower = new PathFollowerControl();
 
 }
 
@@ -259,7 +265,6 @@ ControlsCore.setPaused = function( paused ) {
 ControlsCore.followPath = function( curve, options ) {
 
 	// Setup and enable path follower
-	pathFollower = new PathFollowerControl();
 	pathFollower.followPath( curve, options );
 	this.activateControl( pathFollower );
 
