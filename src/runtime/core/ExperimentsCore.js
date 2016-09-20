@@ -32,6 +32,7 @@ var Config = require("../../config");
 var Loaders = require("../io/Loaders");
 
 var StopableTimers = require("../util/StopableTimers");
+var SequencerUtil = require("../util/SequencerUtil");
 
 /**
  * Kernel core is the main logic that steers the runtime
@@ -221,6 +222,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 		// Reset other cores
 		AudioCore.reset();
 		StopableTimers.reset();
+		SequencerUtil.reset();
 
 		// Ask TrackingCore to prepare for the experiment
 		TrackingCore.startExperiment( experiment, meta, (function() {
@@ -244,6 +246,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 
 		// Reset all stopable timers
 		StopableTimers.reset();
+		SequencerUtil.reset();
 
 		// Load experiment
 		Loaders.loadExperiment( experiment, (function ( err, inst ) {

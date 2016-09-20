@@ -1,10 +1,13 @@
 var THREE = require('three');
 
+var activeSequences = [ ];
+
 var Sequence = function(parent) {
 
   // Create two-directional binding
   this._parent = parent;
   this._next = null;
+  this._interrupted = false;
 
   // The actions
   this._continueCallback = null;
@@ -137,12 +140,25 @@ Sequence.prototype.start = function( completed_cb ) {
     root = root._parent;
   }
 
+  // Mark on active
+  activeSequences.push(this);
+
   // Asynchronous callback for continuing the sequence
   var action = root;
   var continueSequence = function() {
+    var idOnActive = activeSequences.indexOf(this);
+
+    // Check root for interruptions
+    if (root._interrupted) {
+      if (idOnActive >= 0)
+        activeSequences.splice(idOnActive, 1);
+      return;
+    }
 
     // If we have no more actions, call the completion callback
     if (!action) {
+      if (idOnActive >= 0)
+        activeSequences.splice(idOnActive, 1);
       if (completed_cb) completed_cb();
       return;
     }
@@ -158,6 +174,24 @@ Sequence.prototype.start = function( completed_cb ) {
 
 };
 
+/**
+ * Interrupt sequence
+ */
+Sequence.prototype.stop = function() {
+  var root = this;
+  while (root._parent !== undefined) {
+    root = root._parent;
+  }
+
+  // Interrupt all tasks, starting from root and walking into
+  // all children
+  var interruptTask = root;
+  while (interruptTask) {
+    interruptTask._interrupted = true;
+    interruptTask = interruptTask._next;
+  }
+};
+
 module.exports = {
 
   /**
@@ -165,6 +199,26 @@ module.exports = {
    */
   createSequence: function() {
     return new Sequence();
+  },
+
+  /**
+   * Get active sequences
+   */
+  getActiveSequences: function() {
+    return activeSequences;
+  },
+
+  /**
+   * Reset all active sequences
+   */
+  reset: function() {
+    // Stop all sequences
+    activeSequences.forEach(function(sequence) {
+      sequence.stop();
+    });
+
+    // Remove from list
+    activeSequences = [];
   }
 
 }
