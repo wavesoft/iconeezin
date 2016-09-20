@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -28,6 +28,12 @@ const CENTER = new THREE.Vector2(0,0);
 
 const SELECT_DURATION = 0.25;
 const GAZE_DURATION = 0.75;
+
+function findInteractionObject(obj) {
+	if (obj.__interact__ !== undefined) return obj;
+	if (obj.parent) return findInteractionObject(obj.parent);
+	return null;
+}
 
 /**
  * Sight interaction takes care of raycasting and intersecting
@@ -79,6 +85,7 @@ SightInteraction.prototype.updateFromScene = function() {
 	this.viewport.scene.traverse((function(e) {
 		if (e.__interact__ !== undefined) {
 			this.interactiveObjects.push(e);
+			console.log('Found interactive object', e);
 		}
 	}).bind(this));
 
@@ -118,11 +125,21 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 	// Intersect interactive objects
 	this.raycaster.setFromCamera( CENTER, this.viewport.camera );
-	var intersects = this.raycaster.intersectObjects( this.interactiveObjects, true );
+	var intersects = this.raycaster.intersectObjects( this.interactiveObjects, true )
+	var intersectObject = null;
+
+	// Find the object with interaction details
+	if ( intersects.length > 0 ) {
+		intersectObject = intersects.reduce(function(pickedObject, obj) {
+			if (pickedObject) return pickedObject;
+			return findInteractionObject(obj.object);
+		}, null);
+	}
 
 	// Trigger events
-	if ( intersects.length > 0 ) {
-		if (intersects[0].object !== this.hoverObject) {
+	if (intersectObject) {
+
+		if (intersectObject !== this.hoverObject) {
 
 			// Deselect previous object
 			if (this.hoverObject) {
@@ -136,7 +153,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 					// Reschedule debounce timer
 					clearTimeout(this.hoverInteraction._debounceTimer);
-					this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut, 
+					this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut,
 						this.hoverInteraction.debounce);
 				}
 
@@ -154,7 +171,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 			}
 
 			// Focus new object
-			this.hoverObject = intersects[0].object;
+			this.hoverObject = intersectObject;
 			this.hoverInteraction = this.hoverObject.__interact__;
 
 			// Handle mouse over
@@ -223,7 +240,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 				// Reschedule debounce timer
 				clearTimeout(this.hoverInteraction._debounceTimer);
-				this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut, 
+				this.hoverInteraction._debounceTimer = setTimeout(this.hoverInteraction.onMouseOut,
 					this.hoverInteraction.debounce);
 			}
 
