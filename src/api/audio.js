@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -58,9 +58,9 @@ AudioFile.prototype.load = function( cb ) {
 }
 
 /**
- * Create an audio instance, don't start playing 
+ * Create an audio instance, don't start playing
  */
-AudioFile.prototype.create = function() {
+AudioFile.prototype.create = function(create_cb) {
 
 	// Create an audio object
 	var sound = new THREE.Audio( AudioCore.listener );
@@ -69,7 +69,7 @@ AudioFile.prototype.create = function() {
 	// Load buffer & play
 	this.load(function( buffer ) {
 		sound.setBuffer( buffer );
-		sound.play();
+		if (create_cb) create_cb();
 	});
 
 	// Return sound object
