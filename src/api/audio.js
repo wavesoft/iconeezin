@@ -100,9 +100,29 @@ AudioFile.prototype.createPositional = function( loop ) {
 };
 
 /**
+ * Shorthand to stop a playback audio
+ */
+AudioFile.prototype.stop = function() {
+	if (!this.sound) {
+		return;
+	}
+	if (!this.sound.isPlaying) {
+		return;
+	}
+	this.sound.stop();
+};
+
+/**
  * Shorthand to create and play
  */
-AudioFile.prototype.play = function( loop ) {
+AudioFile.prototype.play = function( loop, complete_cb ) {
+	if (typeof loop === 'function') {
+		complete_cb = loop;
+		loop = false;
+	}
+	if (loop === undefined) {
+		loop = false;
+	}
 
 	// Create an audio object
 	if (!this.sound) {
@@ -112,7 +132,7 @@ AudioFile.prototype.play = function( loop ) {
 		AudioCore.makeResetable( sound );
 
 		// Set loop
-		this.sound.setLoop( loop === undefined ? false : true );
+		this.sound.setLoop( loop );
 
 		// Load buffer & play
 		this.load(function( buffer ) {
@@ -123,9 +143,17 @@ AudioFile.prototype.play = function( loop ) {
 	} else {
 
 		// Just play
-		this.sound.setLoop( loop === undefined ? false : true );
+		this.sound.setLoop( loop );
 		this.sound.play();
 
+	}
+
+	// Register callback
+	if (complete_cb) {
+		this.sound.source.onended = (function() {
+			THREE.Audio.prototype.onEnded.call(this.sound);
+			complete_cb();
+		}).bind(this);
 	}
 
 	// Return sound object

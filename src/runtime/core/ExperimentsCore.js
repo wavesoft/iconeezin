@@ -226,13 +226,17 @@ ExperimentsCore.showExperiment = function( experiment ) {
 		TrackingCore.startExperiment( experiment, meta, (function() {
 
 			// Focus to the given experiment instance on the viewport
-			this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible, function() {
+			this.experiments.focusExperiment(
+				this.loadedExperiments[experiment],
+				handleExperimentVisible,
+				function() {
 
-				// Reset controls core only when it's not visible
-				ControlsCore.reset();
-				VideoCore.reset();
+					// Reset controls core only when it's not visible
+					ControlsCore.reset();
+					VideoCore.reset();
 
-			});
+				}
+			);
 
 		}).bind(this));
 

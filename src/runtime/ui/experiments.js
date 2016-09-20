@@ -57,7 +57,6 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 
 	var do_fadein = (function() {
 		// Will show active
-		this.activeExperiment.onLoad( this.activeExperiment.database );
 		this.activeExperiment.onWillShow((function() {
 			// Fade in active
 			this.activeExperiment.isActive = true;
@@ -89,6 +88,7 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 
 		// Trigger transition callback
 		if (cb_transition) cb_transition();
+		this.activeExperiment.onLoad( this.activeExperiment.database );
 
 		// Fade-in
 		do_fadein();

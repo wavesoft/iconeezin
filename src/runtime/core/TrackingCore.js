@@ -177,9 +177,9 @@ TrackingCore.trackEvent = function( name, properties ) {
 	//////////////////////////////////////////
 
 	if (this.tracking) {
-		this.feedEvent({ name: name, properties: properties });
+		this.feedEvent({ name: name, properties: eventProperties });
 	} else {
-		this.events.push({ name: name, properties: properties });
+		this.events.push({ name: name, properties: eventProperties });
 	}
 }
 

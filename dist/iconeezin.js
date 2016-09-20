@@ -42100,9 +42100,29 @@ var Iconeezin =
 	};
 
 	/**
+	 * Shorthand to stop a playback audio
+	 */
+	AudioFile.prototype.stop = function() {
+		if (!this.sound) {
+			return;
+		}
+		if (!this.sound.isPlaying) {
+			return;
+		}
+		this.sound.stop();
+	};
+
+	/**
 	 * Shorthand to create and play
 	 */
-	AudioFile.prototype.play = function( loop ) {
+	AudioFile.prototype.play = function( loop, complete_cb ) {
+		if (typeof loop === 'function') {
+			complete_cb = loop;
+			loop = false;
+		}
+		if (loop === undefined) {
+			loop = false;
+		}
 
 		// Create an audio object
 		if (!this.sound) {
@@ -42112,7 +42132,7 @@ var Iconeezin =
 			AudioCore.makeResetable( sound );
 
 			// Set loop
-			this.sound.setLoop( loop === undefined ? false : true );
+			this.sound.setLoop( loop );
 
 			// Load buffer & play
 			this.load(function( buffer ) {
@@ -42123,9 +42143,17 @@ var Iconeezin =
 		} else {
 
 			// Just play
-			this.sound.setLoop( loop === undefined ? false : true );
+			this.sound.setLoop( loop );
 			this.sound.play();
 
+		}
+
+		// Register callback
+		if (complete_cb) {
+			this.sound.source.onended = (function() {
+				THREE.Audio.prototype.onEnded.call(this.sound);
+				complete_cb();
+			}).bind(this);
 		}
 
 		// Return sound object
@@ -50303,9 +50331,6 @@ var Iconeezin =
 		mouseControl = new MouseControl();
 		vrControl = new VRControl();
 
-		// Position-only controls
-		pathFollower = new PathFollowerControl();
-
 		// Default propeties
 		this.paused = true;
 		this.hmd = undefined;
@@ -50512,6 +50537,7 @@ var Iconeezin =
 	ControlsCore.followPath = function( curve, options ) {
 
 		// Setup and enable path follower
+		pathFollower = new PathFollowerControl();
 		pathFollower.followPath( curve, options );
 		this.activateControl( pathFollower );
 
@@ -51018,9 +51044,9 @@ var Iconeezin =
 		//////////////////////////////////////////
 
 		if (this.tracking) {
-			this.feedEvent({ name: name, properties: properties });
+			this.feedEvent({ name: name, properties: eventProperties });
 		} else {
-			this.events.push({ name: name, properties: properties });
+			this.events.push({ name: name, properties: eventProperties });
 		}
 	}
 
@@ -52351,13 +52377,17 @@ var Iconeezin =
 			TrackingCore.startExperiment( experiment, meta, (function() {
 
 				// Focus to the given experiment instance on the viewport
-				this.experiments.focusExperiment( this.loadedExperiments[experiment], handleExperimentVisible, function() {
+				this.experiments.focusExperiment(
+					this.loadedExperiments[experiment],
+					handleExperimentVisible,
+					function() {
 
-					// Reset controls core only when it's not visible
-					ControlsCore.reset();
-					VideoCore.reset();
+						// Reset controls core only when it's not visible
+						ControlsCore.reset();
+						VideoCore.reset();
 
-				});
+					}
+				);
 
 			}).bind(this));
 
@@ -53096,7 +53126,6 @@ var Iconeezin =
 
 		var do_fadein = (function() {
 			// Will show active
-			this.activeExperiment.onLoad( this.activeExperiment.database );
 			this.activeExperiment.onWillShow((function() {
 				// Fade in active
 				this.activeExperiment.isActive = true;
@@ -53128,6 +53157,7 @@ var Iconeezin =
 
 			// Trigger transition callback
 			if (cb_transition) cb_transition();
+			this.activeExperiment.onLoad( this.activeExperiment.database );
 
 			// Fade-in
 			do_fadein();

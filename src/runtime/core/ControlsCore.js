@@ -53,9 +53,6 @@ ControlsCore.initialize = function() {
 	mouseControl = new MouseControl();
 	vrControl = new VRControl();
 
-	// Position-only controls
-	pathFollower = new PathFollowerControl();
-
 	// Default propeties
 	this.paused = true;
 	this.hmd = undefined;
@@ -262,6 +259,7 @@ ControlsCore.setPaused = function( paused ) {
 ControlsCore.followPath = function( curve, options ) {
 
 	// Setup and enable path follower
+	pathFollower = new PathFollowerControl();
 	pathFollower.followPath( curve, options );
 	this.activateControl( pathFollower );
 
