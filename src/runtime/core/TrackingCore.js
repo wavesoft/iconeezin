@@ -48,8 +48,10 @@ TrackingCore.initialize = function() {
 	if (window.location.hash.startsWith("#u-")) {
 		trackingID = 'u-' + window.location.hash.substr(3);
 	}
-
 	console.info('Your tracking ID is ' + trackingID);
+
+	// Results
+	this.results = [];
 
 	// Timers
 	this.timers = { };
@@ -476,6 +478,13 @@ TrackingCore.completeTask = function( results ) {
 			'duration': this.stopTimer("internal.task")
 		},track
 	));
+
+	// Collect results
+	this.results.push({
+		'experiment': this.activeExperimentName,
+		'task': this.activeTaskName,
+		'results': results
+	});
 
 }
 

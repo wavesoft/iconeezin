@@ -50860,8 +50860,10 @@ var Iconeezin =
 		if (window.location.hash.startsWith("#u-")) {
 			trackingID = 'u-' + window.location.hash.substr(3);
 		}
-
 		console.info('Your tracking ID is ' + trackingID);
+
+		// Results
+		this.results = [];
 
 		// Timers
 		this.timers = { };
@@ -51288,6 +51290,13 @@ var Iconeezin =
 				'duration': this.stopTimer("internal.task")
 			},track
 		));
+
+		// Collect results
+		this.results.push({
+			'experiment': this.activeExperimentName,
+			'task': this.activeTaskName,
+			'results': results
+		});
 
 	}
 
