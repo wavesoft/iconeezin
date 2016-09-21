@@ -159,7 +159,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 				// Stop tracking
 				if (this.hoverInteraction.trackID) {
-					TrackingCore.trackEnd('interact.gaze');
+					TrackingCore.trackEnd('gaze');
 				}
 
 				// Reset highlight
@@ -183,7 +183,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 			// Start tracking
 			if (this.hoverInteraction.trackID) {
-				TrackingCore.trackStart('interact.gaze', { 'id': this.hoverInteraction.trackID });
+				TrackingCore.trackStart('gaze', { 'id': this.hoverInteraction.trackID });
 			}
 
 			// Highlight if not gazing
@@ -246,7 +246,7 @@ SightInteraction.prototype.onRender = function( delta ) {
 
 			// Stop tracking
 			if (this.hoverInteraction.trackID) {
-				TrackingCore.trackEnd('interact.gaze');
+				TrackingCore.trackEnd('gaze');
 			}
 
 			// Reset properties
