@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -97,25 +97,25 @@ var vrBugfixAttempt = false;
 /**
  * VR Support change listeners
  */
-Browser.onVRSupportChange = function( cb ) { 
-	onVRSupportChange_Callbacks.push(cb); 
+Browser.onVRSupportChange = function( cb ) {
+	onVRSupportChange_Callbacks.push(cb);
 	if (Browser.vrHMD) {
 		cb( true, Browser.vrHMD );
 	}
 }
-Browser.offVRSupportChange = function( cb ) { 
-	var i = onVRSupportChange_Callbacks.indexOf(cb); 
+Browser.offVRSupportChange = function( cb ) {
+	var i = onVRSupportChange_Callbacks.indexOf(cb);
 	if (i>=0) onVRSupportChange_Callbacks.splice(i,1);
 }
 
 /**
  * VR Present change listeners
  */
-Browser.onVRDisplayPresentChange = function( cb ) { 
+Browser.onVRDisplayPresentChange = function( cb ) {
 	onVRDisplayPresentChange_Callbacks.push(cb);
 }
-Browser.offVRSupportChange = function( cb ) { 
-	var i = onVRDisplayPresentChange_Callbacks.indexOf(cb); 
+Browser.offVRSupportChange = function( cb ) {
+	var i = onVRDisplayPresentChange_Callbacks.indexOf(cb);
 	if (i>=0) onVRDisplayPresentChange_Callbacks.splice(i,1);
 }
 var vrDisplayPresentChangeHandler = function() {
@@ -143,7 +143,7 @@ var vrDisplayPresentChangeHandler = function() {
 
 		// Callback with enabled VR + custom render size
 		for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
-			onVRDisplayPresentChange_Callbacks[i]( true, eyeWidth*2, eyeHeight, 1 );		
+			onVRDisplayPresentChange_Callbacks[i]( true, eyeWidth*2, eyeHeight, 1 );
 
 	} else {
 
@@ -152,7 +152,7 @@ var vrDisplayPresentChangeHandler = function() {
 
 		// Callback with disabled VR
 		for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
-			onVRDisplayPresentChange_Callbacks[i]( false, 0, 0, 0 );		
+			onVRDisplayPresentChange_Callbacks[i]( false, 0, 0, 0 );
 
 	}
 
@@ -173,8 +173,8 @@ var vrOldAPIPresentChangeHandler = function() {
 
 		// Callback with enabled VR
 		for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
-			onVRDisplayPresentChange_Callbacks[i]( true, 
-				window.screen.width, window.screen.height, window.devicePixelRatio );		
+			onVRDisplayPresentChange_Callbacks[i]( true,
+				window.screen.width, window.screen.height, window.devicePixelRatio );
 
 	} else {
 
@@ -183,7 +183,7 @@ var vrOldAPIPresentChangeHandler = function() {
 
 		// Callback with disabled VR
 		for (var i=0, l=onVRDisplayPresentChange_Callbacks.length; i<l; ++i)
-			onVRDisplayPresentChange_Callbacks[i]( false, 0, 0, 0 );		
+			onVRDisplayPresentChange_Callbacks[i]( false, 0, 0, 0 );
 
 	}
 
@@ -220,6 +220,7 @@ Browser.hasVRDisplay = function() {
 Browser.detectVR = function( callback ) {
 
 	function gotVRDevices( devices ) {
+		alert(devices);
 
 		var hasPrevDevice = false;
 		var pickDevice = undefined;
@@ -301,7 +302,7 @@ Browser.requestHMDPresent = function( canvas, callback ) {
 				// BOG: Browser did not grab the vr HMD device
 				if (!Browser.vrHMD.isPresenting) {
 					vrBugfixAttempt = true;
-					Browser.requestFullscreen( canvas );	
+					Browser.requestFullscreen( canvas );
 				}
 
 				resolve();
@@ -340,11 +341,6 @@ Browser.exitHMDPresent = function( callback ) {
 	});
 
 };
-
-// Detect VR
-document.addEventListener('DOMContentLoaded', function() {
-	Browser.detectVR();
-});
 
 // Export Browser
 module.exports = Browser;

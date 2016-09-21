@@ -159,6 +159,10 @@ module.exports = {
 
 				// Success
 				cb_results(true);
+
+				// Detect VR (triggers callbacks)
+				BrowserUtil.detectVR();
+
 			});
 
 		}
