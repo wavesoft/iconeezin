@@ -316,6 +316,12 @@ VoiceCommands.prototype.setPaused = function( isPaused ) {
  */
 VoiceCommands.prototype.probeSupport = function( callback ) {
 
+	// Check for missing support
+	if (!SpeechRecognition) {
+		callback(false, 'Missing speech recognition support');
+		return;
+	}
+
 	// Create an instance
 	var probeRecognition = new SpeechRecognition();
 	var didStart = false;
