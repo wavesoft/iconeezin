@@ -52545,8 +52545,10 @@ var Iconeezin =
 			}).bind(this), function( progress ) {
 				if (progress === 0) {
 					VideoCore.cursor.showLoading();
+					VideoCore.showInteractionLabel('Φόρτωση πειράματος')
 				} else if (progress === 1) {
 					VideoCore.cursor.hideLoading();
+					VideoCore.hideInteractionLabel();
 				} else {
 					VideoCore.cursor.setLoadingProgress( progress );
 				}
