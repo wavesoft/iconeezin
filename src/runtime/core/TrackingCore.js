@@ -28,7 +28,7 @@ var TrackingCore = { };
 /**
  * Generate a random ID
  */
-function anonymousID() {
+function generateAnonymousID() {
 	var text = "";
 	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
@@ -44,9 +44,17 @@ function anonymousID() {
 TrackingCore.initialize = function() {
 
 	// Check if we have a tracking ID from the URL
-	this.trackingID = anonymousID();
-	if (window.location.hash.startsWith("#u-")) {
-		this.trackingID = 'u-' + window.location.hash.substr(3);
+	this.trackingID = generateAnonymousID();
+	if (window.sessionStorage) {
+		if (sessionStorage.getItem('iconeezin_anon_id')) {
+			var visit = (parseInt(sessionStorage.getItem('iconeezin_visit_id')) || 0) + 1;
+			this.trackingID = sessionStorage.getItem('iconeezin_anon_id') + '.' + visit;
+			sessionStorage.setItem('iconeezin_visit_id', visit);
+		} else {
+			sessionStorage.setItem('iconeezin_anon_id', this.trackingID);
+			sessionStorage.setItem('iconeezin_visit_id', 1);
+			this.trackingID += '.1';
+		}
 	}
 	console.info('Your tracking ID is ' + this.trackingID);
 
