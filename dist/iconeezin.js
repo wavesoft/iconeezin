@@ -50985,7 +50985,6 @@ var Iconeezin =
 				this.trackingID += '.1';
 			}
 		}
-		console.info('Your tracking ID is ' + this.trackingID);
 
 		// Results
 		this.results = [];
@@ -51028,11 +51027,27 @@ var Iconeezin =
 		  ga('send', 'pageview');
 			this.tracking = true;
 
+			// Update tracking ID
+			console.info('Your tracking ID is ' + this.trackingID);
+
 			// Feed pending events
 			this.events.forEach((event) => {
 				this.feedEvent(event);
 			});
 			this.events = [];
+		}
+	}
+
+	/**
+	 * Set a custom tracking ID
+	 */
+	TrackingCore.setTrackingID = function( id ) {
+		this.trackingID = id;
+		if (window.sessionStorage) {
+			var visit = (parseInt(sessionStorage.getItem('iconeezin_visit_id')) || 0) + 1;
+			sessionStorage.setItem('iconeezin_anon_id', this.trackingID);
+			sessionStorage.setItem('iconeezin_visit_id', visit);
+			this.trackingID = id + '.' + visit;
 		}
 	}
 
@@ -52331,11 +52346,17 @@ var Iconeezin =
 				return;
 			}
 
-			// Initialize tracking
+			// Check if hash refers to a tracking ID
+			var hash = String(window.location.hash).substr(1);
+			if (hash.startsWith('u-')) {
+				TrackingCore.setTrackingID(hash);
+				hash = '';
+			}
+
+			// Start tracking
 			TrackingCore.setup(this.meta.tracking || {});
 
 			// Load default experiment if hash missing
-			var hash = String(window.location.hash).substr(1);
 			if (!hash) {
 				this.showExperiment( this.meta.experiments[ this.activeExperimentId ].name );
 			} else {

@@ -56,7 +56,6 @@ TrackingCore.initialize = function() {
 			this.trackingID += '.1';
 		}
 	}
-	console.info('Your tracking ID is ' + this.trackingID);
 
 	// Results
 	this.results = [];
@@ -99,11 +98,27 @@ TrackingCore.setup = function( trackingConfig ) {
 	  ga('send', 'pageview');
 		this.tracking = true;
 
+		// Update tracking ID
+		console.info('Your tracking ID is ' + this.trackingID);
+
 		// Feed pending events
 		this.events.forEach((event) => {
 			this.feedEvent(event);
 		});
 		this.events = [];
+	}
+}
+
+/**
+ * Set a custom tracking ID
+ */
+TrackingCore.setTrackingID = function( id ) {
+	this.trackingID = id;
+	if (window.sessionStorage) {
+		var visit = (parseInt(sessionStorage.getItem('iconeezin_visit_id')) || 0) + 1;
+		sessionStorage.setItem('iconeezin_anon_id', this.trackingID);
+		sessionStorage.setItem('iconeezin_visit_id', visit);
+		this.trackingID = id + '.' + visit;
 	}
 }
 

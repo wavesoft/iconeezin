@@ -88,11 +88,17 @@ ExperimentsCore.initialize = function() {
 			return;
 		}
 
-		// Initialize tracking
+		// Check if hash refers to a tracking ID
+		var hash = String(window.location.hash).substr(1);
+		if (hash.startsWith('u-')) {
+			TrackingCore.setTrackingID(hash);
+			hash = '';
+		}
+
+		// Start tracking
 		TrackingCore.setup(this.meta.tracking || {});
 
 		// Load default experiment if hash missing
-		var hash = String(window.location.hash).substr(1);
 		if (!hash) {
 			this.showExperiment( this.meta.experiments[ this.activeExperimentId ].name );
 		} else {
