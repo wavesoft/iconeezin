@@ -77,6 +77,7 @@ TrackingCore.initialize = function() {
 
 	// Event tracking
 	this.events = [];
+	this.supported = true;
 	this.tracking = false;
 
 }
@@ -88,24 +89,37 @@ TrackingCore.setup = function( trackingConfig ) {
 	if (trackingConfig.engine === 'GA') {
 
 		// Google analytics bootstrap
+		var script =
 		(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
 		(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-		})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+		m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m);
+		return a;})(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
 		// Start tracker
 		ga('create', trackingConfig.id, 'auto');
 	  ga('send', 'pageview');
 		this.tracking = true;
 
-		// Update tracking ID
-		console.info('Your tracking ID is ' + this.trackingID);
+		script.addEventListener('load', (function() {
 
-		// Feed pending events
-		this.events.forEach((event) => {
-			this.feedEvent(event);
-		});
-		this.events = [];
+			// Update tracking ID
+			console.info('Your tracking ID is ' + this.trackingID);
+
+			// Feed pending events
+			this.events.forEach((event) => {
+				this.feedEvent(event);
+			});
+			this.events = [];
+
+		}).bind(this));
+		script.addEventListener('error', (function() {
+
+			// Update tracking ID
+			console.warn('Tracking blocked or network unreachable');
+			this.supported = false;
+
+		}).bind(this));
+
 	}
 }
 
@@ -221,6 +235,11 @@ TrackingCore.trackEvent = function( name, properties, sum_properties ) {
 		experiment: this.activeExperimentName,
 		task: this.activeTaskName
 	};
+
+	// Ignore if tracking is not supported
+	if (!this.supported) {
+		return;
+	}
 
 	// Keep/send tracking info
 	if (this.tracking) {
