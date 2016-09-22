@@ -318,7 +318,7 @@ VoiceCommands.prototype.probeSupport = function( callback ) {
 
 	// Check for missing support
 	if (!SpeechRecognition) {
-		callback(false, 'Missing speech recognition support');
+		callback(false, 'Your browser is not supporting the WebSpeechRecognition API, needed for this project to run. Please use Google Chrome, or make sure the feature is enabled in your configuration');
 		return;
 	}
 
@@ -339,7 +339,7 @@ VoiceCommands.prototype.probeSupport = function( callback ) {
 	probeRecognition.onerror = function() {
 		if (didStart) return;
 		// Erroreus callback
-		callback(false);
+		callback(false, 'You denied access to your microphone. This project requires microphone access in order to accept voice commands.');
 	};
 
 	// Start

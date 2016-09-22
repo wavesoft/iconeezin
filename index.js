@@ -155,9 +155,9 @@ module.exports = {
 		'preflight': function(cb_results) {
 
 			// First perform a speech recognition pre-flight
-			AudioCore.voiceCommands.probeSupport(function (hasSupport) {
+			AudioCore.voiceCommands.probeSupport(function (hasSupport, errorMessage) {
 				if (!hasSupport) {
-					cb_results(false, 'Unable to initialize speech recognition');
+					cb_results(false, errorMessage || 'Unable to initialize speech recognition');
 					return;
 				}
 
