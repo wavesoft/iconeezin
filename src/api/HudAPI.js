@@ -113,7 +113,7 @@ HUDLayer.prototype = {
     // Snap canvas to multiplicants of power of 2
     this.canvas.width = Math.pow(2, Math.ceil(Math.log2(width))) * this.pixelRatio;
     this.canvas.height = Math.pow(2, Math.ceil(Math.log2(height))) * this.pixelRatio;
-    this.canvas.style = "width: "+width+"px; height: "+height+" px;";
+    this.canvas.style.cssText = "width: "+width+"px; height: "+height+" px;";
 
     // Keep real size available
     this.size.set( width, height );
