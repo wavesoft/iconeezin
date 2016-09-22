@@ -110,6 +110,17 @@ ExperimentsCore.initialize = function() {
 }
 
 /**
+ * Set a particular hash to use for unhashing bundle requests
+ */
+ExperimentsCore.setCacheHash = function( hash ) {
+	if (hash) {
+		Loaders.requestSuffix = '?_=' + hash;
+	} else {
+		Loaders.requestSuffix = '';
+	}
+}
+
+/**
  * Set paused state
  */
 ExperimentsCore.loadMetadata = function( callback ) {
