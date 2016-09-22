@@ -20,7 +20,8 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-const VERSION = "1.0.0";
+const meta = require("./package.json");
+const VERSION = meta.version;
 
 // Load libraries as soon as possible
 var libTHREE = require("three");
@@ -50,6 +51,9 @@ var SequencerUtil = require("./src/runtime/util/SequencerUtil");
  * Expose useful parts of the runtime API
  */
 module.exports = {
+
+	// Runtime version
+	'Version': VERSION,
 
 	// Iconeezin Configuration
 	'Config': DefaultConfig,
