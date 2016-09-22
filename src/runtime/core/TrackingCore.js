@@ -106,9 +106,9 @@ TrackingCore.setup = function( trackingConfig ) {
 			console.info('Your tracking ID is ' + this.trackingID);
 
 			// Feed pending events
-			this.events.forEach((event) => {
+			this.events.forEach((function(event) {
 				this.feedEvent(event);
-			});
+			}).bind(this));
 			this.events = [];
 
 		}).bind(this));
@@ -176,7 +176,7 @@ TrackingCore.feedEvent = function( event ) {
 	}
 
 	// Fire summaries
-	sumPropertyKeys.forEach((key) => {
+	sumPropertyKeys.forEach((function(key) {
 		// console.debug("Feed", this.trackingID, ',', group, ',', event.name + '.' + label + '+' + key, ',', event.sum_properties[key]);
 		ga('send', 'event',
 			this.trackingID,											// Category : User ID
@@ -184,7 +184,7 @@ TrackingCore.feedEvent = function( event ) {
 			event.name + '.' + label + '+' + key,	// Label		: event.prop:value
 			event.sum_properties[key]							// Value 		: custom
 		);
-	});
+	}).bind(this));
 
 }
 

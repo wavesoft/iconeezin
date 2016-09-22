@@ -12,7 +12,7 @@ gulp.task('js/iconeezin', function() {
 			module: {
 				loaders: [
 					{ test: /\.json$/, loader: 'json' },
-					{ test: /\.(png|jpg)$/, loader: 'url-loader?limit=8192&name=img/[name].[ext]' },
+					{ test: /\.(png|jpg)$/, loader: 'url-loader?limit=8192&name=img/[name].[ext]' }
 				]
 	    },
 			node: {
@@ -25,9 +25,9 @@ gulp.task('js/iconeezin', function() {
 			},
 			plugins: [
 				new webpack.webpack.optimize.DedupePlugin(),
-				// new webpack.webpack.optimize.UglifyJsPlugin({
-				// 	minimize: true
-				// })
+				new webpack.webpack.optimize.UglifyJsPlugin({
+					minimize: true
+				})
 			],
 			resolve: {
 				modulesDirectories: [
@@ -42,7 +42,7 @@ gulp.task('js/iconeezin', function() {
 					'three' : path.join(__dirname, 'node_modules/three'),
 					'jbb' : path.join(__dirname, 'node_modules/jbb'),
 					'jbb-profile-three' : path.join(__dirname, 'node_modules/jbb-profile-three'),
-					'jbb-profile-iconeezin' : path.join(__dirname, 'node_modules/jbb-profile-iconeezin'),
+					'jbb-profile-iconeezin' : path.join(__dirname, 'node_modules/jbb-profile-iconeezin')
 
 				}
 			}

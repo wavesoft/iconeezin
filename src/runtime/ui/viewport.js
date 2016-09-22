@@ -628,9 +628,9 @@ Viewport.prototype.addSceneObject = function( sceneObject ) {
  * Replace scene (with an active experiment usually)
  */
 Viewport.prototype.setScene = function( scene ) {
-	this.sceneObjects.forEach((obj) => {
+	this.sceneObjects.forEach((function(obj) {
 		this.scene.remove(obj);
-	});
+	}).bind(this));
 
 	this.scene = scene;
 	this.renderPass.scene = scene;
@@ -638,9 +638,9 @@ Viewport.prototype.setScene = function( scene ) {
 	// Update shadow map
 	this.renderer.shadowMap.needsUpdate = true;
 
-	this.sceneObjects.forEach((obj) => {
+	this.sceneObjects.forEach((function(obj) {
 		this.scene.add(obj);
-	});
+	}).bind(this));
 }
 
 /**

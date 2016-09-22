@@ -77,6 +77,9 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 
 	var do_setup = (function() {
 
+		// Trigger onload before showing on scene
+		this.activeExperiment.onLoad( this.activeExperiment.database );
+
 		// Add experiment on scene
 		console.log("Adding", this.activeExperiment);
 		this.viewport.setScene( this.activeExperiment );
@@ -88,7 +91,6 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 
 		// Trigger transition callback
 		if (cb_transition) cb_transition();
-		this.activeExperiment.onLoad( this.activeExperiment.database );
 
 		// Fade-in
 		do_fadein();
