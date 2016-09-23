@@ -170,8 +170,13 @@ ExperimentsCore.setPaused = function( paused ) {
  */
 ExperimentsCore.showResults = function( meta ) {
 
-	// Reset all stopable timers
+	// First phase of resetting sequence
+	AudioCore.reset();
 	StopableTimers.reset();
+	SequencerUtil.reset();
+
+	// Upload results to results room
+	this.resultsRoom.setResults( TrackingCore.results, this.meta );
 
 	// Focus to results room
 	this.experiments.focusExperiment( this.resultsRoom,
@@ -180,8 +185,7 @@ ExperimentsCore.showResults = function( meta ) {
 			ControlsCore.updateInteractions();
 		},
 		function() {
-			// Reset controls core only when it's not visible
-			AudioCore.reset();
+			// Second phase of resetting sequence
 			ControlsCore.reset();
 			VideoCore.reset();
 		}
@@ -321,7 +325,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 ExperimentsCore.experimentCompleted = function() {
 	var next = this.meta.experiments[this.activeExperimentId+1];
 	if (!next) {
-		alert('done!');
+		this.showResults();
 
 	} else {
 

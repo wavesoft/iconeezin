@@ -427,7 +427,7 @@ TrackingCore.startExperiment = function( name, meta, callback ) {
 		this.completeExperiment();
 	}
 
-	// Query experiment metadata
+	// // Query experiment metadata
 	// this.queryExperimentMeta(name, (function(meta) {
 
 		// Activate experiment
