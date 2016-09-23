@@ -27,7 +27,7 @@ Sequence.prototype.playAudio = function( audio_file ) {
 
       // Create a new audio file instance and play when ready
       var instance = audio_file.create(function() {
-        instance.play();
+        this.play();
       });
 
       // Make resetable with custom pause hook
@@ -105,7 +105,8 @@ Sequence.prototype.sleep = function( sleep_ms ) {
   if (this._parent) this._parent._next = this;
   this._continueCallback = (function( next_cb ) {
 
-    StopableTimers.setTimeout( next_cb, sleep_ms );
+    // Delay the given time
+    StopableTimers.setTimeout(next_cb, sleep_ms);
     return this._next;
 
   }).bind(this);

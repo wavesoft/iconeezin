@@ -67,9 +67,10 @@ AudioFile.prototype.create = function(create_cb) {
 	AudioCore.makeResetable( sound );
 
 	// Load buffer & play
+	var scope = this;
 	this.load(function( buffer ) {
 		sound.setBuffer( buffer );
-		if (create_cb) create_cb();
+		if (create_cb) create_cb.call(sound);
 	});
 
 	// Return sound object
