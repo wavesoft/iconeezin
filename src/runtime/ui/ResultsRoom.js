@@ -257,9 +257,10 @@ ResultsRoom.prototype = Object.assign( Object.create( ExperimentsAPI.Experiment.
 			if (result.results._recording) icon = 0;
 
 			// Normaliz the name
+			var task = result.task.replace('-', ' ');
 			var title = result.experiment[0].toUpperCase() +
 									result.experiment.substr(1).toLowerCase() + ' / ' +
-									result.task.replace('-', ' ');
+									task[0].toUpperCase() + task.substr(1).toLowerCase();
 
 			// Create button
 			this.addButton( PAINT_BLOCK(
