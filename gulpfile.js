@@ -2,6 +2,7 @@ var path 	= require('path');
 var gulp 	= require('gulp');
 var gutil 	= require('gulp-util');
 var webpack = require('webpack-stream');
+var PROD = (process.env.NODE_ENV || "production") == "production";
 
 /**
  * Compile and pack Javascript files
@@ -23,12 +24,12 @@ gulp.task('js/iconeezin', function() {
 				libraryTarget: 'var',
 				library: 'Iconeezin'
 			},
-			plugins: [
+			plugins: PROD ? [
 				new webpack.webpack.optimize.DedupePlugin(),
 				new webpack.webpack.optimize.UglifyJsPlugin({
 					minimize: true
 				})
-			],
+			] : [],
 			resolve: {
 				modulesDirectories: [
 					'lib', 'node_modules'

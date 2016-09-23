@@ -38,3 +38,6 @@ node_modules
 
 # Minified experiment entry points
 experiments/*.jbbsrc/.build.js
+
+# Backups
+*.backup

@@ -105,7 +105,7 @@ var SpeechRecognition = window.SpeechRecognition ||
 /**
  * Voice Commands API
  */
-var VoiceCommands = function() {
+var VoiceCommands = function( videoCore ) {
 
 	// Check if speech recognition is available
 	this.available = !!SpeechRecognition;
@@ -115,30 +115,44 @@ var VoiceCommands = function() {
 	this.recognition = new SpeechRecognition();
 
 	// Local properties
+	this.prompt = 'Παρακαλώ μιλήστε'
 	this.active = false;
+	this.started = false;
+	this.paused = false;
 	this.resultsCallbacks = [];
 
 	// Bind events
 	this.recognition.onend = (function(e) {
-		this.active = false;
-		this.resultsCallbacks = [];
+		videoCore.hideInteractionLabel();
+		this.started = false;
+
+		// If paused ignore deactivation
+		if (this.paused) return;
+
+		// Retart when active
+		if (!this.active) return;
+		setTimeout((function() {
+			this.recognition.start();
+		}).bind(this), 500);
+
 	}).bind(this);
 	this.recognition.onstart = (function(e) {
-		this.active = true;
+		videoCore.showInteractionLabel(this.prompt);
+		this.started = true;
+
 	}).bind(this);
 	this.recognition.onerror = (function(e) {
 		console.error("Speech recognition error:",e);
-		if (this.active) {
-			this.active = false;
-		}
-		for (var i=0, l=this.resultsCallbacks.length; i<l; ++i)
-			this.resultsCallbacks[i](null, e);
+		this.resultsCallbacks.forEach(function(cb) {
+			cb(null, e);
+		});
 	}).bind(this);
 	this.recognition.onresult = (function(e) {
 		var result = e.results[e.resultIndex];
 		// console.log("Heard: '" + e.results[0][0].transcript + "' (confidence="+ e.results[0][0].confidence + ")")
-		for (var i=0, l=this.resultsCallbacks.length; i<l; ++i)
-			this.resultsCallbacks[i](result, null);
+		this.resultsCallbacks.forEach(function(cb) {
+			cb(result, null);
+		});
 	}).bind(this);
 
 	// // Debug events
@@ -180,15 +194,34 @@ VoiceCommands.prototype.setLanguage = function( lang ) {
  */
 VoiceCommands.prototype.startDictation = function() {
 	if (this.active) return;
+	this.active = true;
 	this.recognition.start();
 };
+
+/**
+ * Stop dictation
+ */
+VoiceCommands.prototype.stopDictation = function() {
+
+	// Stop if started
+	if (this.started) {
+		this.recognition.stop();
+		this.started = false;
+	}
+
+	// Deactivate if active
+	if (!this.active) return;
+	this.active = false;
+	this.resultsCallbacks = [];
+
+}
 
 /**
  * Reset state of voice commands API
  */
 VoiceCommands.prototype.reset = function() {
 
-	// Stop if active
+	// Stop if running
 	if (this.active) {
 		this.active = false;
 		this.recognition.abort();
@@ -202,12 +235,14 @@ VoiceCommands.prototype.reset = function() {
  * The progress callback will be fired with interim results and other metadata
  * regarding the speaking progress.
  */
-VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
+VoiceCommands.prototype.expectPhrase = function( phrase, progress, prompt ) {
+	this.prompt = prompt || 'Παρακαλώ μιλήστε';
 
 	// Create a callback delegate to receive speech events
 	var last_confidence = 0;
 	var cb = function( results, error ) {
 		if (error) {
+			this.stopDictation();
 			return;
 		}
 
@@ -230,6 +265,11 @@ VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
 			'transcript': transcript
 		};
 
+		// Disable when completed
+		if (results.isFinal) {
+			this.stopDictation();
+		}
+
 		// Callback with progress
 		if (progress) progress( meta );
 		console.log(meta);
@@ -237,7 +277,7 @@ VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
 	};
 
 	// Start dictation
-	this.resultsCallbacks.push(cb);
+	this.resultsCallbacks.push(cb.bind(this));
 	this.startDictation();
 
 };
@@ -245,7 +285,8 @@ VoiceCommands.prototype.expectPhrase = function( phrase, progress ) {
 /**
  * Expect one of the given gommand(s)
  */
-VoiceCommands.prototype.expectCommands = function( commands, error_cb ) {
+VoiceCommands.prototype.expectCommands = function( commands, error_cb, prompt ) {
+	this.prompt = prompt || 'Παρακαλώ μιλήστε';
 
 	// Compile regex
 	var _commands = Object.keys(commands).map(function (command) {
@@ -259,6 +300,7 @@ VoiceCommands.prototype.expectCommands = function( commands, error_cb ) {
 	var last_confidence = 0;
 	var cb = function( results, error ) {
 		if (error) {
+			this.stopDictation();
 			error_cb(error, null);
 			return;
 		}
@@ -273,6 +315,9 @@ VoiceCommands.prototype.expectCommands = function( commands, error_cb ) {
 				var result = results[i];
 				var transcript = result.transcript;
 				if (handled) return;
+
+				// Stop dictation
+				this.stopDictation();
 
 				// Match commands
 				_commands.forEach(function (command) {
@@ -290,6 +335,7 @@ VoiceCommands.prototype.expectCommands = function( commands, error_cb ) {
 
 			// If nothing matched, fire unknown callback
 			if (!handled && error_cb) {
+				this.stopDictation();
 				error_cb(null, lastTranscript);
 			}
 		}
@@ -297,16 +343,22 @@ VoiceCommands.prototype.expectCommands = function( commands, error_cb ) {
 	};
 
 	// Start dictation
-	this.resultsCallbacks.push(cb);
+	this.resultsCallbacks.push(cb.bind(this));
 	this.startDictation();
 
 }
 
 /**
- * Enable voice commands
+ * Toggle paused state of voice commands
  */
 VoiceCommands.prototype.setPaused = function( isPaused ) {
-
+	this.paused = isPaused;
+	if (!this.active) return;
+	if (isPaused) {
+		this.recognition.stop();
+	} else {
+		this.recognition.start();
+	}
 }
 
 /**

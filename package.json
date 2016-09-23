@@ -4,7 +4,9 @@
   "description": "A Web VR Platform for social experiments",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "live": "NODE_ENV=debug gulp live",
+    "dist": "npm version patch && NODE_ENV=production gulp && git commit -a -m \"Build $(cat package.json | grep '\"version\":' | awk -F': ' '{print $2}' | tr -d '\",')\""
   },
   "repository": {
     "type": "git",

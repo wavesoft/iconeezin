@@ -2,23 +2,25 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
+
+const DEBUG_TIMERS = false;
 
 /**
  * StopableTimers is a set of setTimeout and setInterval
@@ -27,67 +29,108 @@
 var StopableTimers = {};
 
 /**
- * List of active timers
+ * Scheduled timer events
  */
-var activeTimers = [],
-	lastID = 0;
+var timers = [];
+var is_paused = true;
+var is_scheduled = false;
+var schedule_timer = null;
+var last_id = 0;
 
 /**
- * Helpers
+ * This function triggers all the expired timer events and
+ * optionally re-schedules the restarting ones
  */
-var helperTimer  = null,
-	helperDelay = 1000,
-	helperPaused = true;
+function cron() {
+	var now = Date.now();
+	if (DEBUG_TIMERS) console.debug('timer.cron now=', now);
+	timers = timers.reduce(function(new_timers, timer) {
+		if (DEBUG_TIMERS) console.debug('timer.cron.expires id=', timer.id, ', at=', timer.expiresAt, ', remains=', timer.expiresAt - now);
+		if (now >= timer.expiresAt) {
+			if (DEBUG_TIMERS) console.debug('timer.cron.trigger id=', timer.id);
 
-/**
- * Helper function to trigger timers
- */
-var helperFn = function() {
-	var now = Date.now(), swap = [];
-	if (helperPaused) return;
-	
-	// Process timers
-	for (var i=0, l=activeTimers.length; i<l; ++i) {
-		var t = activeTimers[i];
-		if (now >= t.expires) {
-			try { t.fn(); } catch (x) {	}
-			if (t.restart) {
-				t.expires = now + t.delay;
-				swap.push(t);
+			// Trigger timer callback
+			try {
+				timer.fn();
+			} catch(e) {};
+
+			// Restart restartable timers
+			if (timer.restart) {
+				if (DEBUG_TIMERS) console.debug('timer.cron.reschedule id=', timer.id, ', remains=', timer.delay);
+				timer.remains = timer.delay;
+				thaw(timer);
+				new_timers.push(timer);
 			}
-		} else {
-			swap.push(t);
-		}
-	}
-	
-	// Swap arrays
-	activeTimers = swap;
-	if (swap.length == 0) {
-		clearInterval(helperTimer);
-		helperDelay = 1000;
-		helperTimer = null;
-	}
 
+		} else {
+
+			// Keep non-expired timers
+			new_timers.push(timer);
+
+		}
+
+		return new_timers;
+	}, []);
+
+	// Re-schedule new tick
+	if (DEBUG_TIMERS) console.debug('timer.cron.timers count=', timers.length);
+	if (!is_paused && timers.length) schedule();
 }
 
 /**
- * Re-schedule helper with the given resolution in milliseconds
+ * Recalibration function in order to calculate
  */
-var tuneHelper = function(resolution) {
+function schedule() {
+	var now = Date.now();
+	var min_delay = timers.reduce(function(curr_delay, timer) {
+		var delay = timer.expiresAt - now;
+		if (delay < curr_delay) {
+			if (DEBUG_TIMERS) console.debug('timer.schedule.min id=', timer.id, ', delay=', delay);
+			return delay;
+		}
 
-	// Calculate effective resolution (max 60 fps)
-	resolution = Math.round( resolution / 3 );
-	if (resolution < 16) resolution = 16;
+		return curr_delay;
+	}, Infinity);
 
-	// Check if we should replace existing function
-	if ((resolution < helperDelay) || !helperTimer) {
-		if (helperTimer) clearInterval(helperTimer);
+	// No event found
+	if (min_delay === Infinity) return;
 
-		// Schedule helper timer
-		helperDelay = resolution;
-		helperTimer = setInterval( helperFn, resolution );
+	// Schedule cron event
+	if (DEBUG_TIMERS) console.debug('timer.schedule.cron at=', min_delay);
+	is_scheduled = true;
+	schedule_timer = setTimeout(cron, min_delay);
+}
 
-	}
+/**
+ * Stop a possibly active schedule
+ */
+function unschedule() {
+	if (!is_scheduled || !schedule_timer) return;
+	if (DEBUG_TIMERS) console.debug('timer.unschedule');
+	clearTimeout(schedule_timer);
+	is_scheduled = false;
+	schedule_timer = null;
+}
+
+/**
+ * Thaw (enable) a timer record
+ */
+function thaw(timer) {
+	var now = Date.now();
+	var delay = timer.remains || timer.delay;
+
+	timer.at = now;
+	timer.expiresAt = now + delay;
+	if (DEBUG_TIMERS) console.debug('timer.thaw id=', timer.id, ', expiresAt=', timer.expiresAt, ' (', delay, 'ms + now)');
+}
+
+/**
+ * Freeze (disable) a timer record
+ */
+function freeze(timer) {
+	var now = Date.now();
+	timer.remains = timer.expiresAt - now;
+	if (DEBUG_TIMERS) console.debug('timer.freeze id=', timer.id, ', remains=', timer.remains);
 }
 
 /**
@@ -95,15 +138,15 @@ var tuneHelper = function(resolution) {
  */
 StopableTimers.setTimeout = function(fn, delay) {
 	var timer = {
-		'id': lastID++,
-		'fn': fn,
-		'delay': delay,
-		'expires': Date.now() + delay,
-		'remains': delay,
-		'restart': false
+		id 			: ++last_id,
+		delay 	: delay,
+		fn 			: fn,
+		restart : false
 	};
-	activeTimers.push(timer);
-	tuneHelper( delay );
+	timers.push(timer);
+	if (!is_paused) thaw(timer);
+	if (!is_scheduled) schedule();
+
 	return timer.id;
 }
 
@@ -112,15 +155,15 @@ StopableTimers.setTimeout = function(fn, delay) {
  */
 StopableTimers.setInterval = function(fn, delay) {
 	var timer = {
-		'id': lastID++,
-		'fn': fn,
-		'delay': delay,
-		'expires': Date.now() + delay,
-		'remains': delay,
-		'restart': true
+		id 			: ++last_id,
+		delay 	: delay,
+		fn 			: fn,
+		restart : true
 	};
-	activeTimers.push(timer);
-	tuneHelper( delay );
+	timers.push(timer);
+	if (!is_paused) thaw(timer);
+	if (!is_scheduled) schedule();
+
 	return timer.id;
 }
 
@@ -128,33 +171,27 @@ StopableTimers.setInterval = function(fn, delay) {
  * Clear a timeout
  */
 StopableTimers.clearTimeout = StopableTimers.clearInterval = function(id) {
-	for (var i=0, l=activeTimers.length; i<l; ++i) {
-		var t = activeTimers[i];
-		if (t.id === id) {
-			activeTimers.splice( i, 1 );
-			return true;
-		}
-	}
-	return false;
+	var i = timers.findIndex(function(timer) {
+		return timer === id;
+	});
+
+	// Remove matching timer
+	if (i >= 0) timers.splice(i,1);
 }
 
 /**
  * Set paused/running state
  */
 StopableTimers.setPaused = function( paused ) {
-	var now = Date.now();
-	if (paused && !helperPaused) {
-		for (var i=0, l=activeTimers.length; i<l; ++i) {
-			var t = activeTimers[i];
-			t.remains = t.expires - now;
-		}
-		helperPaused = true;
-	} else if (!paused && helperPaused) {
-		for (var i=0, l=activeTimers.length; i<l; ++i) {
-			var t = activeTimers[i];
-			t.expires = now + t.remains;
-		}
-		helperPaused = false;
+	if (paused == is_paused) return;
+	is_paused = paused;
+
+	if (paused) {
+		timers.forEach(freeze);
+		unschedule();
+	} else {
+		timers.forEach(thaw);
+		if (timers.length) schedule();
 	}
 }
 
@@ -162,14 +199,8 @@ StopableTimers.setPaused = function( paused ) {
  * Stop and remove all timers
  */
 StopableTimers.reset = function() {
-	if (helperTimer) {
-		clearTimeout(helperTimer);
-	}
-
-	helperTimer = null;
-	helperDelay = 1000;
-	helperPaused = true;
-	activeTimers = [];
+	unschedule();
+	timers = [];
 }
 
 

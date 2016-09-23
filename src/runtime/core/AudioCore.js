@@ -33,7 +33,7 @@ var AudioCore = {};
 /**
  * Initialize the audio core
  */
-AudioCore.initialize = function() {
+AudioCore.initialize = function( videoCore ) {
 
 	/**
 	 * Three.js linstener (user speakers)
@@ -51,7 +51,7 @@ AudioCore.initialize = function() {
 	 * API to voice commands
 	 * @property
 	 */
-	this.voiceCommands = new VoiceCommands();
+	this.voiceCommands = new VoiceCommands( videoCore );
 
 	/**
 	 * API to voice effects
@@ -154,12 +154,12 @@ AudioCore.setGlobalMute = function( muted ) {
 			.completed((function() {
 
 				// Pause paying audio
-				for (var i=0; i<this.resetable.length; i++) {
-					if (this.resetable[i].isPlaying) {
-						this.resetable[i].pause();
-						this.paused.push( this.resetable[i] );
+				this.resetable.forEach((function (audio) {
+					if (audio.isPlaying) {
+						audio.pause()
+						this.paused.push( audio );
 					}
-				}
+				}).bind(this));
 
 			}).bind(this))
 			.start();
@@ -167,9 +167,9 @@ AudioCore.setGlobalMute = function( muted ) {
 	} else {
 
 		// Unpause paused
-		for (var i=0; i<this.paused.length; i++) {
-			this.paused[i].play();
-		}
+		this.paused.forEach(function (audio) {
+			audio.play();
+		});
 		this.paused = [];
 
 		// Fade in

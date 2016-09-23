@@ -1,4 +1,6 @@
 var THREE = require('three');
+var StopableTimers = require("./StopableTimers");
+var AudioCore = require("../core/AudioCore");
 
 var activeSequences = [ ];
 
@@ -28,11 +30,25 @@ Sequence.prototype.playAudio = function( audio_file ) {
         instance.play();
       });
 
+      // Make resetable with custom pause hook
+      var ignoreEnded = false;
+      instance.pause = function() {
+        ignoreEnded = true;
+        THREE.Audio.prototype.pause.call(instance);
+      }
+      instance.play = function() {
+        ignoreEnded = false;
+        THREE.Audio.prototype.play.call(instance);
+      }
+
       // Wait for it to complete and go to next task
       instance.source.onended = function() {
         THREE.Audio.prototype.onEnded.call(instance);
-        next_cb();
+        if (!ignoreEnded) next_cb();
       }
+
+      // Make resetable
+      AudioCore.makeResetable( instance );
 
     }, 1);
 
@@ -89,7 +105,7 @@ Sequence.prototype.sleep = function( sleep_ms ) {
   if (this._parent) this._parent._next = this;
   this._continueCallback = (function( next_cb ) {
 
-    setTimeout( next_cb, sleep_ms );
+    StopableTimers.setTimeout( next_cb, sleep_ms );
     return this._next;
 
   }).bind(this);

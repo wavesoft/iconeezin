@@ -85,7 +85,7 @@ module.exports = {
 
 			// Initialize core components
 			VideoCore.initialize( viewportDOM, canvasDOM );
-			AudioCore.initialize(),
+			AudioCore.initialize( VideoCore ),
 			ControlsCore.initialize();
 			TrackingCore.initialize();
 			ExperimentsCore.initialize();
