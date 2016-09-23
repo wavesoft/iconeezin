@@ -1,6 +1,6 @@
 {
   "name": "iconeezin",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A Web VR Platform for social experiments",
   "main": "index.js",
   "scripts": {
