@@ -222,10 +222,7 @@ VoiceCommands.prototype.stopDictation = function() {
 VoiceCommands.prototype.reset = function() {
 
 	// Stop if running
-	if (this.active) {
-		this.active = false;
-		this.recognition.abort();
-	}
+	this.stopDictation();
 
 };
 

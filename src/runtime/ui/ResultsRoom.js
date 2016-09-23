@@ -2,17 +2,17 @@
 /**
  * Iconeez.in - A Web VR Platform for social experiments
  * Copyright (C) 2015 Ioannis Charalampidis <ioannis.charalampidis@cern.ch>
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
@@ -134,7 +134,7 @@ var ResultsRoom = function() {
 	this.anchor.position.set( 0, 0, 0 );
 
 	// Create a sphere for equirectangular VR
-	var geom = new THREE.SphereGeometry( 500, 60, 40 );
+	var geom = new THREE.SphereGeometry( 200, 60, 40 );
 	var mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
 	geom.scale( -1, 1, 1 );
 
@@ -150,7 +150,7 @@ var ResultsRoom = function() {
 
 	// Create the sphere mesh
 	var mesh = new THREE.Mesh( geom, mat );
-	mesh.rotation.x = Math.PI/2;
+	mesh.rotation.set(Math.PI/2,-Math.PI/2-0.3,0);
 	this.add( mesh );
 
 	// Local properties
@@ -254,7 +254,7 @@ ResultsRoom.prototype = Object.assign( Object.create( ExperimentsAPI.Experiment.
 	},
 
 	/**
-	 * Add a button to the screen 
+	 * Add a button to the screen
 	 */
 	addButton: function( cb_paint, cb_click ) {
 
@@ -320,10 +320,10 @@ ResultsRoom.prototype = Object.assign( Object.create( ExperimentsAPI.Experiment.
 	onUpdate: function( delta ) {
 		var center = new THREE.Vector3(0,0,0);
 		for (var i=0, l=this.buttons.length; i<l; ++i) {
-			var pvt = this.buttons[i][0], 
+			var pvt = this.buttons[i][0],
 				btn = this.buttons[i][1], target = null;
 
-			// 
+			//
 			if (btn.isHover) {
 				target = btn.original_position.clone().multiplyScalar(4/5);
 				target.z = -pvt.position.z * 1/3;
@@ -331,7 +331,7 @@ ResultsRoom.prototype = Object.assign( Object.create( ExperimentsAPI.Experiment.
 				target = btn.original_position;
 			}
 
-			// 
+			//
 			if (target && !btn.position.equals(target)) {
 				btn.position.add( target.clone().sub( btn.position ).divideScalar(10) );
 				if (btn.position.distanceTo( target ) < 0.1)

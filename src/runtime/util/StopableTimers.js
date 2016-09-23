@@ -20,7 +20,7 @@
  * @author Ioannis Charalampidis / https://github.com/wavesoft
  */
 
-const DEBUG_TIMERS = false;
+const DEBUG_TIMERS = true;
 
 /**
  * StopableTimers is a set of setTimeout and setInterval
@@ -43,6 +43,8 @@ var last_id = 0;
  */
 function cron() {
 	var now = Date.now();
+	is_scheduled = false;
+
 	if (DEBUG_TIMERS) console.debug('timer.cron now=', now);
 	timers = timers.reduce(function(new_timers, timer) {
 		if (DEBUG_TIMERS) console.debug('timer.cron.expires id=', timer.id, ', at=', timer.expiresAt, ', remains=', timer.expiresAt - now);
@@ -97,8 +99,8 @@ function schedule() {
 
 	// Schedule cron event
 	if (DEBUG_TIMERS) console.debug('timer.schedule.cron at=', min_delay);
-	is_scheduled = true;
 	schedule_timer = setTimeout(cron, min_delay);
+	is_scheduled = true;
 }
 
 /**
