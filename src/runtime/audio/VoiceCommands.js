@@ -195,7 +195,9 @@ VoiceCommands.prototype.setLanguage = function( lang ) {
 VoiceCommands.prototype.startDictation = function() {
 	if (this.active) return;
 	this.active = true;
-	this.recognition.start();
+	try {
+		this.recognition.start();
+	} catch (e) { }
 };
 
 /**
@@ -205,8 +207,10 @@ VoiceCommands.prototype.stopDictation = function() {
 
 	// Stop if started
 	if (this.started) {
-		this.recognition.stop();
 		this.started = false;
+		try {
+			this.recognition.stop();
+		} catch (e) { }
 	}
 
 	// Deactivate if active
@@ -351,11 +355,13 @@ VoiceCommands.prototype.expectCommands = function( commands, error_cb, prompt ) 
 VoiceCommands.prototype.setPaused = function( isPaused ) {
 	this.paused = isPaused;
 	if (!this.active) return;
-	if (isPaused) {
-		this.recognition.stop();
-	} else {
-		this.recognition.start();
-	}
+	try {
+		if (isPaused) {
+			this.recognition.stop();
+		} else {
+			this.recognition.start();
+		}
+	} catch (e) { }
 }
 
 /**

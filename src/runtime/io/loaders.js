@@ -132,5 +132,18 @@ Loaders.loadExperimentClass = function( experiment, callback ) {
 
 }
 
+/**
+ * Unload experiment by removing prefixed objects from jbb database
+ */
+Loaders.unloadExperiment = function( name ) {
+	var db = this.jbbLoader.database;
+	Object.keys(db).forEach(function(key) {
+		if (key.startsWith(name + '/')) {
+			console.debug('- Unloading', key);
+			delete db[key];
+		}
+	});
+}
+
 // Export regitry
 module.exports = Loaders;

@@ -22,6 +22,8 @@
 
 var VideoCore = require('../core/VideoCore');
 
+var trackedTextures = [];
+
 var ShadowShader = {
 
   fragment: [
@@ -48,6 +50,17 @@ var ShadowShader = {
 
 var ThreeUtil = {
 
+  reset: function() {
+    trackedTextures = [];
+  },
+
+  updateAllTextures: function() {
+    trackedTextures.forEach(function(tex) {
+      tex.needsUpdate = true;
+    });
+    trackedTextures = [];
+  },
+
   createTexture: function(img, props) {
 
     // Create texture and register a listener when it's loaded
@@ -55,6 +68,9 @@ var ThreeUtil = {
     img.addEventListener('load', function() {
       tex.needsUpdate = true;
     });
+
+    // Keep texture for
+    trackedTextures.push(tex);
 
     // In most of the cases we want to wrap, so default to wrapping
     tex.wrapS = THREE.RepeatWrapping;

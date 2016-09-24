@@ -667,6 +667,52 @@ Viewport.prototype.reset = function( ) {
 
 }
 
+/**
+ * Dispose arbitrary Three.js objects
+ */
+Viewport.prototype.disposeObject = function( object ) {
+	if (object instanceof THREE.Scene) {
+		console.debug('- Disposing scene');
+		if (object.overrideMaterial) this.disposeObject(object.overrideMaterial);
+		object.children.forEach( this.disposeObject.bind(this) );
+		this.render();
+
+	} else if (object instanceof THREE.Mesh) {
+		console.debug('- Disposing mesh');
+		if (object.geometry) this.disposeObject(object.geometry);
+		if (object.material) this.disposeObject(object.material);
+		object.children.forEach( this.disposeObject.bind(this) );
+
+	} else if (object instanceof THREE.Object3D) {
+		console.debug('- Disposing object');
+		object.children.forEach( this.disposeObject.bind(this) );
+
+	} else if ((object instanceof THREE.Geometry) ||
+					   (object instanceof THREE.BufferGeometry)) {
+		console.debug('- Disposing geometry');
+		object.dispose();
+
+	} else if (object instanceof THREE.Material) {
+		console.debug('- Disposing material');
+		if (object.aoMap) this.disposeObject(object.aoMap);
+		if (object.alphaMap) this.disposeObject(object.alphaMap);
+		if (object.bumpMap) this.disposeObject(object.bumpMap);
+		if (object.displacementMap) this.disposeObject(object.displacementMap);
+		if (object.emissiveMap) this.disposeObject(object.emissiveMap);
+		if (object.envMap) this.disposeObject(object.envMap);
+		if (object.lightMap) this.disposeObject(object.lightMap);
+		if (object.map) this.disposeObject(object.map);
+		if (object.normalMap) this.disposeObject(object.normalMap);
+		if (object.specularMap) this.disposeObject(object.specularMap);
+		object.dispose();
+
+	} else if (object instanceof THREE.Texture) {
+		console.debug('- Disposing texture');
+		object.dispose();
+
+	}
+}
+
 // Export viewport
 module.exports = Viewport;
 

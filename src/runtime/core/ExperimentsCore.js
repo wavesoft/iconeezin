@@ -33,6 +33,7 @@ var Loaders = require("../io/Loaders");
 
 var StopableTimers = require("../util/StopableTimers");
 var SequencerUtil = require("../util/SequencerUtil");
+var ThreeUtil = require('../util/ThreeUtil');
 
 /**
  * Kernel core is the main logic that steers the runtime
@@ -174,6 +175,7 @@ ExperimentsCore.showResults = function( meta ) {
 	AudioCore.reset();
 	StopableTimers.reset();
 	SequencerUtil.reset();
+	ThreeUtil.reset();
 
 	// Upload results to results room
 	this.resultsRoom.setResults( TrackingCore.results, this.meta );
@@ -209,6 +211,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 	}
 
 	// Mark experiment as active
+	var unloadExperiment = this.activeExperimentName;
 	this.activeExperimentName = experiment;
 
 	// Find the ID that corresponds to this experiment
@@ -235,6 +238,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 	// Update interactions when the experiment is visible
 	var handleExperimentVisible = function() {
 		ControlsCore.updateInteractions();
+		ThreeUtil.updateAllTextures();
 	}
 
 	// Check if this is already loaded
@@ -244,6 +248,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 		AudioCore.reset();
 		StopableTimers.reset();
 		SequencerUtil.reset();
+		ThreeUtil.reset();
 
 		// Ask TrackingCore to prepare for the experiment
 		TrackingCore.startExperiment( experiment, meta, (function() {
@@ -258,6 +263,9 @@ ExperimentsCore.showExperiment = function( experiment ) {
 					ControlsCore.reset();
 					VideoCore.reset();
 
+					// Unload experiment
+					if (unloadExperiment) Loaders.unloadExperiment( unloadExperiment );
+
 				}
 			);
 
@@ -268,6 +276,7 @@ ExperimentsCore.showExperiment = function( experiment ) {
 		// Reset all stopable timers
 		StopableTimers.reset();
 		SequencerUtil.reset();
+		ThreeUtil.reset();
 
 		// Load experiment
 		Loaders.loadExperiment( experiment, (function ( err, inst ) {
@@ -293,6 +302,9 @@ ExperimentsCore.showExperiment = function( experiment ) {
 						// Reset controls core only when it's not visible
 						ControlsCore.reset();
 						VideoCore.reset();
+
+						// Unload experiment
+						if (unloadExperiment) Loaders.unloadExperiment( unloadExperiment );
 
 					});
 				}).bind(this));

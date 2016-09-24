@@ -109,6 +109,9 @@ Experiments.prototype.focusExperiment = function( experiment, cb_completed, cb_t
 
 				// We are hidden
 				this.previousExperiment.onHidden();
+
+				// Clean memory of previous experiment
+				this.viewport.disposeObject( this.previousExperiment );
 				this.previousExperiment = null;
 				do_setup();
 

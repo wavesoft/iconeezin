@@ -53,6 +53,9 @@ VideoCore.EFFECT_SEPIA = 1;
  */
 VideoCore.initialize = function( rootDOM, canvasDOM ) {
 
+	// Init properties
+	this.hmd = false;
+
 	// Keep a reference to the root DOM
 	this.rootDOM = rootDOM;
 
@@ -114,7 +117,6 @@ VideoCore.initialize = function( rootDOM, canvasDOM ) {
 		}
 
 	}, false );
-
 
 }
 

@@ -242,7 +242,7 @@ ResultsRoom.prototype = Object.assign( Object.create( ExperimentsAPI.Experiment.
 				if (range[0] < range[1]) {
 					metric = map_values( metric, range[0], range[1], 0, 1 );
 				} else {
-					metric = map_values( metric, range[1], range[0], 0, 1 );
+					metric = map_values( metric, range[1], range[0], 1, 0 );
 				}
 			} else {
 				metric /= 100;
