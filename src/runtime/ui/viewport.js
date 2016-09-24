@@ -444,8 +444,8 @@ Viewport.prototype.removeRenderListener = function( listener ) {
 Viewport.prototype.render = function() {
 
 	// Schedule next frame if not paused
-	// if (!this.paused) requestAnimationFrame( this.render.bind(this) );
-	if (!this.paused) setTimeout( this.render.bind(this), 1000/12 );
+	if (!this.paused) requestAnimationFrame( this.render.bind(this) );
+	// if (!this.paused) setTimeout( this.render.bind(this), 1000/12 );
 
 	// Get elapsed time to update animations
 	var t = Date.now(),
